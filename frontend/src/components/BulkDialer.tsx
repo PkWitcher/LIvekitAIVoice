@@ -157,7 +157,3 @@ export default function BulkDialer() {
     </div>
   );
 }
-      )}
-    </div>
-  );
-}
