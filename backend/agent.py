@@ -155,6 +155,10 @@ def create_tts(provider: str = None, voice_id: str = None):
         )
     elif provider == "deepgram":
         voice = voice_id or config.TTS_PROVIDERS["deepgram"]["default_voice"]
+        valid_voices = config.TTS_PROVIDERS["deepgram"]["voices"]
+        if voice not in valid_voices and voice not in valid_voices.values():
+            logger.warning(f"Invalid Deepgram voice '{voice}', using default")
+            voice = config.TTS_PROVIDERS["deepgram"]["default_voice"]
         return deepgram.TTS(model=voice)
     else:
         voice = voice_id or config.TTS_PROVIDERS["deepgram"]["default_voice"]
