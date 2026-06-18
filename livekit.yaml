@@ -20,9 +20,7 @@ room:
   empty_timeout: 300
   max_participants: 20
 
-sip:
-  # Enable SIP support for PSTN calls
-  enabled: true
+sip: {}
 
 webhook:
   urls: []

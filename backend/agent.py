@@ -13,8 +13,6 @@ import certifi
 from dotenv import load_dotenv
 from livekit import api, rtc
 from livekit.agents import (
-    Agent,
-    AgentSession,
     AutoSubscribe,
     JobContext,
     JobProcess,
