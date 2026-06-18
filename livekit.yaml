@@ -27,4 +27,4 @@ redis:
 
 webhook:
   urls:
-    - "http://voice-dashboard:3000/api/webhook/livekit"
+    - "http://frontend:3000/api/webhook/livekit"
