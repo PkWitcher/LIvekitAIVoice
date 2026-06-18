@@ -21,7 +21,7 @@ from livekit.agents import (
     llm,
 )
 from livekit.agents.pipeline import VoicePipelineAgent
-from livekit.plugins import deepgram, noise_cancellation, openai, silero
+from livekit.plugins import deepgram, openai, silero
 
 import config
 
@@ -83,7 +83,6 @@ class CallFunctions(llm.FunctionContext):
     async def transfer_call(
         self,
         destination: str,
-        ctx: JobContext = None,
     ) -> str:
         """Transfer current call via SIP REFER."""
         logger.info(f"Transferring call to: {destination}")
@@ -277,7 +276,6 @@ async def entrypoint(ctx: JobContext) -> None:
             role="system",
             text=system_prompt,
         ),
-        noise_cancellation=noise_cancellation.BVC(),
     )
 
     # Dial outbound if phone_number specified and no one is in the room yet
