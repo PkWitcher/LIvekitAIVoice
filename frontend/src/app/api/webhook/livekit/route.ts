@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     const isPhoneParticipant =
       participantId.startsWith("phone-") ||
       participantId.startsWith("sip_") ||
-      (event.participant as Record<string, unknown>)?.kind === 2; // SIP participant kind
+      (event.participant as unknown as Record<string, unknown>)?.kind === 2; // SIP participant kind
 
     // ── Phone participant joined OR published audio = call was ANSWERED ──
     if (
