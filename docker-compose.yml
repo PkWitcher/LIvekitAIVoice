@@ -45,7 +45,7 @@ services:
       - SIP_PORT_LISTEN=5060
       - LIVEKIT_API_KEY=devkey
       - LIVEKIT_API_SECRET=secret
-      - LIVEKIT_URL=ws://livekit:7880
+      - LIVEKIT_WS_URL=ws://livekit:7880
     ports:
       - "5060:5060/udp"
       - "5060:5060/tcp"
