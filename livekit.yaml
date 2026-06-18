@@ -20,8 +20,7 @@ room:
   empty_timeout: 300
   max_participants: 20
 
-sip:
-  use_external_ip: true
+sip: {}
 
 redis:
   address: redis:6379
