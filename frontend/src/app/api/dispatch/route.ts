@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { RoomServiceClient, SipClient } from "livekit-server-sdk";
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 
 const LIVEKIT_URL = process.env.LIVEKIT_URL ?? "http://localhost:7880";
 const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY ?? "";
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Log call to Supabase
-    supabase.from("phone_logs").insert({
+    getSupabase()?.from("phone_logs").insert({
       phone_number: phone,
       direction: "outbound",
       status: "initiated",
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
     console.error("Dispatch error:", message);
 
     // Log failed call
-    supabase.from("phone_logs").insert({
+    getSupabase()?.from("phone_logs").insert({
       phone_number: "unknown",
       direction: "outbound",
       status: "failed",
