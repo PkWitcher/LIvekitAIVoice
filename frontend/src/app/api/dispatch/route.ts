@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { RoomServiceClient, SipClient } from "livekit-server-sdk";
+import { RoomServiceClient, SipClient, EgressClient } from "livekit-server-sdk";
 import { getSupabase } from "@/lib/supabase";
 
 const LIVEKIT_URL = process.env.LIVEKIT_URL ?? "http://localhost:7880";
@@ -92,6 +92,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Start audio recording
+    try {
+      const egressClient = new EgressClient(
+        LIVEKIT_URL,
+        LIVEKIT_API_KEY,
+        LIVEKIT_API_SECRET
+      );
+      await egressClient.startRoomCompositeEgress(roomName, {
+        file: {
+          fileType: 0, // OGG
+          filepath: `/recordings/${roomName}.ogg`,
+        },
+      }, { audioOnly: true });
+    } catch (recErr) {
+      console.warn("Recording start failed:", recErr);
+    }
+
     // Log call to Supabase
     getSupabase()?.from("phone_logs").insert({
       phone_number: phone,
@@ -101,6 +118,7 @@ export async function POST(request: NextRequest) {
       model_provider: body.model_provider ?? "groq",
       voice_id: body.voice_id ?? "aura-asteria-en",
       prompt: body.prompt || null,
+      recording_url: `/recordings/${roomName}.ogg`,
     }).then();
 
     return NextResponse.json({

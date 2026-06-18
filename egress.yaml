@@ -1,0 +1,12 @@
+# LiveKit Egress Configuration
+api_key: devkey
+api_secret: "a]3Kf9!pLm2Qx@vR7nWz5YcBdT8eHs4u"
+ws_url: ws://livekit:7880
+
+redis:
+  address: redis:6379
+
+# Local file output
+file_output:
+  local:
+    directory: /recordings

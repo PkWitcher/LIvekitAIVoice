@@ -15,6 +15,7 @@ interface CallLog {
   error: string | null;
   created_at: string;
   ended_at: string | null;
+  recording_url: string | null;
 }
 
 export default function CallHistory() {
@@ -110,6 +111,7 @@ export default function CallHistory() {
               <th className="px-5 py-3 font-medium">Duration</th>
               <th className="px-5 py-3 font-medium">Model</th>
               <th className="px-5 py-3 font-medium">Voice</th>
+              <th className="px-5 py-3 font-medium">Recording</th>
               <th className="px-5 py-3 font-medium">Time</th>
             </tr>
           </thead>
@@ -135,6 +137,15 @@ export default function CallHistory() {
                 </td>
                 <td className="px-5 py-3 text-[var(--color-text-secondary)]">
                   {(call.voice_id ?? "").replace("aura-", "").replace("-en", "")}
+                </td>
+                <td className="px-5 py-3">
+                  {call.recording_url && call.status === "completed" ? (
+                    <audio controls preload="none" className="h-7 w-36">
+                      <source src={call.recording_url} type="audio/ogg" />
+                    </audio>
+                  ) : (
+                    <span className="text-[var(--color-text-muted)] text-xs">—</span>
+                  )}
                 </td>
                 <td className="px-5 py-3 text-[var(--color-text-muted)]">
                   {formatTime(call.created_at)}

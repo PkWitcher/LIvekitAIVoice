@@ -61,9 +61,23 @@ services:
       - LIVEKIT_URL=http://livekit:7880
     ports:
       - "3001:3000"
+    volumes:
+      - ./recordings:/app/public/recordings
     restart: unless-stopped
     depends_on:
       - livekit
+
+  livekit-egress:
+    image: livekit/egress:latest
+    container_name: livekit-egress
+    environment:
+      - EGRESS_CONFIG_FILE=/egress.yaml
+    volumes:
+      - ./egress.yaml:/egress.yaml
+      - ./recordings:/recordings
+    depends_on:
+      - livekit
+    restart: unless-stopped
 
 volumes:
   redis-data:
