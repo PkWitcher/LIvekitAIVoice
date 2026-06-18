@@ -38,7 +38,7 @@ export default function CallHistory() {
 
   useEffect(() => {
     fetchCalls();
-    const interval = setInterval(fetchCalls, 10000);
+    const interval = setInterval(fetchCalls, 1000);
     return () => clearInterval(interval);
   }, [fetchCalls]);
 

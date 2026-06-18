@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     await roomService.createRoom({
       name: roomName,
       metadata,
-      emptyTimeout: 300,
+      emptyTimeout: 30,
       maxParticipants: 5,
     });
 

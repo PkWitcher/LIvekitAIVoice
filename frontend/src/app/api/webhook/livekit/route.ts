@@ -21,11 +21,13 @@ export async function POST(request: NextRequest) {
 
     console.log("Webhook event:", event.event, event.room?.name, event.participant?.identity);
 
-    // ── Phone participant answered the call ──
+    const isPhoneParticipant = event.participant?.identity?.startsWith("phone-");
+
+    // ── Phone participant published audio = call was ANSWERED ──
     if (
-      event.event === "participant_joined" &&
+      event.event === "track_published" &&
       event.room?.name &&
-      event.participant?.identity?.startsWith("phone-")
+      isPhoneParticipant
     ) {
       const roomName = event.room.name;
 
@@ -37,7 +39,8 @@ export async function POST(request: NextRequest) {
             status: "connected",
             connected_at: new Date().toISOString(),
           })
-          .eq("room_name", roomName);
+          .eq("room_name", roomName)
+          .eq("status", "ringing"); // only update if still ringing (avoid double-update)
       }
 
       // Start recording only for answered calls
@@ -60,6 +63,25 @@ export async function POST(request: NextRequest) {
         );
       } catch (recErr) {
         console.warn("Recording start failed:", recErr);
+      }
+    }
+
+    // ── Phone participant left = call rejected/cut before answer ──
+    if (
+      event.event === "participant_left" &&
+      event.room?.name &&
+      isPhoneParticipant
+    ) {
+      if (supabase) {
+        // Only mark no-answer if call was never connected
+        await supabase
+          .from("phone_logs")
+          .update({
+            status: "no-answer",
+            ended_at: new Date().toISOString(),
+          })
+          .eq("room_name", event.room.name)
+          .eq("status", "ringing");
       }
     }
 
