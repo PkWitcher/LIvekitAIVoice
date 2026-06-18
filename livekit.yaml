@@ -22,5 +22,8 @@ room:
 
 sip: {}
 
+redis:
+  address: redis:6379
+
 webhook:
   urls: []
