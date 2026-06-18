@@ -96,13 +96,13 @@ export async function POST(request: NextRequest) {
         });
 
         if (sipClient) {
-          await sipClient.createSipParticipant({
-            sipTrunkId: SIP_TRUNK_ID,
-            sipCallTo: phone,
+          await sipClient.createSipParticipant(
+            SIP_TRUNK_ID,
+            phone,
             roomName,
-            participantIdentity: `phone-${phone}`,
-            participantName: `Caller ${phone}`,
-          });
+            `phone-${phone}`,
+            `Caller ${phone}`
+          );
         }
 
         results.push({ phone, status: "dispatched", room_name: roomName });
