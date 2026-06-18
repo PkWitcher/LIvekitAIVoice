@@ -4,8 +4,6 @@ import { RoomServiceClient, SipClient } from "livekit-server-sdk";
 const LIVEKIT_URL = process.env.LIVEKIT_URL ?? "http://localhost:7880";
 const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY ?? "";
 const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET ?? "";
-const SIP_TRUNK_ID = process.env.VOBIZ_SIP_TRUNK_ID ?? "";
-
 interface DispatchBody {
   phone_number: string;
   prompt?: string;
@@ -77,14 +75,9 @@ export async function POST(request: NextRequest) {
       LIVEKIT_API_SECRET
     );
 
-    // Resolve trunk ID: use env or discover from server
-    let trunkId = SIP_TRUNK_ID;
-    if (!trunkId) {
-      const trunks = await sipClient.listSipOutboundTrunk();
-      if (trunks.length > 0) {
-        trunkId = trunks[0].sipTrunkId;
-      }
-    }
+    // Always auto-discover trunk (setup_sip_trunk.py recreates it on every startup)
+    const trunks = await sipClient.listSipOutboundTrunk();
+    const trunkId = trunks.length > 0 ? trunks[0].sipTrunkId : null;
 
     if (trunkId) {
       await sipClient.createSipParticipant(

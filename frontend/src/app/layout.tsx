@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Voice Agent Dashboard",
-  description: "AI Voice Agent — Make and receive calls with AI over PSTN",
+  title: "Nova AI — Voice Platform",
+  description: "AI-powered voice automation. Dispatch intelligent phone calls at scale with real-time speech AI.",
 };
 
 export default function RootLayout({
