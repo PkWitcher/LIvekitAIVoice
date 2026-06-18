@@ -100,8 +100,10 @@ export async function POST(request: NextRequest) {
             SIP_TRUNK_ID,
             phone,
             roomName,
-            `phone-${phone}`,
-            `Caller ${phone}`
+            {
+              participantIdentity: `phone-${phone}`,
+              participantName: `Caller ${phone}`,
+            }
           );
         }
 
