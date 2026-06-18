@@ -13,6 +13,9 @@ keys:
   # Generate with: docker run --rm livekit/livekit-server generate-keys
   devkey: secret
 
+api_key: devkey
+api_secret: secret
+
 logging:
   level: info
 
