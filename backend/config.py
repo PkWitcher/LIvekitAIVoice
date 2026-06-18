@@ -119,6 +119,12 @@ DEFAULT_VOICE_ID = "aura-asteria-en"
 # SIP / Telephony Configuration
 # ──────────────────────────────────────────────
 SIP_TRUNK_ID = os.getenv("VOBIZ_SIP_TRUNK_ID", "")
+if not SIP_TRUNK_ID:
+    try:
+        with open("/tmp/sip_trunk_id", "r") as f:
+            SIP_TRUNK_ID = f.read().strip()
+    except FileNotFoundError:
+        pass
 SIP_DOMAIN = os.getenv("VOBIZ_SIP_DOMAIN", "sip.vobiz.com")
 SIP_USERNAME = os.getenv("VOBIZ_USERNAME", "")
 SIP_PASSWORD = os.getenv("VOBIZ_PASSWORD", "")

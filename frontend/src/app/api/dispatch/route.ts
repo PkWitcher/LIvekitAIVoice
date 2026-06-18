@@ -64,15 +64,24 @@ export async function POST(request: NextRequest) {
     });
 
     // Create SIP participant to dial the phone number
-    if (SIP_TRUNK_ID) {
-      const sipClient = new SipClient(
-        LIVEKIT_URL,
-        LIVEKIT_API_KEY,
-        LIVEKIT_API_SECRET
-      );
+    const sipClient = new SipClient(
+      LIVEKIT_URL,
+      LIVEKIT_API_KEY,
+      LIVEKIT_API_SECRET
+    );
 
+    // Resolve trunk ID: use env or discover from server
+    let trunkId = SIP_TRUNK_ID;
+    if (!trunkId) {
+      const trunks = await sipClient.listSipOutboundTrunk();
+      if (trunks.length > 0) {
+        trunkId = trunks[0].sipTrunkId;
+      }
+    }
+
+    if (trunkId) {
       await sipClient.createSipParticipant(
-        SIP_TRUNK_ID,
+        trunkId,
         phone,
         roomName,
         {
