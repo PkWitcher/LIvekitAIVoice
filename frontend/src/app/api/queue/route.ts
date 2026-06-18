@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     const results: DialResult[] = [];
 
     for (const raw of body.phone_numbers) {
-      const phone = raw.trim();
+      let phone = raw.trim();
 
       if (!/^\+?\d{7,15}$/.test(phone)) {
         results.push({
@@ -83,6 +83,14 @@ export async function POST(request: NextRequest) {
           error: "Invalid format",
         });
         continue;
+      }
+
+      // Auto-add +91 for 10-digit Indian numbers without country code
+      if (/^\d{10}$/.test(phone)) {
+        phone = `+91${phone}`;
+      } else if (!phone.startsWith("+")) {
+        phone = `+${phone}`;
+      }
       }
 
       try {

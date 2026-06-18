@@ -24,13 +24,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const phone = body.phone_number.trim();
+    let phone = body.phone_number.trim();
 
     if (!/^\+?\d{7,15}$/.test(phone)) {
       return NextResponse.json(
         { success: false, error: "Invalid phone number format" },
         { status: 400 }
       );
+    }
+
+    // Auto-add +91 for 10-digit Indian numbers without country code
+    if (/^\d{10}$/.test(phone)) {
+      phone = `+91${phone}`;
+    } else if (!phone.startsWith("+")) {
+      phone = `+${phone}`;
     }
 
     if (!LIVEKIT_API_KEY || !LIVEKIT_API_SECRET) {
