@@ -145,7 +145,16 @@ def create_llm_plugin(provider: str = None) -> openai.LLM:
 
 def create_tts(provider: str = None, voice_id: str = None):
     """Create TTS instance based on provider and voice."""
+    # Auto-detect provider from voice name
+    OPENAI_VOICES = {"alloy", "echo", "shimmer", "nova", "fable", "onyx"}
+    if voice_id:
+        if voice_id.startswith("aura-"):
+            provider = "deepgram"
+        elif voice_id in OPENAI_VOICES:
+            provider = "openai"
     provider = provider or config.DEFAULT_TTS_PROVIDER
+
+    logger.info(f"TTS provider: {provider}, voice: {voice_id}")
 
     if provider == "openai":
         voice = voice_id or config.TTS_PROVIDERS["openai"]["default_voice"]

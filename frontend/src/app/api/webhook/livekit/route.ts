@@ -19,9 +19,14 @@ export async function POST(request: NextRequest) {
     const event = await receiver.receive(body, authHeader);
     const supabase = getSupabase();
 
-    console.log("Webhook event:", event.event, event.room?.name, event.participant?.identity);
+    console.log("Webhook event:", event.event, "room:", event.room?.name, "participant:", event.participant?.identity, "kind:", event.participant?.kind);
 
-    const isPhoneParticipant = event.participant?.identity?.startsWith("phone-");
+    // Detect SIP/phone participant: identity starts with phone-/sip-, OR kind is SIP
+    const participantId = event.participant?.identity ?? "";
+    const isPhoneParticipant =
+      participantId.startsWith("phone-") ||
+      participantId.startsWith("sip_") ||
+      (event.participant as Record<string, unknown>)?.kind === 2; // SIP participant kind
 
     // ── Phone participant joined OR published audio = call was ANSWERED ──
     if (

@@ -12,7 +12,7 @@ export default function CallDispatcher() {
   const [phone, setPhone] = useState("");
   const [prompt, setPrompt] = useState("");
   const [modelProvider, setModelProvider] = useState("groq");
-  const [voice, setVoice] = useState("aura-asteria-en");
+  const [voice, setVoice] = useState("shimmer");
   const [language, setLanguage] = useState("multi");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<DispatchResult | null>(null);
@@ -137,13 +137,21 @@ export default function CallDispatcher() {
             value={voice}
             onChange={(e) => setVoice(e.target.value)}
           >
-            <option value="aura-asteria-en">Asteria — Female</option>
-            <option value="aura-luna-en">Luna — Female</option>
-            <option value="aura-stella-en">Stella — Female</option>
-            <option value="aura-athena-en">Athena — Female</option>
-            <option value="aura-orion-en">Orion — Male</option>
-            <option value="aura-arcas-en">Arcas — Male</option>
-            <option value="aura-perseus-en">Perseus — Male</option>
+            <optgroup label="OpenAI (Best for Hindi/Multi)">
+              <option value="shimmer">Shimmer — Female (Recommended)</option>
+              <option value="nova">Nova — Female</option>
+              <option value="alloy">Alloy — Neutral</option>
+              <option value="echo">Echo — Male</option>
+              <option value="fable">Fable — Male</option>
+              <option value="onyx">Onyx — Male</option>
+            </optgroup>
+            <optgroup label="Deepgram (English Only)">
+              <option value="aura-asteria-en">Asteria — Female</option>
+              <option value="aura-luna-en">Luna — Female</option>
+              <option value="aura-stella-en">Stella — Female</option>
+              <option value="aura-orion-en">Orion — Male</option>
+              <option value="aura-arcas-en">Arcas — Male</option>
+            </optgroup>
           </select>
         </div>
       </div>
