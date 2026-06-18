@@ -91,7 +91,6 @@ export async function POST(request: NextRequest) {
       } else if (!phone.startsWith("+")) {
         phone = `+${phone}`;
       }
-      }
 
       try {
         const roomName = `campaign-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
