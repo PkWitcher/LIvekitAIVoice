@@ -26,4 +26,5 @@ redis:
   address: redis:6379
 
 webhook:
-  urls: []
+  urls:
+    - "http://voice-dashboard:3000/api/webhook/livekit"
