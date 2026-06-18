@@ -1,6 +1,6 @@
 # LiveKit SIP Service Configuration
 api_key: devkey
-api_secret: secret
+api_secret: "a]3Kf9!pLm2Qx@vR7nWz5YcBdT8eHs4u"
 ws_url: ws://livekit:7880
 
 redis:

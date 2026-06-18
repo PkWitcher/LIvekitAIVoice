@@ -9,9 +9,7 @@ rtc:
   use_external_ip: true
 
 keys:
-  # Replace with your own API key pair
-  # Generate with: docker run --rm livekit/livekit-server generate-keys
-  devkey: secret
+  devkey: a]3Kf9!pLm2Qx@vR7nWz5YcBdT8eHs4u
 
 logging:
   level: info
@@ -26,5 +24,6 @@ redis:
   address: redis:6379
 
 webhook:
+  api_key: devkey
   urls:
     - "http://frontend:3000/api/webhook/livekit"
