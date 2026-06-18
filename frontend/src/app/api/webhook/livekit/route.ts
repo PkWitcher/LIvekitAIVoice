@@ -10,158 +10,186 @@ const LIVEKIT_URL = process.env.LIVEKIT_URL ?? "http://localhost:7880";
 const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY ?? "";
 const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET ?? "";
 
-const receiver = new WebhookReceiver(LIVEKIT_API_KEY, LIVEKIT_API_SECRET);
+let receiver: WebhookReceiver | null = null;
+try {
+  if (LIVEKIT_API_KEY && LIVEKIT_API_SECRET) {
+    receiver = new WebhookReceiver(LIVEKIT_API_KEY, LIVEKIT_API_SECRET);
+  }
+} catch (e) {
+  console.error("Failed to create WebhookReceiver:", e);
+}
 
 export async function POST(request: NextRequest) {
-  try {
-    const body = await request.text();
-    const authHeader = request.headers.get("authorization") ?? "";
-    const event = await receiver.receive(body, authHeader);
-    const supabase = getSupabase();
+  const body = await request.text();
+  const authHeader = request.headers.get("authorization") ?? "";
 
-    console.log("Webhook event:", event.event, "room:", event.room?.name, "participant:", event.participant?.identity, "kind:", event.participant?.kind);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let event: any;
 
-    // Detect SIP/phone participant: identity starts with phone-/sip-, OR kind is SIP
-    const participantId = event.participant?.identity ?? "";
-    const isPhoneParticipant =
-      participantId.startsWith("phone-") ||
-      participantId.startsWith("sip_") ||
-      (event.participant as unknown as Record<string, unknown>)?.kind === 2; // SIP participant kind
-
-    // ── Phone participant joined OR published audio = call was ANSWERED ──
-    if (
-      (event.event === "participant_joined" || event.event === "track_published") &&
-      event.room?.name &&
-      isPhoneParticipant
-    ) {
-      const roomName = event.room.name;
-
-      if (supabase) {
-        // Only update if still ringing (avoid double-update from both events)
-        const { data } = await supabase
-          .from("phone_logs")
-          .update({
-            status: "connected",
-            connected_at: new Date().toISOString(),
-          })
-          .eq("room_name", roomName)
-          .eq("status", "ringing")
-          .select("id");
-
-        // Start recording only on first transition to connected
-        if (data && data.length > 0) {
-          try {
-            const egressClient = new EgressClient(
-              LIVEKIT_URL,
-              LIVEKIT_API_KEY,
-              LIVEKIT_API_SECRET
-            );
-            const output = new EncodedFileOutput({
-              fileType: 2, // OGG
-              filepath: `${roomName}.ogg`,
-            });
-            await egressClient.startRoomCompositeEgress(
-              roomName,
-              output,
-              undefined,
-              undefined,
-              true // audioOnly
-            );
-          } catch (recErr) {
-            console.warn("Recording start failed:", recErr);
-          }
-        }
+  // Try validated first, fall back to raw parse if receiver fails
+  if (receiver) {
+    try {
+      event = await receiver.receive(body, authHeader);
+    } catch (err) {
+      console.error("Webhook validation failed, parsing raw body:", err);
+      try {
+        event = JSON.parse(body);
+      } catch {
+        console.error("Failed to parse webhook body");
+        return NextResponse.json({ ok: true });
       }
     }
-
-    // ── Phone participant left ──
-    if (
-      event.event === "participant_left" &&
-      event.room?.name &&
-      isPhoneParticipant
-    ) {
-      if (supabase) {
-        const roomName = event.room.name;
-        const now = new Date().toISOString();
-
-        // Check if the call was connected
-        const { data: record } = await supabase
-          .from("phone_logs")
-          .select("status, connected_at")
-          .eq("room_name", roomName)
-          .single();
-
-        if (record) {
-          if (record.status === "connected" && record.connected_at) {
-            // Call was answered then hung up — mark completed
-            const durationSeconds = Math.round(
-              (Date.now() - new Date(record.connected_at).getTime()) / 1000
-            );
-            await supabase
-              .from("phone_logs")
-              .update({
-                status: "completed",
-                duration_seconds: durationSeconds,
-                ended_at: now,
-                recording_url: `/api/recordings/${roomName}.ogg`,
-              })
-              .eq("room_name", roomName);
-          } else if (record.status === "ringing") {
-            // Never answered — rejected/timeout
-            await supabase
-              .from("phone_logs")
-              .update({
-                status: "no-answer",
-                ended_at: now,
-              })
-              .eq("room_name", roomName);
-          }
-        }
-      }
+  } else {
+    try {
+      event = JSON.parse(body);
+    } catch {
+      return NextResponse.json({ ok: true });
     }
+  }
 
-    // ── Room finished — fallback finalization ──
-    if (event.event === "room_finished" && event.room?.name) {
-      if (supabase) {
-        const roomName = event.room.name;
-        const now = new Date().toISOString();
+  const supabase = getSupabase();
+  const eventType = event.event;
+  const roomName = event.room?.name;
+  const participantId = event.participant?.identity ?? "";
 
-        const { data: record } = await supabase
-          .from("phone_logs")
-          .select("status, connected_at")
-          .eq("room_name", roomName)
-          .single();
+  console.log(`[WEBHOOK] event=${eventType} room=${roomName} participant=${participantId} numParticipants=${event.room?.numParticipants}`);
 
-        if (record) {
-          if (record.status === "connected" && record.connected_at) {
-            const durationSeconds = Math.round(
-              (Date.now() - new Date(record.connected_at).getTime()) / 1000
-            );
-            await supabase
-              .from("phone_logs")
-              .update({
-                status: "completed",
-                duration_seconds: durationSeconds,
-                ended_at: now,
-                recording_url: `/api/recordings/${roomName}.ogg`,
-              })
-              .eq("room_name", roomName);
-          } else if (record.status === "ringing") {
-            await supabase
-              .from("phone_logs")
-              .update({
-                status: "no-answer",
-                ended_at: now,
-              })
-              .eq("room_name", roomName);
-          }
-        }
-      }
-    }
-
-    return NextResponse.json({ ok: true });
-  } catch (error) {
-    console.error("Webhook error:", error);
+  if (!roomName || !supabase) {
     return NextResponse.json({ ok: true });
   }
+
+  // Is this participant the voice agent? (agent identities never start with "phone-" and typically contain "agent")
+  const isAgent = participantId.includes("agent") || participantId === "";
+
+  try {
+    // ── ANY non-agent participant joined = CALL ANSWERED ──
+    if (eventType === "participant_joined" && !isAgent) {
+      console.log(`[WEBHOOK] Non-agent participant joined: "${participantId}" in room ${roomName} — marking connected`);
+
+      const { data, error } = await supabase
+        .from("phone_logs")
+        .update({
+          status: "connected",
+          connected_at: new Date().toISOString(),
+        })
+        .eq("room_name", roomName)
+        .eq("status", "ringing")
+        .select("id");
+
+      if (error) {
+        console.error("[WEBHOOK] Supabase update error:", error);
+      }
+
+      console.log(`[WEBHOOK] Connected update result: ${JSON.stringify(data)}`);
+
+      // Start recording only on first transition to connected
+      if (data && data.length > 0) {
+        try {
+          const egressClient = new EgressClient(
+            LIVEKIT_URL,
+            LIVEKIT_API_KEY,
+            LIVEKIT_API_SECRET
+          );
+          const output = new EncodedFileOutput({
+            fileType: 2, // OGG
+            filepath: `${roomName}.ogg`,
+          });
+          await egressClient.startRoomCompositeEgress(
+            roomName,
+            output,
+            undefined,
+            undefined,
+            true // audioOnly
+          );
+          console.log(`[WEBHOOK] Recording started for ${roomName}`);
+        } catch (recErr) {
+          console.warn("[WEBHOOK] Recording start failed:", recErr);
+        }
+      }
+    }
+
+    // ── Non-agent participant left ──
+    if (eventType === "participant_left" && !isAgent) {
+      console.log(`[WEBHOOK] Non-agent participant left: "${participantId}" in room ${roomName}`);
+
+      const { data: record } = await supabase
+        .from("phone_logs")
+        .select("status, connected_at")
+        .eq("room_name", roomName)
+        .single();
+
+      console.log(`[WEBHOOK] Current record status: ${record?.status}, connected_at: ${record?.connected_at}`);
+
+      if (record) {
+        const now = new Date().toISOString();
+
+        if (record.status === "connected" && record.connected_at) {
+          const durationSeconds = Math.round(
+            (Date.now() - new Date(record.connected_at).getTime()) / 1000
+          );
+          console.log(`[WEBHOOK] Marking completed, duration=${durationSeconds}s`);
+          await supabase
+            .from("phone_logs")
+            .update({
+              status: "completed",
+              duration_seconds: durationSeconds,
+              ended_at: now,
+              recording_url: `/api/recordings/${roomName}.ogg`,
+            })
+            .eq("room_name", roomName);
+        } else if (record.status === "ringing") {
+          console.log(`[WEBHOOK] Marking no-answer (was still ringing)`);
+          await supabase
+            .from("phone_logs")
+            .update({
+              status: "no-answer",
+              ended_at: now,
+            })
+            .eq("room_name", roomName);
+        }
+      }
+    }
+
+    // ── Room finished — fallback ──
+    if (eventType === "room_finished") {
+      const { data: record } = await supabase
+        .from("phone_logs")
+        .select("status, connected_at")
+        .eq("room_name", roomName)
+        .single();
+
+      console.log(`[WEBHOOK] Room finished. Record status: ${record?.status}`);
+
+      if (record) {
+        const now = new Date().toISOString();
+
+        if (record.status === "connected" && record.connected_at) {
+          const durationSeconds = Math.round(
+            (Date.now() - new Date(record.connected_at).getTime()) / 1000
+          );
+          await supabase
+            .from("phone_logs")
+            .update({
+              status: "completed",
+              duration_seconds: durationSeconds,
+              ended_at: now,
+              recording_url: `/api/recordings/${roomName}.ogg`,
+            })
+            .eq("room_name", roomName);
+        } else if (record.status === "ringing") {
+          await supabase
+            .from("phone_logs")
+            .update({
+              status: "no-answer",
+              ended_at: now,
+            })
+            .eq("room_name", roomName);
+        }
+      }
+    }
+  } catch (err) {
+    console.error("[WEBHOOK] Processing error:", err);
+  }
+
+  return NextResponse.json({ ok: true });
 }
