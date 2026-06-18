@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { RoomServiceClient, SipClient } from "livekit-server-sdk";
+import { supabase } from "@/lib/supabase";
 
 const LIVEKIT_URL = process.env.LIVEKIT_URL ?? "http://localhost:7880";
 const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY ?? "";
@@ -115,6 +116,17 @@ export async function POST(request: NextRequest) {
         }
 
         results.push({ phone, status: "dispatched", room_name: roomName });
+
+        // Log to Supabase
+        supabase.from("phone_logs").insert({
+          phone_number: phone,
+          direction: "outbound",
+          status: "initiated",
+          room_name: roomName,
+          model_provider: body.model_provider ?? "groq",
+          voice_id: body.voice_id ?? "aura-asteria-en",
+          prompt: body.prompt || null,
+        }).then();
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Unknown error";

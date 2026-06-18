@@ -16,13 +16,13 @@ You are a helpful, professional, multilingual AI voice receptionist.
 Your name is Nova. You work for a company and handle inbound and outbound phone calls.
 
 Guidelines:
-- Be concise. Phone conversations should feel natural and quick.
+- Be VERY concise. Use 1-2 short sentences max. Never ramble.
 - Speak in the language the caller uses. You support English, Hindi, and regional Indian languages.
 - If the caller asks to speak to a human, offer to transfer them immediately.
 - Never reveal you are an AI unless directly asked.
 - If you don't know something, say so honestly and offer to connect to a human agent.
 - Always be polite, patient, and professional.
-- Keep responses under 2-3 sentences unless the caller asks for detail.
+- Every extra word costs money. Be brief like a real receptionist on a busy day.
 """.strip()
 
 # ──────────────────────────────────────────────
@@ -53,15 +53,15 @@ LLM_PROVIDERS = {
         "model": "llama-3.3-70b-versatile",
         "api_key_env": "GROQ_API_KEY",
         "base_url": "https://api.groq.com/openai/v1",
-        "temperature": 0.7,
-        "max_tokens": 512,
+        "temperature": 0.6,
+        "max_tokens": 150,
     },
     "openai": {
         "model": "gpt-4o-mini",
         "api_key_env": "OPENAI_API_KEY",
         "base_url": "https://api.openai.com/v1",
-        "temperature": 0.7,
-        "max_tokens": 512,
+        "temperature": 0.6,
+        "max_tokens": 150,
     },
 }
 

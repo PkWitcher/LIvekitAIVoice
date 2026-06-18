@@ -1,5 +1,6 @@
 import CallDispatcher from "@/components/CallDispatcher";
 import BulkDialer from "@/components/BulkDialer";
+import CallHistory from "@/components/CallHistory";
 
 export default function Home() {
   return (
@@ -40,6 +41,11 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
           <CallDispatcher />
           <BulkDialer />
+        </div>
+
+        {/* ── Call History ────────────────────── */}
+        <div className="mt-10 sm:mt-14">
+          <CallHistory />
         </div>
 
         {/* ── Footer ─────────────────────────── */}
