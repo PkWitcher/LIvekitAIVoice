@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { RoomServiceClient, SipClient, EgressClient } from "livekit-server-sdk";
+import {
+  RoomServiceClient,
+  SipClient,
+  EgressClient,
+  EncodedFileOutput,
+} from "livekit-server-sdk";
 import { getSupabase } from "@/lib/supabase";
 
 const LIVEKIT_URL = process.env.LIVEKIT_URL ?? "http://localhost:7880";
@@ -99,9 +104,13 @@ export async function POST(request: NextRequest) {
         LIVEKIT_API_KEY,
         LIVEKIT_API_SECRET
       );
+      const output = new EncodedFileOutput({
+        fileType: 2, // OGG
+        filepath: `${roomName}.ogg`,
+      });
       await egressClient.startRoomCompositeEgress(
         roomName,
-        { filepath: `/recordings/${roomName}.ogg` } as never,
+        output,
         undefined, // layout
         undefined, // encoding options
         true       // audioOnly
@@ -119,7 +128,7 @@ export async function POST(request: NextRequest) {
       model_provider: body.model_provider ?? "groq",
       voice_id: body.voice_id ?? "aura-asteria-en",
       prompt: body.prompt || null,
-      recording_url: `/recordings/${roomName}.ogg`,
+      recording_url: `/api/recordings/${roomName}.ogg`,
     }).then();
 
     return NextResponse.json({
