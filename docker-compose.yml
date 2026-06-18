@@ -37,6 +37,22 @@ services:
     depends_on:
       - redis
 
+  livekit-sip:
+    image: livekit/sip:latest
+    container_name: livekit-sip
+    environment:
+      - SIP_PORT=5060
+      - SIP_PORT_LISTEN=5060
+    ports:
+      - "5060:5060/udp"
+      - "5060:5060/tcp"
+    volumes:
+      - ./livekit.yaml:/livekit.yaml
+    command: --config /livekit.yaml
+    restart: unless-stopped
+    depends_on:
+      - livekit
+
   frontend:
     build:
       context: ./frontend
