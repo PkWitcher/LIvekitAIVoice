@@ -319,7 +319,5 @@ if __name__ == "__main__":
         WorkerOptions(
             entrypoint_fnc=entrypoint,
             prewarm_fnc=prewarm,
-            worker_type=cli.WorkerType.ROOM,
-            agent_name=config.AGENT_WORKER_NAME,
         ),
     )
