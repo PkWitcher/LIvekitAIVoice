@@ -13,6 +13,7 @@ export default function CallDispatcher() {
   const [prompt, setPrompt] = useState("");
   const [modelProvider, setModelProvider] = useState("groq");
   const [voice, setVoice] = useState("aura-asteria-en");
+  const [language, setLanguage] = useState("multi");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<DispatchResult | null>(null);
   const [recentCalls, setRecentCalls] = useState<
@@ -33,6 +34,7 @@ export default function CallDispatcher() {
           prompt: prompt.trim(),
           model_provider: modelProvider,
           voice_id: voice,
+          language,
         }),
       });
 
@@ -94,7 +96,28 @@ export default function CallDispatcher() {
         />
       </div>
 
-      {/* Model + Voice */}
+      {/* Language + Model + Voice */}
+      <div>
+        <label htmlFor="language">Language</label>
+        <select
+          id="language"
+          value={language}
+          onChange={(e) => setLanguage(e.target.value)}
+        >
+          <option value="multi">Auto-Detect (Multilingual)</option>
+          <option value="hi">Hindi</option>
+          <option value="en">English</option>
+          <option value="ta">Tamil</option>
+          <option value="te">Telugu</option>
+          <option value="bn">Bengali</option>
+          <option value="mr">Marathi</option>
+          <option value="gu">Gujarati</option>
+          <option value="kn">Kannada</option>
+          <option value="ml">Malayalam</option>
+          <option value="pa">Punjabi</option>
+        </select>
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label htmlFor="model">AI Model</label>

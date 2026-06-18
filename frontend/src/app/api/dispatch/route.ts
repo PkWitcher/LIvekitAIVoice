@@ -10,6 +10,7 @@ interface DispatchBody {
   prompt?: string;
   model_provider?: string;
   voice_id?: string;
+  language?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -53,6 +54,7 @@ export async function POST(request: NextRequest) {
       prompt: body.prompt ?? "",
       model_provider: body.model_provider ?? "groq",
       voice_id: body.voice_id ?? "aura-asteria-en",
+      language: body.language ?? "multi",
     });
 
     // Create the room with metadata

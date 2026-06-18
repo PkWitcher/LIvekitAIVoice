@@ -242,10 +242,11 @@ async def entrypoint(ctx: JobContext) -> None:
     voice_id = metadata.get("voice_id", config.DEFAULT_VOICE_ID)
     tts_provider = metadata.get("tts_provider", config.DEFAULT_TTS_PROVIDER)
     custom_prompt = metadata.get("prompt", "")
+    stt_language = metadata.get("language", config.STT_LANGUAGE)
 
     logger.info(
         f"Config — LLM: {model_provider}, TTS: {tts_provider}, "
-        f"Voice: {voice_id}, Phone: {phone_number}"
+        f"Voice: {voice_id}, Lang: {stt_language}, Phone: {phone_number}"
     )
 
     # Build system prompt
@@ -263,9 +264,18 @@ async def entrypoint(ctx: JobContext) -> None:
     else:
         greeting = config.INITIAL_GREETING
 
+    # Add language hint to prompt if a specific language is selected
+    lang_names = {
+        "hi": "Hindi/Hinglish", "en": "English", "ta": "Tamil", "te": "Telugu",
+        "bn": "Bengali", "mr": "Marathi", "gu": "Gujarati", "kn": "Kannada",
+        "ml": "Malayalam", "pa": "Punjabi",
+    }
+    if stt_language != "multi" and stt_language in lang_names:
+        system_prompt += f"\n\nIMPORTANT: This call is set to {lang_names[stt_language]}. Always reply in {lang_names[stt_language]}."
+
     # Create pipeline components
     fnc_ctx = CallFunctions()
-    stt = create_stt()
+    stt = deepgram.STT(model=config.STT_MODEL, language=stt_language)
     llm_plugin = create_llm_plugin(model_provider)
     tts = create_tts(tts_provider, voice_id)
 
