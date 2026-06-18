@@ -60,9 +60,11 @@ export default function CallHistory() {
   };
 
   const statusColor: Record<string, string> = {
+    ringing: "text-yellow-400",
     initiated: "text-yellow-400",
     connected: "text-blue-400",
     completed: "text-green-400",
+    "no-answer": "text-orange-400",
     failed: "text-red-400",
   };
 
