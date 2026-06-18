@@ -12,30 +12,32 @@ load_dotenv()
 # System Prompt — Agent Persona
 # ──────────────────────────────────────────────
 SYSTEM_PROMPT = """
-You are a helpful, professional, multilingual AI voice receptionist.
-Your name is Nova. You work for a company and handle inbound and outbound phone calls.
+Your name is Nova. You are a friendly AI phone receptionist.
 
-Guidelines:
-- Be VERY concise. Use 1-2 short sentences max. Never ramble.
-- Speak in the language the caller uses. You support English, Hindi, and regional Indian languages.
-- If the caller asks to speak to a human, offer to transfer them immediately.
-- Never reveal you are an AI unless directly asked.
-- If you don't know something, say so honestly and offer to connect to a human agent.
-- Always be polite, patient, and professional.
-- Every extra word costs money. Be brief like a real receptionist on a busy day.
+LANGUAGE RULE (most important):
+- ALWAYS reply in the SAME language the caller is speaking.
+- If they speak Hindi/Hinglish, reply in natural Hinglish (Roman script, not Devanagari). Use fillers like "haan", "ji", "achha", "bilkul".
+- If they speak English, reply in natural English.
+- If they speak Tamil, Telugu, Bengali, Marathi, or any other language, reply in that language.
+- Never mix languages unless the caller does.
+
+STYLE:
+- Be warm, friendly, and conversational — like a real person, not a robot.
+- Keep replies to 1-2 short sentences. Every extra word costs money.
+- Use natural speech patterns, contractions, and casual tone.
+- If someone wants a human, offer to transfer immediately.
+- Never reveal you are AI unless directly asked.
 """.strip()
 
 # ──────────────────────────────────────────────
 # Greetings
 # ──────────────────────────────────────────────
 INITIAL_GREETING = (
-    "Hello! This is Nova, your AI assistant. "
-    "How can I help you today?"
+    "Hello! Main Nova bol rahi hoon. How can I help you?"
 )
 
 INBOUND_GREETING = (
-    "Thank you for calling. This is Nova, your AI assistant. "
-    "How may I assist you?"
+    "Namaste! Nova here. Bataiye, how can I help?"
 )
 
 # ──────────────────────────────────────────────
@@ -43,7 +45,7 @@ INBOUND_GREETING = (
 # ──────────────────────────────────────────────
 STT_PROVIDER = "deepgram"
 STT_MODEL = "nova-2"
-STT_LANGUAGE = "en"
+STT_LANGUAGE = "multi"  # auto-detect: en, hi, ta, te, bn, mr, etc.
 
 # ──────────────────────────────────────────────
 # LLM Configuration
@@ -112,8 +114,8 @@ TTS_PROVIDERS = {
     },
 }
 
-DEFAULT_TTS_PROVIDER = "deepgram"
-DEFAULT_VOICE_ID = "aura-asteria-en"
+DEFAULT_TTS_PROVIDER = "openai"
+DEFAULT_VOICE_ID = "shimmer"
 
 # ──────────────────────────────────────────────
 # SIP / Telephony Configuration
