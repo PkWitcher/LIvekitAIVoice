@@ -6,5 +6,4 @@ ws_url: ws://livekit:7880
 redis:
   address: redis:6379
 
-sip:
-  use_external_ip: true
+use_external_ip: true
