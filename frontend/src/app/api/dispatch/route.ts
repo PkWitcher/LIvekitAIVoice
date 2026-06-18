@@ -99,12 +99,13 @@ export async function POST(request: NextRequest) {
         LIVEKIT_API_KEY,
         LIVEKIT_API_SECRET
       );
-      await egressClient.startRoomCompositeEgress(roomName, {
-        file: {
-          fileType: 0, // OGG
-          filepath: `/recordings/${roomName}.ogg`,
-        },
-      }, { audioOnly: true });
+      await egressClient.startRoomCompositeEgress(
+        roomName,
+        { filepath: `/recordings/${roomName}.ogg` } as never,
+        undefined, // layout
+        undefined, // encoding options
+        true       // audioOnly
+      );
     } catch (recErr) {
       console.warn("Recording start failed:", recErr);
     }
