@@ -40,15 +40,13 @@ services:
   livekit-sip:
     image: livekit/sip:latest
     container_name: livekit-sip
+    network_mode: host
     environment:
       - SIP_PORT=5060
       - SIP_PORT_LISTEN=5060
       - LIVEKIT_API_KEY=devkey
       - LIVEKIT_API_SECRET=secret
-      - LIVEKIT_WS_URL=ws://livekit:7880
-    ports:
-      - "5060:5060/udp"
-      - "5060:5060/tcp"
+      - LIVEKIT_WS_URL=ws://localhost:7880
     volumes:
       - ./livekit.yaml:/livekit.yaml
     command: --config /livekit.yaml

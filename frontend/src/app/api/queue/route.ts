@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
           phone_number: phone,
           prompt: body.prompt ?? "",
           model_provider: body.model_provider ?? "groq",
-          voice_id: body.voice_id ?? "alloy",
+          voice_id: body.voice_id ?? "aura-asteria-en",
         });
 
         await roomService.createRoom({
