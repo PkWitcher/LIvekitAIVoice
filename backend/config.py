@@ -107,13 +107,13 @@ TTS_PROVIDERS = {
     },
     "cartesia": {
         "voices": {},
-        "default_voice": "4877b818-c7fe-4c89-b1cf-eadf8e23da72",
+        "default_voice": "0f14d8cb-f039-41fe-a813-a9b4bee7eed8",
         "model": "sonic-multilingual",
     },
 }
 
 DEFAULT_TTS_PROVIDER = "cartesia"
-DEFAULT_VOICE_ID = "4877b818-c7fe-4c89-b1cf-eadf8e23da72"
+DEFAULT_VOICE_ID = "0f14d8cb-f039-41fe-a813-a9b4bee7eed8"
 
 # ──────────────────────────────────────────────
 # SIP / Telephony Configuration
