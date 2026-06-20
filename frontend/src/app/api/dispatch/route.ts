@@ -82,6 +82,18 @@ export async function POST(request: NextRequest) {
     const trunks = await sipClient.listSipOutboundTrunk();
     const trunkId = trunks.length > 0 ? trunks[0].sipTrunkId : null;
 
+    // Log call to Supabase BEFORE creating SIP participant
+    // (participant_joined webhook fires immediately and needs the record to exist)
+    await getSupabase()?.from("phone_logs").insert({
+      phone_number: phone,
+      direction: "outbound",
+      status: "ringing",
+      room_name: roomName,
+      model_provider: body.model_provider ?? "groq",
+      voice_id: body.voice_id ?? "aura-asteria-en",
+      prompt: body.prompt || null,
+    });
+
     if (trunkId) {
       await sipClient.createSipParticipant(
         trunkId,
@@ -93,17 +105,6 @@ export async function POST(request: NextRequest) {
         }
       );
     }
-
-    // Log call to Supabase
-    getSupabase()?.from("phone_logs").insert({
-      phone_number: phone,
-      direction: "outbound",
-      status: "ringing",
-      room_name: roomName,
-      model_provider: body.model_provider ?? "groq",
-      voice_id: body.voice_id ?? "aura-asteria-en",
-      prompt: body.prompt || null,
-    }).then();
 
     return NextResponse.json({
       success: true,
