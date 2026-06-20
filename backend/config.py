@@ -107,15 +107,22 @@ TTS_PROVIDERS = {
     },
     "cartesia": {
         "voices": {
-            "sonic-2": "sonic-2",
+            "indian-female": "Indian Female",
+            "indian-male": "Indian Male",
+            "nisha": "Nisha — Indian Female",
+            "raj": "Raj — Indian Male",
+            "priya": "Priya — Indian Female",
+            "arjun": "Arjun — Indian Male",
+            "sonic-english": "Sonic English",
+            "sonic-multilingual": "Sonic Multilingual",
         },
-        "default_voice": "sonic-2",
+        "default_voice": "indian-female",
         "model": "sonic-2",
     },
 }
 
-DEFAULT_TTS_PROVIDER = "openai"
-DEFAULT_VOICE_ID = "shimmer"
+DEFAULT_TTS_PROVIDER = "cartesia"
+DEFAULT_VOICE_ID = "indian-female"
 
 # ──────────────────────────────────────────────
 # SIP / Telephony Configuration

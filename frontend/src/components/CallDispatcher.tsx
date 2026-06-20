@@ -12,7 +12,7 @@ export default function CallDispatcher() {
   const [phone, setPhone] = useState("");
   const [prompt, setPrompt] = useState("");
   const [modelProvider, setModelProvider] = useState("groq");
-  const [voice, setVoice] = useState("shimmer");
+  const [voice, setVoice] = useState("indian-female");
   const [language, setLanguage] = useState("multi");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<DispatchResult | null>(null);
@@ -137,20 +137,25 @@ export default function CallDispatcher() {
             value={voice}
             onChange={(e) => setVoice(e.target.value)}
           >
-            <optgroup label="OpenAI (Best for Hindi/Multi)">
-              <option value="shimmer">Shimmer — Female (Recommended)</option>
+            <optgroup label="Cartesia (Indian Accent — Recommended)">
+              <option value="indian-female">Indian Female (Default)</option>
+              <option value="indian-male">Indian Male</option>
+              <option value="nisha">Nisha — Female</option>
+              <option value="raj">Raj — Male</option>
+              <option value="priya">Priya — Female</option>
+              <option value="arjun">Arjun — Male</option>
+              <option value="sonic-multilingual">Sonic Multilingual</option>
+            </optgroup>
+            <optgroup label="OpenAI (Western Accent)">
+              <option value="shimmer">Shimmer — Female</option>
               <option value="nova">Nova — Female</option>
               <option value="alloy">Alloy — Neutral</option>
               <option value="echo">Echo — Male</option>
-              <option value="fable">Fable — Male</option>
               <option value="onyx">Onyx — Male</option>
             </optgroup>
             <optgroup label="Deepgram (English Only)">
               <option value="aura-asteria-en">Asteria — Female</option>
-              <option value="aura-luna-en">Luna — Female</option>
-              <option value="aura-stella-en">Stella — Female</option>
               <option value="aura-orion-en">Orion — Male</option>
-              <option value="aura-arcas-en">Arcas — Male</option>
             </optgroup>
           </select>
         </div>
