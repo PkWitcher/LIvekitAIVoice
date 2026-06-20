@@ -107,13 +107,13 @@ TTS_PROVIDERS = {
     },
     "cartesia": {
         "voices": {},
-        "default_voice": "",  # Set your Cartesia voice UUID from play.cartesia.ai
+        "default_voice": "4877b818-c7fe-4c89-b1cf-eadf8e23da72",
         "model": "sonic-multilingual",
     },
 }
 
-DEFAULT_TTS_PROVIDER = "openai"
-DEFAULT_VOICE_ID = "shimmer"
+DEFAULT_TTS_PROVIDER = "cartesia"
+DEFAULT_VOICE_ID = "4877b818-c7fe-4c89-b1cf-eadf8e23da72"
 
 # ──────────────────────────────────────────────
 # SIP / Telephony Configuration
