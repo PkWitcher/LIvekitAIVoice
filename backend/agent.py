@@ -147,17 +147,12 @@ def create_tts(provider: str = None, voice_id: str = None):
     """Create TTS instance based on provider and voice."""
     # Auto-detect provider from voice name
     OPENAI_VOICES = {"alloy", "echo", "shimmer", "nova", "fable", "onyx"}
-    CARTESIA_VOICES = {
-        "indian-female", "indian-male",
-        "nisha", "raj", "priya", "arjun",
-        "sonic-english", "sonic-multilingual",
-    }
     if voice_id:
         if voice_id.startswith("aura-"):
             provider = "deepgram"
         elif voice_id in OPENAI_VOICES:
             provider = "openai"
-        elif voice_id in CARTESIA_VOICES or voice_id.startswith("cartesia-"):
+        elif len(voice_id) == 36 and "-" in voice_id:
             provider = "cartesia"
     provider = provider or config.DEFAULT_TTS_PROVIDER
 
@@ -166,12 +161,11 @@ def create_tts(provider: str = None, voice_id: str = None):
     if provider == "cartesia":
         import os
         voice = voice_id or config.TTS_PROVIDERS["cartesia"]["default_voice"]
-        model = config.TTS_PROVIDERS["cartesia"].get("model", "sonic-2")
+        model = config.TTS_PROVIDERS["cartesia"].get("model", "sonic-multilingual")
         return cartesia.TTS(
             model=model,
             voice=voice,
             api_key=os.getenv("CARTESIA_API_KEY", ""),
-            language="hi",  # auto-detects, but hint for Indian languages
         )
     elif provider == "openai":
         voice = voice_id or config.TTS_PROVIDERS["openai"]["default_voice"]

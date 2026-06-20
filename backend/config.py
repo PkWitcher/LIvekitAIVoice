@@ -106,23 +106,14 @@ TTS_PROVIDERS = {
         "default_voice": "anushka",
     },
     "cartesia": {
-        "voices": {
-            "indian-female": "Indian Female",
-            "indian-male": "Indian Male",
-            "nisha": "Nisha — Indian Female",
-            "raj": "Raj — Indian Male",
-            "priya": "Priya — Indian Female",
-            "arjun": "Arjun — Indian Male",
-            "sonic-english": "Sonic English",
-            "sonic-multilingual": "Sonic Multilingual",
-        },
-        "default_voice": "indian-female",
-        "model": "sonic-2",
+        "voices": {},
+        "default_voice": "",  # Set your Cartesia voice UUID from play.cartesia.ai
+        "model": "sonic-multilingual",
     },
 }
 
-DEFAULT_TTS_PROVIDER = "cartesia"
-DEFAULT_VOICE_ID = "indian-female"
+DEFAULT_TTS_PROVIDER = "openai"
+DEFAULT_VOICE_ID = "shimmer"
 
 # ──────────────────────────────────────────────
 # SIP / Telephony Configuration
