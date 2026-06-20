@@ -161,9 +161,7 @@ def create_tts(provider: str = None, voice_id: str = None):
     if provider == "cartesia":
         import os
         voice = voice_id or config.TTS_PROVIDERS["cartesia"]["default_voice"]
-        model = config.TTS_PROVIDERS["cartesia"].get("model", "sonic-multilingual")
         return cartesia.TTS(
-            model=model,
             voice=voice,
             api_key=os.getenv("CARTESIA_API_KEY", ""),
         )
