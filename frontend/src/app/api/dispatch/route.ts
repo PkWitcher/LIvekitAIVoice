@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { RoomServiceClient, SipClient } from "livekit-server-sdk";
+import { RoomServiceClient } from "livekit-server-sdk";
 import { getSupabase } from "@/lib/supabase";
 
 const LIVEKIT_URL = process.env.LIVEKIT_URL ?? "http://localhost:7880";
@@ -71,19 +71,9 @@ export async function POST(request: NextRequest) {
       maxParticipants: 5,
     });
 
-    // Create SIP participant to dial the phone number
-    const sipClient = new SipClient(
-      LIVEKIT_URL,
-      LIVEKIT_API_KEY,
-      LIVEKIT_API_SECRET
-    );
-
-    // Always auto-discover trunk (setup_sip_trunk.py recreates it on every startup)
-    const trunks = await sipClient.listSipOutboundTrunk();
-    const trunkId = trunks.length > 0 ? trunks[0].sipTrunkId : null;
-
-    // Log call to Supabase BEFORE creating SIP participant
-    // (participant_joined webhook fires immediately and needs the record to exist)
+    // Log call to Supabase first — the agent will handle SIP dialing
+    // via dial_outbound() when it joins the room and reads metadata.
+    // Do NOT create SIP participant here to avoid double-dialing race conditions.
     await getSupabase()?.from("phone_logs").insert({
       phone_number: phone,
       direction: "outbound",
@@ -93,18 +83,6 @@ export async function POST(request: NextRequest) {
       voice_id: body.voice_id ?? "aura-asteria-en",
       prompt: body.prompt || null,
     });
-
-    if (trunkId) {
-      await sipClient.createSipParticipant(
-        trunkId,
-        phone,
-        roomName,
-        {
-          participantIdentity: `phone-${phone}`,
-          participantName: `Caller ${phone}`,
-        }
-      );
-    }
 
     return NextResponse.json({
       success: true,

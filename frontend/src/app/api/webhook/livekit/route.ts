@@ -58,13 +58,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  // Is this participant the voice agent? (agent identities never start with "phone-" and typically contain "agent")
-  const isAgent = participantId.includes("agent") || participantId === "";
+  // Is this a phone/SIP participant? (positive match is safer than exclusion)
+  const isPhoneParticipant = participantId.startsWith("phone-") || participantId.startsWith("sip_") || /^\+\d/.test(participantId);
+  const isAgent = !isPhoneParticipant;
 
   try {
     // ── ANY non-agent participant joined = CALL ANSWERED ──
     if (eventType === "participant_joined" && !isAgent) {
-      console.log(`[WEBHOOK] Non-agent participant joined: "${participantId}" in room ${roomName} — marking connected`);
+      console.log(`[WEBHOOK] Phone participant joined: "${participantId}" in room ${roomName} — marking connected`);
 
       const { data, error } = await supabase
         .from("phone_logs")
@@ -73,7 +74,7 @@ export async function POST(request: NextRequest) {
           connected_at: new Date().toISOString(),
         })
         .eq("room_name", roomName)
-        .eq("status", "ringing")
+        .in("status", ["ringing", "no-answer"])
         .select("id");
 
       if (error) {
@@ -137,16 +138,9 @@ export async function POST(request: NextRequest) {
               recording_url: `/api/recordings/${roomName}.ogg`,
             })
             .eq("room_name", roomName);
-        } else if (record.status === "ringing") {
-          console.log(`[WEBHOOK] Marking no-answer (was still ringing)`);
-          await supabase
-            .from("phone_logs")
-            .update({
-              status: "no-answer",
-              ended_at: now,
-            })
-            .eq("room_name", roomName);
         }
+        // Do NOT mark "no-answer" here — wait for room_finished to avoid
+        // race conditions with multiple SIP participant events
       }
     }
 
