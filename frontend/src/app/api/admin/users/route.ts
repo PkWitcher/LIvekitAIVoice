@@ -101,6 +101,25 @@ export async function GET() {
       last_call_at: u.last_call_at,
     }));
 
+    // Include all auth users, even those with 0 calls
+    if (authUsers) {
+      for (const u of authUsers) {
+        if (!userMap[u.id]) {
+          users.push({
+            user_id: u.id,
+            email: u.email ?? "Unknown",
+            total_calls: 0,
+            completed_calls: 0,
+            failed_calls: 0,
+            no_answer_calls: 0,
+            total_duration_seconds: 0,
+            avg_duration_seconds: 0,
+            last_call_at: null,
+          });
+        }
+      }
+    }
+
     // Sort by total calls descending
     users.sort((a, b) => b.total_calls - a.total_calls);
 
@@ -109,7 +128,7 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       stats: {
-        total_users: users.length,
+        total_users: authUsers?.length ?? users.length,
         total_calls: logs?.length ?? 0,
         total_minutes: totalMinutes,
         users,
