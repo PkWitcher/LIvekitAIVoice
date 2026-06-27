@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { RoomServiceClient, SipClient } from "livekit-server-sdk";
 import { getSupabase } from "@/lib/supabase";
+import { createServerSupabase } from "@/lib/supabase-server";
 
 const LIVEKIT_URL = process.env.LIVEKIT_URL ?? "http://localhost:7880";
 const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY ?? "";
@@ -27,6 +28,12 @@ function sleep(ms: number): Promise<void> {
 
 export async function POST(request: NextRequest) {
   try {
+    const supabaseAuth = await createServerSupabase();
+    const { data: { user } } = await supabaseAuth.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = (await request.json()) as QueueBody;
 
     if (
@@ -119,6 +126,7 @@ export async function POST(request: NextRequest) {
 
         // Log to Supabase
         getSupabase()?.from("phone_logs").insert({
+          user_id: user.id,
           phone_number: phone,
           direction: "outbound",
           status: "initiated",

@@ -1,0 +1,122 @@
+import { NextResponse } from "next/server";
+import { getSupabase } from "@/lib/supabase";
+import { createServerSupabase } from "@/lib/supabase-server";
+
+const ADMIN_EMAIL = "admin@gmail.com";
+
+export async function GET() {
+  try {
+    const supabaseAuth = await createServerSupabase();
+    const { data: { user } } = await supabaseAuth.auth.getUser();
+
+    if (!user || user.email?.toLowerCase() !== ADMIN_EMAIL) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
+    const supabase = getSupabase();
+    if (!supabase) {
+      return NextResponse.json({
+        success: true,
+        stats: { total_users: 0, total_calls: 0, total_minutes: 0, users: [] },
+      });
+    }
+
+    // Get all phone logs with user_id
+    const { data: logs, error } = await supabase
+      .from("phone_logs")
+      .select("user_id, status, duration_seconds, created_at")
+      .not("user_id", "is", null);
+
+    if (error) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
+
+    // Get user emails from auth.users via admin API
+    const { data: { users: authUsers } } = await supabase.auth.admin.listUsers();
+
+    const emailMap: Record<string, string> = {};
+    if (authUsers) {
+      for (const u of authUsers) {
+        emailMap[u.id] = u.email ?? "Unknown";
+      }
+    }
+
+    // Aggregate per user
+    const userMap: Record<string, {
+      user_id: string;
+      email: string;
+      total_calls: number;
+      completed_calls: number;
+      failed_calls: number;
+      no_answer_calls: number;
+      total_duration_seconds: number;
+      durations: number[];
+      last_call_at: string | null;
+    }> = {};
+
+    for (const log of logs || []) {
+      const uid = log.user_id;
+      if (!userMap[uid]) {
+        userMap[uid] = {
+          user_id: uid,
+          email: emailMap[uid] || "Unknown",
+          total_calls: 0,
+          completed_calls: 0,
+          failed_calls: 0,
+          no_answer_calls: 0,
+          total_duration_seconds: 0,
+          durations: [],
+          last_call_at: null,
+        };
+      }
+
+      const entry = userMap[uid];
+      entry.total_calls++;
+
+      if (log.status === "completed") entry.completed_calls++;
+      if (log.status === "failed") entry.failed_calls++;
+      if (log.status === "no-answer") entry.no_answer_calls++;
+
+      if (log.duration_seconds && log.duration_seconds > 0) {
+        entry.total_duration_seconds += log.duration_seconds;
+        entry.durations.push(log.duration_seconds);
+      }
+
+      if (!entry.last_call_at || log.created_at > entry.last_call_at) {
+        entry.last_call_at = log.created_at;
+      }
+    }
+
+    const users = Object.values(userMap).map((u) => ({
+      user_id: u.user_id,
+      email: u.email,
+      total_calls: u.total_calls,
+      completed_calls: u.completed_calls,
+      failed_calls: u.failed_calls,
+      no_answer_calls: u.no_answer_calls,
+      total_duration_seconds: u.total_duration_seconds,
+      avg_duration_seconds: u.durations.length > 0
+        ? u.total_duration_seconds / u.durations.length
+        : 0,
+      last_call_at: u.last_call_at,
+    }));
+
+    // Sort by total calls descending
+    users.sort((a, b) => b.total_calls - a.total_calls);
+
+    const totalMinutes = users.reduce((sum, u) => sum + u.total_duration_seconds, 0) / 60;
+
+    return NextResponse.json({
+      success: true,
+      stats: {
+        total_users: users.length,
+        total_calls: logs?.length ?? 0,
+        total_minutes: totalMinutes,
+        users,
+      },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Internal server error";
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
+  }
+}

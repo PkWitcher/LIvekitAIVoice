@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
 import { getSupabase } from "@/lib/supabase";
+import { createServerSupabase } from "@/lib/supabase-server";
 
 export async function GET() {
   try {
+    const supabaseAuth = await createServerSupabase();
+    const { data: { user } } = await supabaseAuth.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
     const supabase = getSupabase();
     if (!supabase) {
       return NextResponse.json({
@@ -13,7 +20,8 @@ export async function GET() {
 
     const { data, error } = await supabase
       .from("phone_logs")
-      .select("status, duration_seconds");
+      .select("status, duration_seconds")
+      .eq("user_id", user.id);
 
     if (error) {
       return NextResponse.json(

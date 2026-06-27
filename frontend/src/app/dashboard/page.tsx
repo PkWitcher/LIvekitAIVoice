@@ -2,6 +2,7 @@ import CallDispatcher from "@/components/CallDispatcher";
 import BulkDialer from "@/components/BulkDialer";
 import CallHistory from "@/components/CallHistory";
 import DashboardStats from "@/components/DashboardStats";
+import LogoutButton from "@/components/LogoutButton";
 import Link from "next/link";
 
 export default function DashboardPage() {
@@ -46,6 +47,7 @@ export default function DashboardPage() {
           </nav>
 
           <div className="mt-auto pt-4 border-t border-[var(--color-border)]">
+            <LogoutButton />
             <div className="flex items-center gap-2 px-3 py-2">
               <span className="w-2 h-2 rounded-full bg-green-500" />
               <span className="text-xs text-[var(--color-text-secondary)]">System Online</span>

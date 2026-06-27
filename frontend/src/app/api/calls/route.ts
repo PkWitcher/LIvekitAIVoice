@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
 import { getSupabase } from "@/lib/supabase";
+import { createServerSupabase } from "@/lib/supabase-server";
 
 export async function GET() {
   try {
+    const supabaseAuth = await createServerSupabase();
+    const { data: { user } } = await supabaseAuth.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
     const supabase = getSupabase();
     if (!supabase) {
       return NextResponse.json({ success: true, calls: [] });
@@ -14,11 +21,13 @@ export async function GET() {
       .from("phone_logs")
       .update({ status: "no-answer", ended_at: new Date().toISOString() })
       .eq("status", "ringing")
+      .eq("user_id", user.id)
       .lt("created_at", cutoff);
 
     const { data, error } = await supabase
       .from("phone_logs")
       .select("*")
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(50);
 

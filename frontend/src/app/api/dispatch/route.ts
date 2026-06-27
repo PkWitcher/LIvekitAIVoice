@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { RoomServiceClient } from "livekit-server-sdk";
 import { getSupabase } from "@/lib/supabase";
+import { createServerSupabase } from "@/lib/supabase-server";
 
 const LIVEKIT_URL = process.env.LIVEKIT_URL ?? "http://localhost:7880";
 const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY ?? "";
@@ -15,6 +16,12 @@ interface DispatchBody {
 
 export async function POST(request: NextRequest) {
   try {
+    const supabaseAuth = await createServerSupabase();
+    const { data: { user } } = await supabaseAuth.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = (await request.json()) as DispatchBody;
 
     if (!body.phone_number || typeof body.phone_number !== "string") {
@@ -75,6 +82,7 @@ export async function POST(request: NextRequest) {
     // via dial_outbound() when it joins the room and reads metadata.
     // Do NOT create SIP participant here to avoid double-dialing race conditions.
     await getSupabase()?.from("phone_logs").insert({
+      user_id: user.id,
       phone_number: phone,
       direction: "outbound",
       status: "ringing",
