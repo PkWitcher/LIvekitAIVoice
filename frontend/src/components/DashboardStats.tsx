@@ -102,10 +102,10 @@ export default function DashboardStats() {
       {cards.map((c, i) => (
         <div
           key={i}
-          className={`p-3 sm:p-5 rounded-xl border ${c.borderColor} bg-[var(--color-bg-card)] hover:bg-[#141414] transition-colors`}
+          className={`stat-card`}
         >
           <div className="flex items-center justify-between mb-2 sm:mb-3">
-            <span className="text-[10px] sm:text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wide">
+            <span className="text-[10px] sm:text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wide">
               {c.label}
             </span>
             <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg ${c.bg} flex items-center justify-center ${c.color}`}>

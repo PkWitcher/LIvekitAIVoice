@@ -80,24 +80,34 @@ export default function AdminDashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#050505" }}>
-        <div className="text-[var(--color-text-secondary)]">Loading admin panel...</div>
+      <div className="page-bg page-bg-purple flex items-center justify-center">
+        <div className="flex items-center gap-3">
+          <span className="spinner" />
+          <span className="text-[var(--color-text-secondary)]">Loading admin panel...</span>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#050505" }}>
-        <div className="text-red-400">{error}</div>
+      <div className="page-bg page-bg-purple flex items-center justify-center">
+        <div className="card p-6 max-w-sm text-center">
+          <div className="w-10 h-10 mx-auto rounded-full bg-red-500/10 flex items-center justify-center mb-3">
+            <svg className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+            </svg>
+          </div>
+          <p className="text-red-400 text-sm">{error}</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen" style={{ background: "#050505" }}>
+    <div className="page-bg page-bg-purple">
       {/* Top bar */}
-      <header className="border-b border-[var(--color-border)] px-4 sm:px-6 py-3 sm:py-4">
+      <header className="glass-header px-4 sm:px-6 py-3 sm:py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center shadow-lg shadow-purple-500/20">
@@ -112,76 +122,104 @@ export default function AdminDashboardPage() {
           </div>
           <button
             onClick={handleLogout}
-            className="text-xs sm:text-sm text-[var(--color-text-secondary)] hover:text-red-400 transition px-2 sm:px-3 py-1.5 rounded-lg border border-[var(--color-border)] hover:border-red-500/30"
+            className="text-xs sm:text-sm text-[var(--color-text-secondary)] hover:text-red-400 transition-all px-3 sm:px-4 py-2 rounded-xl border border-[var(--color-border)] hover:border-red-500/30 hover:bg-red-500/5"
           >
             Sign Out
           </button>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8 relative z-10">
         {/* Overview Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-          <div className="card p-4 sm:p-5">
-            <p className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-1">Total Users</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 animate-in">
+          <div className="stat-card">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[11px] text-[var(--color-text-muted)] uppercase tracking-wider font-semibold">Total Users</p>
+              <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                <svg className="w-4 h-4 text-purple-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+                </svg>
+              </div>
+            </div>
             <p className="text-2xl sm:text-3xl font-bold text-white">{stats?.total_users ?? 0}</p>
           </div>
-          <div className="card p-4 sm:p-5">
-            <p className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-1">Total Calls</p>
+          <div className="stat-card">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[11px] text-[var(--color-text-muted)] uppercase tracking-wider font-semibold">Total Calls</p>
+              <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
+                </svg>
+              </div>
+            </div>
             <p className="text-2xl sm:text-3xl font-bold text-white">{stats?.total_calls ?? 0}</p>
           </div>
-          <div className="card p-4 sm:p-5">
-            <p className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-1">Total Minutes Used</p>
+          <div className="stat-card">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[11px] text-[var(--color-text-muted)] uppercase tracking-wider font-semibold">Total Minutes</p>
+              <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                <svg className="w-4 h-4 text-amber-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                </svg>
+              </div>
+            </div>
             <p className="text-2xl sm:text-3xl font-bold text-white">{Math.round((stats?.total_minutes ?? 0))}</p>
           </div>
         </div>
 
         {/* Users Table */}
-        <div className="card overflow-hidden">
-          <div className="p-4 sm:p-5 border-b border-[var(--color-border)]">
-            <h2 className="text-base font-semibold text-white">User Activity</h2>
-            <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Call usage breakdown per user</p>
+        <div className="card overflow-hidden animate-in animate-in-delay-1 !p-0">
+          <div className="p-5 sm:p-6 border-b border-[var(--color-border)]">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-white">User Activity</h2>
+                <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Call usage breakdown per user</p>
+              </div>
+              <span className="badge badge-purple">
+                {stats?.users.length ?? 0} users
+              </span>
+            </div>
           </div>
 
           {/* Desktop table */}
           <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="premium-table">
               <thead>
-                <tr className="border-b border-[var(--color-border)] text-[var(--color-text-muted)]">
-                  <th className="text-left px-5 py-3 font-medium">User</th>
-                  <th className="text-center px-4 py-3 font-medium">Total Calls</th>
-                  <th className="text-center px-4 py-3 font-medium">Completed</th>
-                  <th className="text-center px-4 py-3 font-medium">Failed</th>
-                  <th className="text-center px-4 py-3 font-medium">No Answer</th>
-                  <th className="text-center px-4 py-3 font-medium">Total Duration</th>
-                  <th className="text-center px-4 py-3 font-medium">Avg Duration</th>
-                  <th className="text-center px-4 py-3 font-medium">Last Call</th>
+                <tr>
+                  <th className="text-left">User</th>
+                  <th className="text-center">Total Calls</th>
+                  <th className="text-center">Completed</th>
+                  <th className="text-center">Failed</th>
+                  <th className="text-center">No Answer</th>
+                  <th className="text-center">Total Duration</th>
+                  <th className="text-center">Avg Duration</th>
+                  <th className="text-center">Last Call</th>
                 </tr>
               </thead>
               <tbody>
                 {stats?.users.map((user) => (
-                  <tr key={user.user_id} className="border-b border-[var(--color-border)] hover:bg-white/[0.02] transition">
-                    <td className="px-5 py-3">
+                  <tr key={user.user_id}>
+                    <td className="text-left">
                       <span className="text-white font-medium">{user.email}</span>
                     </td>
-                    <td className="text-center px-4 py-3 text-white">{user.total_calls}</td>
-                    <td className="text-center px-4 py-3">
+                    <td className="text-center text-white font-semibold">{user.total_calls}</td>
+                    <td className="text-center">
                       <span className="text-green-400">{user.completed_calls}</span>
                     </td>
-                    <td className="text-center px-4 py-3">
+                    <td className="text-center">
                       <span className="text-red-400">{user.failed_calls}</span>
                     </td>
-                    <td className="text-center px-4 py-3">
+                    <td className="text-center">
                       <span className="text-yellow-400">{user.no_answer_calls}</span>
                     </td>
-                    <td className="text-center px-4 py-3 text-white">{formatDuration(user.total_duration_seconds)}</td>
-                    <td className="text-center px-4 py-3 text-[var(--color-text-secondary)]">{formatDuration(user.avg_duration_seconds)}</td>
-                    <td className="text-center px-4 py-3 text-[var(--color-text-secondary)] text-xs">{formatDate(user.last_call_at)}</td>
+                    <td className="text-center text-white">{formatDuration(user.total_duration_seconds)}</td>
+                    <td className="text-center text-[var(--color-text-secondary)]">{formatDuration(user.avg_duration_seconds)}</td>
+                    <td className="text-center text-[var(--color-text-secondary)] text-xs">{formatDate(user.last_call_at)}</td>
                   </tr>
                 ))}
                 {(!stats?.users || stats.users.length === 0) && (
                   <tr>
-                    <td colSpan={8} className="text-center py-8 text-[var(--color-text-muted)]">
+                    <td colSpan={8} className="text-center py-12 text-[var(--color-text-muted)]">
                       No user activity yet
                     </td>
                   </tr>

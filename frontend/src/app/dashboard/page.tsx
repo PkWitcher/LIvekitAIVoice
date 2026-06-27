@@ -7,11 +7,11 @@ import Link from "next/link";
 
 export default function DashboardPage() {
   return (
-    <div className="min-h-screen">
+    <div className="page-bg">
       {/* ── Sidebar + Main Layout ── */}
       <div className="flex">
         {/* ── Sidebar ── */}
-        <aside className="hidden lg:flex flex-col w-64 min-h-screen border-r border-[var(--color-border)] bg-[#080808] px-4 py-6">
+        <aside className="hidden lg:flex flex-col w-64 min-h-screen border-r border-[var(--color-border)] bg-[#080808]/80 backdrop-blur-xl px-4 py-6 relative z-10">
           <Link href="/" className="flex items-center gap-3 mb-10 px-2">
             <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-lg shadow-blue-500/20">
               <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -49,34 +49,34 @@ export default function DashboardPage() {
           <div className="mt-auto pt-4 border-t border-[var(--color-border)]">
             <LogoutButton />
             <div className="flex items-center gap-2 px-3 py-2">
-              <span className="w-2 h-2 rounded-full bg-green-500" />
+              <span className="w-2 h-2 rounded-full bg-green-500 shadow-sm shadow-green-500/50" />
               <span className="text-xs text-[var(--color-text-secondary)]">System Online</span>
             </div>
           </div>
         </aside>
 
         {/* ── Main Content ── */}
-        <main className="flex-1 min-h-screen">
+        <main className="flex-1 min-h-screen relative z-10">
           {/* Top bar for mobile */}
-          <header className="lg:hidden flex items-center justify-between px-4 py-4 border-b border-[var(--color-border)]">
+          <header className="lg:hidden glass-header flex items-center justify-between px-4 py-4">
             <Link href="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-lg shadow-blue-500/20">
                 <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
                 </svg>
               </div>
               <span className="text-base font-semibold text-white">Nova AI</span>
             </Link>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-[var(--color-border)]">
-              <span className="w-2 h-2 rounded-full bg-green-500" />
-              <span className="text-xs text-[var(--color-text-secondary)]">Online</span>
+            <div className="badge badge-green">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+              Online
             </div>
           </header>
 
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8">
             {/* ── Page Header ── */}
-            <div>
-              <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">
+            <div className="animate-in">
+              <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1 tracking-tight">
                 Dashboard
               </h2>
               <p className="text-sm text-[var(--color-text-secondary)]">
@@ -85,11 +85,13 @@ export default function DashboardPage() {
             </div>
 
             {/* ── Stats ── */}
-            <DashboardStats />
+            <div className="animate-in animate-in-delay-1">
+              <DashboardStats />
+            </div>
 
             {/* ── Action Cards ── */}
-            <div>
-              <h3 className="text-sm font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-3 sm:mb-4">
+            <div className="animate-in animate-in-delay-2">
+              <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-3 sm:mb-4">
                 Quick Actions
               </h3>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
@@ -99,8 +101,8 @@ export default function DashboardPage() {
             </div>
 
             {/* ── Call History ── */}
-            <div>
-              <h3 className="text-sm font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-4">
+            <div className="animate-in animate-in-delay-3">
+              <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-4">
                 Recent Activity
               </h3>
               <CallHistory />
