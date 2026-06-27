@@ -13,13 +13,13 @@ export default function LandingPage() {
       <nav className="landing-nav">
         <div className="container">
           <div className="d-flex align-items-center justify-content-between">
-            <Link href="/" className="d-flex align-items-center gap-3 text-decoration-none">
+            <Link href="/" className="d-flex align-items-center gap-2 gap-sm-3 text-decoration-none">
               <div className="nav-logo">
                 <svg width="20" height="20" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="white">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
                 </svg>
               </div>
-              <span className="text-white fw-semibold fs-5">Nova AI</span>
+              <span className="text-white fw-semibold fs-6 fs-sm-5">Nova AI</span>
             </Link>
             <div className="d-flex align-items-center gap-4">
               <a href="#features" className="nav-link-custom d-none d-md-block">Features</a>
@@ -53,8 +53,8 @@ export default function LandingPage() {
               </p>
 
               <div className="d-flex flex-column flex-sm-row align-items-center justify-content-center gap-3 mt-5">
-                <Link href="/dashboard" className="btn-primary-glow">
-                  Go to Dashboard
+                <Link href="/login" className="btn-primary-glow">
+                  Get Started
                 </Link>
                 <a href="#features" className="btn-outline-custom">
                   Learn More
@@ -162,8 +162,8 @@ export default function LandingPage() {
             <div className="col-12 col-lg-7 text-center">
               <h2 className="section-title">Ready to automate your calls?</h2>
               <p className="section-subtitle mb-5">Open the dashboard and make your first AI call in under a minute.</p>
-              <Link href="/dashboard" className="btn-primary-glow">
-                Open Dashboard
+              <Link href="/login" className="btn-primary-glow">
+                Get Started
               </Link>
             </div>
           </div>

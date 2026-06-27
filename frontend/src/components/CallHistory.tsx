@@ -88,15 +88,15 @@ export default function CallHistory() {
 
   return (
     <div className="card p-0 overflow-hidden">
-      <div className="px-5 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
-        <h2 className="text-base font-semibold text-white">Call History</h2>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-[var(--color-text-muted)]">
+      <div className="px-4 sm:px-5 py-3 sm:py-4 border-b border-[var(--color-border)] flex items-center justify-between">
+        <h2 className="text-sm sm:text-base font-semibold text-white">Call History</h2>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <span className="text-[10px] sm:text-xs text-[var(--color-text-muted)]">
             {calls.length} call{calls.length !== 1 ? "s" : ""}
           </span>
           <button
             onClick={fetchCalls}
-            className="text-xs text-[var(--color-text-secondary)] hover:text-white transition-colors"
+            className="text-[10px] sm:text-xs text-[var(--color-text-secondary)] hover:text-white transition-colors"
           >
             Refresh
           </button>

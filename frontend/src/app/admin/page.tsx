@@ -97,53 +97,54 @@ export default function AdminDashboardPage() {
   return (
     <div className="min-h-screen" style={{ background: "#050505" }}>
       {/* Top bar */}
-      <header className="border-b border-[var(--color-border)] px-6 py-4">
+      <header className="border-b border-[var(--color-border)] px-4 sm:px-6 py-3 sm:py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center shadow-lg shadow-purple-500/20">
-              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center shadow-lg shadow-purple-500/20">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
               </svg>
             </div>
             <div>
-              <h1 className="text-lg font-semibold text-white">Admin Panel</h1>
-              <p className="text-[10px] text-[var(--color-text-muted)]">Nova AI — User Management</p>
+              <h1 className="text-base sm:text-lg font-semibold text-white">Admin Panel</h1>
+              <p className="text-[10px] text-[var(--color-text-muted)] hidden sm:block">Nova AI — User Management</p>
             </div>
           </div>
           <button
             onClick={handleLogout}
-            className="text-sm text-[var(--color-text-secondary)] hover:text-red-400 transition px-3 py-1.5 rounded-lg border border-[var(--color-border)] hover:border-red-500/30"
+            className="text-xs sm:text-sm text-[var(--color-text-secondary)] hover:text-red-400 transition px-2 sm:px-3 py-1.5 rounded-lg border border-[var(--color-border)] hover:border-red-500/30"
           >
             Sign Out
           </button>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
         {/* Overview Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="card p-5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+          <div className="card p-4 sm:p-5">
             <p className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-1">Total Users</p>
-            <p className="text-3xl font-bold text-white">{stats?.total_users ?? 0}</p>
+            <p className="text-2xl sm:text-3xl font-bold text-white">{stats?.total_users ?? 0}</p>
           </div>
-          <div className="card p-5">
+          <div className="card p-4 sm:p-5">
             <p className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-1">Total Calls</p>
-            <p className="text-3xl font-bold text-white">{stats?.total_calls ?? 0}</p>
+            <p className="text-2xl sm:text-3xl font-bold text-white">{stats?.total_calls ?? 0}</p>
           </div>
-          <div className="card p-5">
+          <div className="card p-4 sm:p-5">
             <p className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-1">Total Minutes Used</p>
-            <p className="text-3xl font-bold text-white">{Math.round((stats?.total_minutes ?? 0))}</p>
+            <p className="text-2xl sm:text-3xl font-bold text-white">{Math.round((stats?.total_minutes ?? 0))}</p>
           </div>
         </div>
 
         {/* Users Table */}
         <div className="card overflow-hidden">
-          <div className="p-5 border-b border-[var(--color-border)]">
+          <div className="p-4 sm:p-5 border-b border-[var(--color-border)]">
             <h2 className="text-base font-semibold text-white">User Activity</h2>
             <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Call usage breakdown per user</p>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[var(--color-border)] text-[var(--color-text-muted)]">
@@ -187,6 +188,41 @@ export default function AdminDashboardPage() {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden divide-y divide-[var(--color-border)]">
+            {stats?.users.map((user) => (
+              <div key={user.user_id} className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-white font-medium truncate max-w-[200px]">{user.email}</span>
+                  <span className="text-xs text-[var(--color-text-muted)]">{formatDate(user.last_call_at)}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="text-center p-2 rounded-lg bg-white/[0.02]">
+                    <p className="text-lg font-bold text-white">{user.total_calls}</p>
+                    <p className="text-[10px] text-[var(--color-text-muted)]">Total</p>
+                  </div>
+                  <div className="text-center p-2 rounded-lg bg-white/[0.02]">
+                    <p className="text-lg font-bold text-green-400">{user.completed_calls}</p>
+                    <p className="text-[10px] text-[var(--color-text-muted)]">Done</p>
+                  </div>
+                  <div className="text-center p-2 rounded-lg bg-white/[0.02]">
+                    <p className="text-lg font-bold text-red-400">{user.failed_calls}</p>
+                    <p className="text-[10px] text-[var(--color-text-muted)]">Failed</p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between text-xs text-[var(--color-text-secondary)]">
+                  <span>Duration: {formatDuration(user.total_duration_seconds)}</span>
+                  <span>Avg: {formatDuration(user.avg_duration_seconds)}</span>
+                </div>
+              </div>
+            ))}
+            {(!stats?.users || stats.users.length === 0) && (
+              <div className="p-8 text-center text-sm text-[var(--color-text-muted)]">
+                No user activity yet
+              </div>
+            )}
           </div>
         </div>
       </div>

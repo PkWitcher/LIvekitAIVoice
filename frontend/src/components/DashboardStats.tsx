@@ -98,21 +98,21 @@ export default function DashboardStats() {
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
       {cards.map((c, i) => (
         <div
           key={i}
-          className={`p-4 sm:p-5 rounded-xl border ${c.borderColor} bg-[var(--color-bg-card)] hover:bg-[#141414] transition-colors`}
+          className={`p-3 sm:p-5 rounded-xl border ${c.borderColor} bg-[var(--color-bg-card)] hover:bg-[#141414] transition-colors`}
         >
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wide">
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <span className="text-[10px] sm:text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wide">
               {c.label}
             </span>
-            <div className={`w-8 h-8 rounded-lg ${c.bg} flex items-center justify-center ${c.color}`}>
+            <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg ${c.bg} flex items-center justify-center ${c.color}`}>
               {c.icon}
             </div>
           </div>
-          <div className={`text-2xl sm:text-3xl font-bold ${c.color}`}>
+          <div className={`text-xl sm:text-3xl font-bold ${c.color}`}>
             {c.value}
           </div>
         </div>

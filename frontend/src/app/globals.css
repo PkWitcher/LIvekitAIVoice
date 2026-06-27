@@ -359,7 +359,12 @@ html {
   background: var(--color-bg-card);
   border: 1px solid var(--color-border);
   border-radius: 12px;
-  padding: 1.5rem;
+  padding: 1.25rem;
+}
+@media (min-width: 640px) {
+  .card {
+    padding: 1.5rem;
+  }
 }
 
 /* ── Sidebar ─────────────────────────────────── */
@@ -400,11 +405,20 @@ select {
   border: 1px solid var(--color-border);
   border-radius: 8px;
   color: var(--color-text-primary);
-  padding: 0.625rem 0.75rem;
-  font-size: 0.875rem;
+  padding: 0.75rem;
+  font-size: 1rem;
   outline: none;
   width: 100%;
   transition: border-color 0.15s ease;
+  -webkit-appearance: none;
+}
+@media (min-width: 640px) {
+  input,
+  textarea,
+  select {
+    padding: 0.625rem 0.75rem;
+    font-size: 0.875rem;
+  }
 }
 input:focus,
 textarea:focus,
@@ -459,4 +473,32 @@ select option {
 ::selection {
   background: rgba(59, 130, 246, 0.3);
   color: white;
+}
+
+/* ── Mobile Enhancements ─────────────────────── */
+@media (max-width: 639px) {
+  button {
+    min-height: 44px;
+  }
+
+  .landing-nav {
+    padding: 0.75rem 0;
+  }
+
+  .nav-logo {
+    width: 36px;
+    height: 36px;
+  }
+
+  .hero-subtitle {
+    font-size: 0.975rem;
+  }
+
+  .feature-card {
+    padding: 1.25rem;
+  }
+
+  .step-number {
+    font-size: 2.5rem;
+  }
 }

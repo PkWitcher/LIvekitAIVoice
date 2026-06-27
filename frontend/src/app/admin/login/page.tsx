@@ -41,9 +41,9 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "#050505" }}>
+    <div className="min-h-screen flex items-center justify-center px-5 py-8" style={{ background: "#050505" }}>
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-purple-500/5 blur-[120px]" />
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[400px] sm:w-[600px] h-[400px] sm:h-[600px] rounded-full bg-purple-500/5 blur-[120px]" />
       </div>
 
       <div className="relative w-full max-w-md">

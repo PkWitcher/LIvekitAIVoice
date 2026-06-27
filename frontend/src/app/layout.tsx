@@ -5,6 +5,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Nova AI — Voice Platform",
   description: "AI-powered voice automation. Dispatch intelligent phone calls at scale with real-time speech AI.",
+  viewport: "width=device-width, initial-scale=1, maximum-scale=1",
 };
 
 export default function RootLayout({

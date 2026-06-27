@@ -73,7 +73,7 @@ export default function DashboardPage() {
             </div>
           </header>
 
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-8">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8">
             {/* ── Page Header ── */}
             <div>
               <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">
@@ -89,10 +89,10 @@ export default function DashboardPage() {
 
             {/* ── Action Cards ── */}
             <div>
-              <h3 className="text-sm font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-4">
+              <h3 className="text-sm font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-3 sm:mb-4">
                 Quick Actions
               </h3>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 <CallDispatcher />
                 <BulkDialer />
               </div>
