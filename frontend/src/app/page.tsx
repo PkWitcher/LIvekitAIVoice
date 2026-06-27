@@ -24,6 +24,7 @@ export default function LandingPage() {
             <div className="d-flex align-items-center gap-4">
               <a href="#features" className="nav-link-custom d-none d-md-block">Features</a>
               <a href="#how-it-works" className="nav-link-custom d-none d-md-block">How It Works</a>
+              <Link href="/admin/login" className="nav-link-custom d-none d-md-block">Admin</Link>
               <Link href="/login" className="btn-glow">
                 Sign In
               </Link>
