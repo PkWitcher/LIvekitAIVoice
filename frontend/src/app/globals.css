@@ -142,13 +142,13 @@
 [data-theme="light"] input,
 [data-theme="light"] textarea,
 [data-theme="light"] select {
-  background: #f0f1f3;
-  border-color: #e2e4e8;
-  color: #1a1a2e;
+  background: #f0f1f3 !important;
+  border-color: #e2e4e8 !important;
+  color: #1a1a2e !important;
 }
 [data-theme="light"] input::placeholder,
 [data-theme="light"] textarea::placeholder {
-  color: #8892a4;
+  color: #8892a4 !important;
 }
 [data-theme="light"] select option {
   background: #ffffff;
@@ -210,6 +210,144 @@
   border-color: #d0d5dd;
   color: #1a1a2e;
   background: rgba(0,0,0,0.02);
+}
+
+/* ── Light Mode: Fix hardcoded text colors ───── */
+[data-theme="light"] .text-white {
+  color: #1a1a2e !important;
+}
+/* Keep white text on colored buttons and gradient icons */
+[data-theme="light"] button.bg-blue-600,
+[data-theme="light"] button.bg-blue-500,
+[data-theme="light"] button[class*="from-blue-"],
+[data-theme="light"] button[class*="bg-gradient"],
+[data-theme="light"] a.btn-glow,
+[data-theme="light"] a.btn-primary-glow,
+[data-theme="light"] .btn-glow,
+[data-theme="light"] .btn-primary-glow {
+  color: #ffffff !important;
+}
+[data-theme="light"] .w-9.h-9.rounded-lg.bg-gradient-to-br svg,
+[data-theme="light"] .w-8.h-8.rounded-lg.bg-gradient-to-br svg,
+[data-theme="light"] .nav-logo svg {
+  color: #ffffff !important;
+}
+[data-theme="light"] .text-gray-400 {
+  color: #6b7280 !important;
+}
+[data-theme="light"] .text-gray-500 {
+  color: #4a5568 !important;
+}
+[data-theme="light"] .text-gray-300 {
+  color: #4a5568 !important;
+}
+[data-theme="light"] .text-blue-400 {
+  color: #2563eb !important;
+}
+[data-theme="light"] .text-green-400 {
+  color: #16a34a !important;
+}
+[data-theme="light"] .text-purple-400 {
+  color: #7c3aed !important;
+}
+[data-theme="light"] .text-orange-400 {
+  color: #ea580c !important;
+}
+[data-theme="light"] .text-red-400 {
+  color: #dc2626 !important;
+}
+[data-theme="light"] .text-yellow-400 {
+  color: #ca8a04 !important;
+}
+[data-theme="light"] .text-violet-400 {
+  color: #7c3aed !important;
+}
+[data-theme="light"] .text-cyan-400 {
+  color: #0891b2 !important;
+}
+[data-theme="light"] .text-amber-400 {
+  color: #d97706 !important;
+}
+[data-theme="light"] .text-rose-400 {
+  color: #e11d48 !important;
+}
+[data-theme="light"] .border-white\/10,
+[data-theme="light"] .border-white\/5 {
+  border-color: #e2e4e8 !important;
+}
+[data-theme="light"] .bg-white\/5,
+[data-theme="light"] .bg-white\/10,
+[data-theme="light"] .bg-white\/\[0\.02\] {
+  background-color: rgba(0, 0, 0, 0.03) !important;
+}
+[data-theme="light"] .hover\:text-white:hover {
+  color: #1a1a2e !important;
+}
+[data-theme="light"] .hover\:text-red-400:hover {
+  color: #dc2626 !important;
+}
+[data-theme="light"] .bg-\[\#080808\]\/80,
+[data-theme="light"] .bg-\[\#0a0a0a\] {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+}
+[data-theme="light"] .bg-gradient-to-br.from-blue-500.to-blue-700 {
+  background: linear-gradient(to bottom right, #3b82f6, #1d4ed8) !important;
+}
+[data-theme="light"] .shadow-blue-500\/20 {
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15) !important;
+}
+
+/* Fix recharts text in light mode */
+[data-theme="light"] .recharts-cartesian-axis-tick-value {
+  fill: #4a5568 !important;
+}
+[data-theme="light"] .recharts-cartesian-grid line {
+  stroke: #e2e4e8 !important;
+}
+[data-theme="light"] .recharts-legend-item-text {
+  color: #4a5568 !important;
+}
+[data-theme="light"] .recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: #ffffff !important;
+  border-color: #e2e4e8 !important;
+  color: #1a1a2e !important;
+}
+
+/* Fix dashboard heading colors */
+[data-theme="light"] h2.text-2xl,
+[data-theme="light"] h2.text-3xl,
+[data-theme="light"] h3.text-xs {
+  color: #1a1a2e !important;
+}
+
+/* Fix admin panel text */
+[data-theme="light"] .page-bg-purple {
+  background: #f8f9fa;
+}
+
+/* Fix table row hover in light mode */
+[data-theme="light"] tr:hover {
+  background: rgba(59, 130, 246, 0.03) !important;
+}
+
+/* Fix mobile tab pills */
+[data-theme="light"] .badge-green {
+  background: rgba(34, 197, 94, 0.08);
+  border-color: rgba(34, 197, 94, 0.2);
+  color: #16a34a;
+}
+
+/* Fix font-mono phone numbers in table */
+[data-theme="light"] .font-mono {
+  color: #1a1a2e;
+}
+
+/* Ensure settings panel text is visible */
+[data-theme="light"] .stat-card p.text-sm {
+  color: #1a1a2e;
+}
+[data-theme="light"] .stat-card p.text-xs {
+  color: #6b7280;
 }
 
 /* ── Theme Toggle Button ─────────────────────── */
