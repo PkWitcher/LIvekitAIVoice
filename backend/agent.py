@@ -161,13 +161,21 @@ def create_tts(provider: str = None, voice_id: str = None):
     if provider == "cartesia":
         import os
         voice = voice_id or config.TTS_PROVIDERS["cartesia"]["default_voice"]
+        tts_model = config.TTS_PROVIDERS["cartesia"].get("model", "sonic-multilingual")
         tts_lang = config.TTS_PROVIDERS["cartesia"].get("language", "en")
-        return cartesia.TTS(
-            model=config.TTS_PROVIDERS["cartesia"].get("model", "sonic-multilingual"),
-            voice=voice,
-            language=tts_lang,
-            api_key=os.getenv("CARTESIA_API_KEY", ""),
-        )
+        try:
+            return cartesia.TTS(
+                model=tts_model,
+                voice=voice,
+                language=tts_lang,
+                api_key=os.getenv("CARTESIA_API_KEY", ""),
+            )
+        except TypeError:
+            # Fallback if language/model params not supported in this version
+            return cartesia.TTS(
+                voice=voice,
+                api_key=os.getenv("CARTESIA_API_KEY", ""),
+            )
     elif provider == "openai":
         voice = voice_id or config.TTS_PROVIDERS["openai"]["default_voice"]
         return openai.TTS(
@@ -322,8 +330,6 @@ async def entrypoint(ctx: JobContext) -> None:
             text=system_prompt,
         ),
         allow_interruptions=True,
-        interrupt_speech_duration=0.6,
-        min_endpointing_delay=0.5,
     )
 
     # Dial outbound if phone_number specified and no one is in the room yet
