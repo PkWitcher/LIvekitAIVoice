@@ -12,7 +12,7 @@ export default function CallDispatcher() {
   const [phone, setPhone] = useState("");
   const [prompt, setPrompt] = useState("");
   const [modelProvider] = useState("openai");
-  const [voice, setVoice] = useState("EXAVITQu4vr4xnSDxMaL");
+  const [voice, setVoice] = useState("RABOvaPec1ymXz02oDQi");
   const [language, setLanguage] = useState("multi");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<DispatchResult | null>(null);
@@ -127,7 +127,9 @@ export default function CallDispatcher() {
             onChange={(e) => setVoice(e.target.value)}
           >
             <optgroup label="ElevenLabs (Multilingual)">
-              <option value="EXAVITQu4vr4xnSDxMaL">Sarah — Female (Default)</option>
+              <option value="RABOvaPec1ymXz02oDQi">Indian Voice 1 (Default)</option>
+              <option value="czQ9pLzjRaF61EAYjcPC">Indian Voice 2</option>
+              <option value="EXAVITQu4vr4xnSDxMaL">Sarah — Female</option>
               <option value="21m00Tcm4TlvDq8ikWAM">Rachel — Female</option>
               <option value="XrExE9yKIg1WjnnlVkGX">Matilda — Female</option>
               <option value="ThT5KcBeYPX3keUQqHPh">Dorothy — Female</option>

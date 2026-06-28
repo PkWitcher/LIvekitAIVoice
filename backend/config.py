@@ -142,14 +142,16 @@ TTS_PROVIDERS = {
             "matilda": "XrExE9yKIg1WjnnlVkGX",
             "jessica": "cgSgspJ2msm6clMCkdW9",
             "lily": "pFZP5JQG7iQjIQuC4Bku",
+            "indian_1": "RABOvaPec1ymXz02oDQi",
+            "indian_2": "czQ9pLzjRaF61EAYjcPC",
         },
-        "default_voice": "EXAVITQu4vr4xnSDxMaL",
+        "default_voice": "RABOvaPec1ymXz02oDQi",
         "model": "eleven_multilingual_v2",
     },
 }
 
 DEFAULT_TTS_PROVIDER = "elevenlabs"
-DEFAULT_VOICE_ID = "EXAVITQu4vr4xnSDxMaL"
+DEFAULT_VOICE_ID = "RABOvaPec1ymXz02oDQi"
 
 # ──────────────────────────────────────────────
 # SIP / Telephony Configuration
