@@ -285,14 +285,14 @@ async def entrypoint(ctx: JobContext) -> None:
     else:
         greeting = config.INITIAL_GREETING
 
-    # Add language hint to prompt if a specific language is selected
+    # Add strict language enforcement to prompt
     lang_names = {
-        "hi": "Hindi/Hinglish", "en": "English", "ta": "Tamil", "te": "Telugu",
+        "hi": "Hindi", "en": "English", "ta": "Tamil", "te": "Telugu",
         "bn": "Bengali", "mr": "Marathi", "gu": "Gujarati", "kn": "Kannada",
         "ml": "Malayalam", "pa": "Punjabi",
     }
-    if stt_language != "multi" and stt_language in lang_names:
-        system_prompt += f"\n\nIMPORTANT: This call is set to {lang_names[stt_language]}. Always reply in {lang_names[stt_language]}."
+    target_lang = lang_names.get(stt_language, "English")
+    system_prompt += f"\n\nSTRICT RULE: You MUST speak ONLY in {target_lang} for this entire call. Do NOT use any other language. Do NOT switch languages under any circumstances."
 
     # Create pipeline components
     # Only expose function tools with the default Nova prompt
