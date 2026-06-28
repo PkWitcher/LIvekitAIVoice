@@ -22,7 +22,7 @@ from livekit.agents import (
     llm,
 )
 from livekit.agents.pipeline import VoicePipelineAgent
-from livekit.plugins import cartesia, deepgram, openai, silero
+from livekit.plugins import cartesia, deepgram, elevenlabs, openai, silero
 
 import config
 
@@ -153,6 +153,8 @@ def create_tts(provider: str = None, voice_id: str = None):
             provider = "deepgram"
         elif voice_id in OPENAI_VOICES:
             provider = "openai"
+        elif len(voice_id) == 24 and voice_id.isalnum():
+            provider = "elevenlabs"
         # NOTE: Do NOT auto-detect Cartesia by UUID — it fails silently without valid key
     provider = provider or config.DEFAULT_TTS_PROVIDER
 
@@ -188,6 +190,14 @@ def create_tts(provider: str = None, voice_id: str = None):
         return openai.TTS(
             model=config.TTS_PROVIDERS["openai"].get("model", "tts-1"),
             voice=voice,
+        )
+    elif provider == "elevenlabs":
+        import os
+        voice = voice_id or config.TTS_PROVIDERS["elevenlabs"]["default_voice"]
+        return elevenlabs.TTS(
+            voice=voice,
+            model=config.TTS_PROVIDERS["elevenlabs"].get("model", "eleven_multilingual_v2"),
+            api_key=os.getenv("ELEVENLABS_API_KEY", ""),
         )
     elif provider == "deepgram":
         voice = voice_id or config.TTS_PROVIDERS["deepgram"]["default_voice"]

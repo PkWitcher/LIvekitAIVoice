@@ -3,6 +3,7 @@ livekit-plugins-deepgram>=0.7.0,<1.0.0
 livekit-plugins-openai>=0.10.0,<1.0.0
 livekit-plugins-silero>=0.7.0,<1.0.0
 livekit-plugins-cartesia>=0.4.0,<1.0.0
+livekit-plugins-elevenlabs>=0.7.0,<1.0.0
 livekit-api>=0.7.0,<1.0.0
 python-dotenv>=1.0.0
 certifi>=2024.0.0

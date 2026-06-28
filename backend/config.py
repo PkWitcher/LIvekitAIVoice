@@ -116,10 +116,40 @@ TTS_PROVIDERS = {
         "model": "sonic-multilingual",
         "language": "en",
     },
+    "elevenlabs": {
+        "voices": {
+            "rachel": "21m00Tcm4TlvDq8ikWAM",
+            "drew": "29vD33N1CtxCmqQRPOHJ",
+            "clyde": "2EiwWnXFnvU5JabPnv8n",
+            "paul": "5Q0t7uMcjvnagumLfvZi",
+            "domi": "AZnzlk1XvdvUeBnXmlld",
+            "dave": "CYw3kZ02Hs0563khs1Fj",
+            "fin": "D38z5RcWu1voky8WS1ja",
+            "sarah": "EXAVITQu4vr4xnSDxMaL",
+            "antoni": "ErXwobaYiN019PkySvjV",
+            "thomas": "GBv7mTt0atIp3Br8iCZE",
+            "charlie": "IKne3meq5aSn9XLyUdCD",
+            "emily": "LcfcDJNUP1GQjkzn1xUU",
+            "elli": "MF3mGyEYCl7XYWbV9V6O",
+            "callum": "N2lVS1w4EtoT3dr4eOWO",
+            "patrick": "ODq5zmih8GrVes37Dizd",
+            "harry": "SOYHLrjzK2X1ezoPC6cr",
+            "liam": "TX3LPaxmHKxFdv7VOQHJ",
+            "dorothy": "ThT5KcBeYPX3keUQqHPh",
+            "josh": "TxGEqnHWrfWFTfGW9XjX",
+            "arnold": "VR6AewLTigWG4xSOukaG",
+            "charlotte": "XB0fDUnXU5powFXDhCwa",
+            "matilda": "XrExE9yKIg1WjnnlVkGX",
+            "jessica": "cgSgspJ2msm6clMCkdW9",
+            "lily": "pFZP5JQG7iQjIQuC4Bku",
+        },
+        "default_voice": "EXAVITQu4vr4xnSDxMaL",
+        "model": "eleven_multilingual_v2",
+    },
 }
 
-DEFAULT_TTS_PROVIDER = "deepgram"
-DEFAULT_VOICE_ID = "aura-asteria-en"
+DEFAULT_TTS_PROVIDER = "elevenlabs"
+DEFAULT_VOICE_ID = "EXAVITQu4vr4xnSDxMaL"
 
 # ──────────────────────────────────────────────
 # SIP / Telephony Configuration

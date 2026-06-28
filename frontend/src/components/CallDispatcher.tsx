@@ -12,7 +12,7 @@ export default function CallDispatcher() {
   const [phone, setPhone] = useState("");
   const [prompt, setPrompt] = useState("");
   const [modelProvider] = useState("openai");
-  const [voice, setVoice] = useState("0f14d8cb-f039-41fe-a813-a9b4bee7eed8");
+  const [voice, setVoice] = useState("EXAVITQu4vr4xnSDxMaL");
   const [language, setLanguage] = useState("multi");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<DispatchResult | null>(null);
@@ -126,8 +126,25 @@ export default function CallDispatcher() {
             value={voice}
             onChange={(e) => setVoice(e.target.value)}
           >
+            <optgroup label="ElevenLabs (Multilingual)">
+              <option value="EXAVITQu4vr4xnSDxMaL">Sarah — Female (Default)</option>
+              <option value="21m00Tcm4TlvDq8ikWAM">Rachel — Female</option>
+              <option value="XrExE9yKIg1WjnnlVkGX">Matilda — Female</option>
+              <option value="ThT5KcBeYPX3keUQqHPh">Dorothy — Female</option>
+              <option value="pFZP5JQG7iQjIQuC4Bku">Lily — Female</option>
+              <option value="XB0fDUnXU5powFXDhCwa">Charlotte — Female</option>
+              <option value="ErXwobaYiN019PkySvjV">Antoni — Male</option>
+              <option value="TxGEqnHWrfWFTfGW9XjX">Josh — Male</option>
+              <option value="VR6AewLTigWG4xSOukaG">Arnold — Male</option>
+              <option value="29vD33N1CtxCmqQRPOHJ">Drew — Male</option>
+              <option value="5Q0t7uMcjvnagumLfvZi">Paul — Male</option>
+              <option value="N2lVS1w4EtoT3dr4eOWO">Callum — Male</option>
+              <option value="IKne3meq5aSn9XLyUdCD">Charlie — Male</option>
+              <option value="SOYHLrjzK2X1ezoPC6cr">Harry — Male</option>
+              <option value="TX3LPaxmHKxFdv7VOQHJ">Liam — Male</option>
+            </optgroup>
             <optgroup label="OpenAI (Multilingual)">
-              <option value="shimmer">Shimmer — Female (Default)</option>
+              <option value="shimmer">Shimmer — Female</option>
               <option value="nova">Nova — Female</option>
               <option value="alloy">Alloy — Neutral</option>
               <option value="echo">Echo — Male</option>
