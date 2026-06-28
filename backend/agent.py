@@ -280,8 +280,6 @@ async def entrypoint(ctx: JobContext) -> None:
     )
 
     # Build system prompt
-    # If a custom prompt is provided, use it as the full system prompt
-    # Otherwise fall back to the default Nova persona
     if custom_prompt:
         system_prompt = custom_prompt
     else:
@@ -310,7 +308,6 @@ async def entrypoint(ctx: JobContext) -> None:
         system_prompt += "\n\nSTRICT RULE: Detect the caller's language from their FIRST sentence. Then speak ONLY in that language for the entire call. NEVER switch mid-call."
 
     # Create pipeline components
-    # Only expose function tools with the default Nova prompt
     fnc_ctx = CallFunctions() if not custom_prompt else None
     stt = deepgram.STT(
         model=config.STT_MODEL,
@@ -318,6 +315,12 @@ async def entrypoint(ctx: JobContext) -> None:
     )
     llm_plugin = create_llm_plugin(model_provider)
     tts = create_tts(tts_provider, voice_id)
+    logger.info(f"TTS created: {type(tts).__name__}")
+
+    # Build chat context with greeting as initial assistant message
+    # This ensures the agent speaks the greeting through the normal pipeline
+    initial_ctx = llm.ChatContext()
+    initial_ctx.append(role="system", text=system_prompt)
 
     # Build the voice pipeline agent
     agent = VoicePipelineAgent(
@@ -326,43 +329,49 @@ async def entrypoint(ctx: JobContext) -> None:
         llm=llm_plugin,
         tts=tts,
         fnc_ctx=fnc_ctx,
-        chat_ctx=llm.ChatContext().append(
-            role="system",
-            text=system_prompt,
-        ),
+        chat_ctx=initial_ctx,
     )
 
     # Dial outbound if phone_number specified and no one is in the room yet
     if phone_number and not is_inbound:
+        logger.info(f"Dialing outbound to {phone_number}")
         await dial_outbound(ctx, phone_number, metadata)
 
-    # Get the participant to bind the agent to
-    if is_inbound and existing_participants:
-        # For inbound calls, the caller is already in the room
-        participant = list(existing_participants.values())[0]
-        logger.info(f"Using existing participant: {participant.identity}")
-    else:
-        # For outbound calls, wait for the SIP participant to join
-        logger.info("Waiting for participant to join...")
-        participant = await ctx.wait_for_participant()
-        logger.info(f"Participant joined: {participant.identity}")
+    # Wait for participant — works for both inbound and outbound
+    # For inbound: returns immediately since caller is already in room
+    # For outbound: waits until the dialed person picks up
+    logger.info(f"Waiting for participant (existing: {len(existing_participants)})...")
+    participant = await ctx.wait_for_participant()
+    logger.info(f"Participant ready: {participant.identity}")
 
-    # Start the agent with the specific participant
+    # Start the agent bound to the participant
     agent.start(ctx.room, participant=participant)
+    logger.info("Agent started, waiting for audio track...")
 
-    # Brief delay to allow audio track subscription to complete
-    await asyncio.sleep(0.5)
+    # Wait for the participant's audio track to be subscribed
+    # This ensures bidirectional audio is ready before greeting
+    await asyncio.sleep(1.0)
 
-    # Say the greeting
+    # Speak the greeting
+    logger.info(f"Speaking greeting: {greeting}")
     try:
-        await agent.say(greeting, allow_interruptions=True)
+        result = agent.say(greeting, allow_interruptions=True)
+        if asyncio.iscoroutine(result):
+            await result
+        logger.info("Greeting sent successfully")
     except TypeError:
-        # Fallback if allow_interruptions not supported in this version
-        await agent.say(greeting)
+        # If allow_interruptions is not supported, try without it
+        try:
+            result = agent.say(greeting)
+            if asyncio.iscoroutine(result):
+                await result
+            logger.info("Greeting sent (no allow_interruptions)")
+        except Exception as e:
+            logger.error(f"Failed to say greeting (fallback): {e}", exc_info=True)
     except Exception as e:
-        logger.error(f"Failed to say greeting: {e}")
+        logger.error(f"Failed to say greeting: {e}", exc_info=True)
 
-    logger.info("Voice agent is running")
+    logger.info("Voice agent is running and listening")
 
 
 # ──────────────────────────────────────────────

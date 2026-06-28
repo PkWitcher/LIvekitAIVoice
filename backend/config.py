@@ -118,8 +118,8 @@ TTS_PROVIDERS = {
     },
 }
 
-DEFAULT_TTS_PROVIDER = "cartesia"
-DEFAULT_VOICE_ID = "0f14d8cb-f039-41fe-a813-a9b4bee7eed8"
+DEFAULT_TTS_PROVIDER = "deepgram"
+DEFAULT_VOICE_ID = "aura-asteria-en"
 
 # ──────────────────────────────────────────────
 # SIP / Telephony Configuration
