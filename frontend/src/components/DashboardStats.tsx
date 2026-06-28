@@ -73,7 +73,7 @@ export default function DashboardStats() {
 
   useEffect(() => {
     fetchStats();
-    const interval = setInterval(fetchStats, 10000);
+    const interval = setInterval(fetchStats, 5000);
     return () => clearInterval(interval);
   }, [fetchStats]);
 

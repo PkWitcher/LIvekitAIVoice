@@ -241,7 +241,7 @@ def prewarm(proc: JobProcess) -> None:
     """Preload VAD model to avoid cold-start delay."""
     proc.userdata["vad"] = silero.VAD.load(
         min_silence_duration=config.VAD_MIN_SILENCE_DURATION,
-        padding_duration=config.VAD_PADDING_DURATION,
+        prefix_padding_duration=config.VAD_PADDING_DURATION,
         activation_threshold=config.VAD_THRESHOLD,
     )
     logger.info("VAD model prewarmed")
@@ -306,9 +306,6 @@ async def entrypoint(ctx: JobContext) -> None:
     stt = deepgram.STT(
         model=config.STT_MODEL,
         language=stt_language,
-        smart_format=True,
-        no_delay=True,
-        endpointing=300,
     )
     llm_plugin = create_llm_plugin(model_provider)
     tts = create_tts(tts_provider, voice_id)
