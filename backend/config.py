@@ -67,7 +67,7 @@ LLM_PROVIDERS = {
     },
 }
 
-DEFAULT_LLM_PROVIDER = "groq"
+DEFAULT_LLM_PROVIDER = "openai"
 
 # ──────────────────────────────────────────────
 # TTS (Text-to-Speech) Configuration
