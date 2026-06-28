@@ -335,24 +335,16 @@ async def entrypoint(ctx: JobContext) -> None:
     if phone_number and not is_inbound:
         await dial_outbound(ctx, phone_number, metadata)
 
-    # Start the agent
-    agent.start(ctx.room)
+    # Wait for participant before starting the agent
+    # This ensures the agent binds to the correct audio track
+    participant = await ctx.wait_for_participant()
+    logger.info(f"Participant joined: {participant.identity}")
 
-    # Say the greeting once a participant connects
-    if is_inbound:
-        await agent.say(greeting)
-    else:
-        # Wait for the SIP participant to join before greeting
-        async def wait_and_greet():
-            try:
-                participant = await ctx.wait_for_participant()
-                logger.info(f"Participant joined: {participant.identity}")
-                await agent.say(greeting)
-            except Exception as e:
-                logger.error(f"Error waiting for participant: {e}")
+    # Start the agent with the specific participant
+    agent.start(ctx.room, participant=participant)
 
-        import asyncio
-        asyncio.ensure_future(wait_and_greet())
+    # Say the greeting
+    await agent.say(greeting)
 
     logger.info("Voice agent is running")
 
