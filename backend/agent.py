@@ -148,12 +148,13 @@ def create_tts(provider: str = None, voice_id: str = None):
     """Create TTS instance based on provider and voice."""
     # Auto-detect provider from voice name — but ONLY for known prefixes
     OPENAI_VOICES = {"alloy", "echo", "shimmer", "nova", "fable", "onyx"}
+    ELEVENLABS_VOICE_IDS = set(config.TTS_PROVIDERS.get("elevenlabs", {}).get("voices", {}).values())
     if voice_id:
         if voice_id.startswith("aura-"):
             provider = "deepgram"
         elif voice_id in OPENAI_VOICES:
             provider = "openai"
-        elif len(voice_id) == 24 and voice_id.isalnum():
+        elif voice_id in ELEVENLABS_VOICE_IDS or (len(voice_id) >= 20 and len(voice_id) <= 24 and voice_id.isalnum()):
             provider = "elevenlabs"
         # NOTE: Do NOT auto-detect Cartesia by UUID — it fails silently without valid key
     provider = provider or config.DEFAULT_TTS_PROVIDER
@@ -193,12 +194,32 @@ def create_tts(provider: str = None, voice_id: str = None):
         )
     elif provider == "elevenlabs":
         import os
+        eleven_key = os.getenv("ELEVENLABS_API_KEY", "").strip()
+        if not eleven_key:
+            logger.warning("ELEVENLABS_API_KEY not set, falling back to Deepgram TTS")
+            voice = config.TTS_PROVIDERS["deepgram"]["default_voice"]
+            return deepgram.TTS(model=voice)
         voice = voice_id or config.TTS_PROVIDERS["elevenlabs"]["default_voice"]
-        return elevenlabs.TTS(
-            voice=voice,
-            model=config.TTS_PROVIDERS["elevenlabs"].get("model", "eleven_multilingual_v2"),
-            api_key=os.getenv("ELEVENLABS_API_KEY", ""),
-        )
+        model_id = config.TTS_PROVIDERS["elevenlabs"].get("model", "eleven_multilingual_v2")
+        logger.info(f"Creating ElevenLabs TTS: voice={voice}, model={model_id}")
+        try:
+            return elevenlabs.TTS(
+                voice=voice,
+                model=model_id,
+                api_key=eleven_key,
+            )
+        except TypeError:
+            # Try alternate constructor signature
+            try:
+                return elevenlabs.TTS(
+                    voice_id=voice,
+                    model_id=model_id,
+                    api_key=eleven_key,
+                )
+            except Exception as e:
+                logger.error(f"Failed to create ElevenLabs TTS: {e}")
+                voice = config.TTS_PROVIDERS["deepgram"]["default_voice"]
+                return deepgram.TTS(model=voice)
     elif provider == "deepgram":
         voice = voice_id or config.TTS_PROVIDERS["deepgram"]["default_voice"]
         valid_voices = config.TTS_PROVIDERS["deepgram"]["voices"]
@@ -374,7 +395,18 @@ async def entrypoint(ctx: JobContext) -> None:
     # Speak the greeting
     logger.info(f"Saying greeting with TTS provider: {type(tts).__module__}")
     await agent.say(greeting)
-    logger.info("Greeting spoken, agent is now listening")
+    logger.info("Greeting dispatched, agent is now listening")
+
+    # Keep the agent alive — without this the function exits and the agent stops
+    # The agent will continue handling conversation until the room closes
+    shutdown_event = asyncio.Event()
+
+    @ctx.room.on("disconnected")
+    def on_disconnect():
+        shutdown_event.set()
+
+    await shutdown_event.wait()
+    logger.info("Room disconnected, agent shutting down")
 
 
 # ──────────────────────────────────────────────
