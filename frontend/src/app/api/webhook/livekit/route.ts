@@ -10,6 +10,9 @@ const LIVEKIT_URL = process.env.LIVEKIT_URL ?? "http://localhost:7880";
 const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY ?? "";
 const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET ?? "";
 
+// Track active egress IDs per room so we can stop them
+const activeEgress = new Map<string, string>();
+
 let receiver: WebhookReceiver | null = null;
 try {
   if (LIVEKIT_API_KEY && LIVEKIT_API_SECRET) {
@@ -95,14 +98,20 @@ export async function POST(request: NextRequest) {
             fileType: 2, // OGG
             filepath: `/recordings/${roomName}.ogg`,
           });
-          await egressClient.startRoomCompositeEgress(
+          const egressInfo = await egressClient.startRoomCompositeEgress(
             roomName,
             output,
             undefined,
             undefined,
             true // audioOnly
           );
-          console.log(`[WEBHOOK] Recording started for ${roomName}`);
+          // Store egress ID so we can stop it later
+          if (egressInfo?.egressId) {
+            activeEgress.set(roomName, egressInfo.egressId);
+            console.log(`[WEBHOOK] Recording started for ${roomName}, egressId=${egressInfo.egressId}`);
+          } else {
+            console.log(`[WEBHOOK] Recording started for ${roomName} (no egressId returned)`);
+          }
         } catch (recErr) {
           console.warn("[WEBHOOK] Recording start failed:", recErr);
         }
@@ -113,9 +122,12 @@ export async function POST(request: NextRequest) {
     if (eventType === "participant_left" && !isAgent) {
       console.log(`[WEBHOOK] Non-agent participant left: "${participantId}" in room ${roomName}`);
 
+      // Stop recording egress so the file is finalized
+      await stopEgress(roomName);
+
       const { data: record } = await supabase
         .from("phone_logs")
-        .select("status, connected_at")
+        .select("status, connected_at, created_at")
         .eq("room_name", roomName)
         .single();
 
@@ -124,11 +136,14 @@ export async function POST(request: NextRequest) {
       if (record) {
         const now = new Date().toISOString();
 
-        if (record.status === "connected" && record.connected_at) {
-          const durationSeconds = Math.round(
-            (Date.now() - new Date(record.connected_at).getTime()) / 1000
-          );
-          console.log(`[WEBHOOK] Marking completed, duration=${durationSeconds}s`);
+        if (record.status === "connected" || record.status === "ringing") {
+          // Calculate duration from connected_at, or fallback to created_at
+          const startTime = record.connected_at || record.created_at;
+          const durationSeconds = startTime
+            ? Math.round((Date.now() - new Date(startTime).getTime()) / 1000)
+            : 0;
+          
+          console.log(`[WEBHOOK] Marking completed, duration=${durationSeconds}s (from ${record.connected_at ? 'connected_at' : 'created_at'})`);
           await supabase
             .from("phone_logs")
             .update({
@@ -139,16 +154,17 @@ export async function POST(request: NextRequest) {
             })
             .eq("room_name", roomName);
         }
-        // Do NOT mark "no-answer" here — wait for room_finished to avoid
-        // race conditions with multiple SIP participant events
       }
     }
 
     // ── Room finished — fallback ──
     if (eventType === "room_finished") {
+      // Stop egress in case it wasn't stopped by participant_left
+      await stopEgress(roomName);
+
       const { data: record } = await supabase
         .from("phone_logs")
-        .select("status, connected_at")
+        .select("status, connected_at, created_at")
         .eq("room_name", roomName)
         .single();
 
@@ -157,10 +173,11 @@ export async function POST(request: NextRequest) {
       if (record) {
         const now = new Date().toISOString();
 
-        if (record.status === "connected" && record.connected_at) {
-          const durationSeconds = Math.round(
-            (Date.now() - new Date(record.connected_at).getTime()) / 1000
-          );
+        if ((record.status === "connected" || record.status === "ringing") && record.connected_at) {
+          const startTime = record.connected_at || record.created_at;
+          const durationSeconds = startTime
+            ? Math.round((Date.now() - new Date(startTime).getTime()) / 1000)
+            : 0;
           await supabase
             .from("phone_logs")
             .update({
@@ -186,4 +203,30 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({ ok: true });
+}
+
+/**
+ * Stop an active egress recording so the file is finalized and playable.
+ */
+async function stopEgress(roomName: string): Promise<void> {
+  const egressId = activeEgress.get(roomName);
+  if (!egressId) {
+    console.log(`[WEBHOOK] No active egress to stop for ${roomName}`);
+    return;
+  }
+
+  try {
+    const egressClient = new EgressClient(
+      LIVEKIT_URL,
+      LIVEKIT_API_KEY,
+      LIVEKIT_API_SECRET
+    );
+    await egressClient.stopEgress(egressId);
+    console.log(`[WEBHOOK] Egress stopped for ${roomName}, egressId=${egressId}`);
+  } catch (err) {
+    // Egress may already be stopped if room ended naturally
+    console.warn(`[WEBHOOK] Failed to stop egress for ${roomName}:`, err);
+  } finally {
+    activeEgress.delete(roomName);
+  }
 }
