@@ -285,9 +285,12 @@ async def entrypoint(ctx: JobContext) -> None:
     )
 
     # Build system prompt
-    system_prompt = config.SYSTEM_PROMPT
+    # If a custom prompt is provided, use it as the full system prompt
+    # Otherwise fall back to the default Nova persona
     if custom_prompt:
-        system_prompt += f"\n\nAdditional context for this call:\n{custom_prompt}"
+        system_prompt = custom_prompt
+    else:
+        system_prompt = config.SYSTEM_PROMPT
 
     # Determine if inbound (user already in room) or outbound
     existing_participants = ctx.room.remote_participants
