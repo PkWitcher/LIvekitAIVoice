@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     const metadata = JSON.stringify({
       phone_number: phone,
       prompt: body.prompt ?? "",
-      model_provider: body.model_provider ?? "groq",
+      model_provider: body.model_provider ?? "openai",
       voice_id: body.voice_id ?? "aura-asteria-en",
       language: body.language ?? "multi",
     });
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
       direction: "outbound",
       status: "ringing",
       room_name: roomName,
-      model_provider: body.model_provider ?? "groq",
+      model_provider: body.model_provider ?? "openai",
       voice_id: body.voice_id ?? "aura-asteria-en",
       prompt: body.prompt || null,
     });

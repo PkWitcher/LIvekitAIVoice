@@ -11,7 +11,7 @@ interface DispatchResult {
 export default function CallDispatcher() {
   const [phone, setPhone] = useState("");
   const [prompt, setPrompt] = useState("");
-  const [modelProvider, setModelProvider] = useState("groq");
+  const [modelProvider] = useState("openai");
   const [voice, setVoice] = useState("0f14d8cb-f039-41fe-a813-a9b4bee7eed8");
   const [language, setLanguage] = useState("multi");
   const [loading, setLoading] = useState(false);
@@ -119,17 +119,6 @@ export default function CallDispatcher() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="model">AI Model</label>
-          <select
-            id="model"
-            value={modelProvider}
-            onChange={(e) => setModelProvider(e.target.value)}
-          >
-            <option value="groq">Groq — Llama 3.3 70B</option>
-            <option value="openai">OpenAI — GPT-4o Mini</option>
-          </select>
-        </div>
         <div>
           <label htmlFor="voice">Voice</label>
           <select

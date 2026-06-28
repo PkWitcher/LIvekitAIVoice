@@ -102,7 +102,7 @@ export default function LandingPage() {
               { icon: "📊", title: "Bulk Campaigns", desc: "Dial hundreds of numbers in one click with customizable scripts for each campaign." },
               { icon: "📡", title: "Live Call Tracking", desc: "Real-time status updates — ringing, connected, completed, no-answer — with 1s refresh." },
               { icon: "🔊", title: "Call Recording", desc: "Every answered call is recorded automatically. Play back recordings from the dashboard." },
-              { icon: "💰", title: "Ultra Low Cost", desc: "Under ₹2 per minute using Groq (free LLM) + Deepgram (pay-per-use STT/TTS)." },
+              { icon: "💰", title: "Ultra Low Cost", desc: "Under ₹2 per minute using OpenAI + Deepgram (pay-per-use STT/TTS)." },
               { icon: "🔒", title: "Self-Hosted & Secure", desc: "100% self-hosted on your infrastructure. No data leaves your servers — full control." },
             ].map((f, i) => (
               <div key={i} className="col-12 col-md-6 col-lg-4">
@@ -149,7 +149,7 @@ export default function LandingPage() {
           <div className="tech-divider" />
           <p className="tech-label">Powered By</p>
           <div className="d-flex flex-wrap align-items-center justify-content-center gap-4 gap-sm-5">
-            {["LiveKit", "Deepgram", "Groq", "Supabase", "Next.js", "Docker"].map((t) => (
+            {["LiveKit", "Deepgram", "OpenAI", "Supabase", "Next.js", "Docker"].map((t) => (
               <span key={t} className="tech-name">{t}</span>
             ))}
           </div>
@@ -177,7 +177,7 @@ export default function LandingPage() {
           <div className="tech-divider" />
           <div className="d-flex flex-column flex-sm-row align-items-center justify-content-between py-4 gap-3">
             <span className="footer-text">&copy; {new Date().getFullYear()} Nova AI &middot; ProArch</span>
-            <span className="footer-text">Built with LiveKit &middot; Deepgram &middot; Groq</span>
+            <span className="footer-text">Built with LiveKit &middot; Deepgram &middot; OpenAI</span>
           </div>
         </div>
       </footer>
