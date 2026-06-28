@@ -146,26 +146,28 @@ def create_llm_plugin(provider: str = None) -> openai.LLM:
 
 def create_tts(provider: str = None, voice_id: str = None):
     """Create TTS instance based on provider and voice."""
-    # Auto-detect provider from voice name
+    # Auto-detect provider from voice name — but ONLY for known prefixes
     OPENAI_VOICES = {"alloy", "echo", "shimmer", "nova", "fable", "onyx"}
     if voice_id:
         if voice_id.startswith("aura-"):
             provider = "deepgram"
         elif voice_id in OPENAI_VOICES:
             provider = "openai"
-        elif len(voice_id) == 36 and "-" in voice_id:
-            provider = "cartesia"
+        # NOTE: Do NOT auto-detect Cartesia by UUID — it fails silently without valid key
     provider = provider or config.DEFAULT_TTS_PROVIDER
 
     logger.info(f"TTS provider: {provider}, voice: {voice_id}")
 
     if provider == "cartesia":
         import os
-        cartesia_key = os.getenv("CARTESIA_API_KEY", "")
-        if not cartesia_key:
-            logger.warning("CARTESIA_API_KEY not set, falling back to Deepgram TTS")
-            voice = config.TTS_PROVIDERS["deepgram"]["default_voice"]
-            return deepgram.TTS(model=voice)
+        cartesia_key = os.getenv("CARTESIA_API_KEY", "").strip()
+        if not cartesia_key or len(cartesia_key) < 10:
+            logger.warning("CARTESIA_API_KEY missing or invalid, falling back to Deepgram TTS")
+            provider = "deepgram"
+            voice_id = None
+
+    if provider == "cartesia":
+        import os
         voice = voice_id or config.TTS_PROVIDERS["cartesia"]["default_voice"]
         tts_model = config.TTS_PROVIDERS["cartesia"].get("model", "sonic-multilingual")
         tts_lang = config.TTS_PROVIDERS["cartesia"].get("language", "en")
@@ -174,12 +176,12 @@ def create_tts(provider: str = None, voice_id: str = None):
                 model=tts_model,
                 voice=voice,
                 language=tts_lang,
-                api_key=cartesia_key,
+                api_key=os.getenv("CARTESIA_API_KEY", ""),
             )
         except TypeError:
             return cartesia.TTS(
                 voice=voice,
-                api_key=cartesia_key,
+                api_key=os.getenv("CARTESIA_API_KEY", ""),
             )
     elif provider == "openai":
         voice = voice_id or config.TTS_PROVIDERS["openai"]["default_voice"]
@@ -347,11 +349,20 @@ async def entrypoint(ctx: JobContext) -> None:
     participant = await ctx.wait_for_participant()
     logger.info(f"Participant connected: {participant.identity}")
 
-    # Wait for media to establish before speaking
-    await asyncio.sleep(2.0)
+    # For outbound calls, the SIP participant joins the room BEFORE the phone
+    # actually picks up (~5-10 seconds of ringing). We need to wait for actual
+    # audio to flow. For inbound, the phone is already connected.
+    if not is_inbound:
+        # Wait for the SIP call to be fully established (phone picks up)
+        # The phone needs ~6-10 seconds to ring and pick up
+        logger.info("Outbound call: waiting for phone to pick up...")
+        await asyncio.sleep(6.0)
+    else:
+        # Inbound: phone is already connected, small delay for media setup
+        await asyncio.sleep(1.0)
 
     # Speak the greeting
-    logger.info(f"Saying greeting with TTS: {type(tts).__name__}")
+    logger.info(f"Saying greeting with TTS provider: {type(tts).__module__}")
     await agent.say(greeting)
     logger.info("Greeting spoken, agent is now listening")
 
