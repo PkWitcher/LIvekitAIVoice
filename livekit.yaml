@@ -9,7 +9,7 @@ rtc:
   use_external_ip: true
 
 keys:
-  devkey: a]3Kf9!pLm2Qx@vR7nWz5YcBdT8eHs4u
+  devkey: "a]3Kf9!pLm2Qx@vR7nWz5YcBdT8eHs4u"
 
 logging:
   level: info
