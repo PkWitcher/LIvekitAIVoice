@@ -315,10 +315,8 @@ async def entrypoint(ctx: JobContext) -> None:
     )
     llm_plugin = create_llm_plugin(model_provider)
     tts = create_tts(tts_provider, voice_id)
-    logger.info(f"TTS created: {type(tts).__name__}")
+    logger.info(f"TTS provider resolved: {type(tts).__module__}.{type(tts).__name__}")
 
-    # Build chat context with greeting as initial assistant message
-    # This ensures the agent speaks the greeting through the normal pipeline
     initial_ctx = llm.ChatContext()
     initial_ctx.append(role="system", text=system_prompt)
 
@@ -337,41 +335,41 @@ async def entrypoint(ctx: JobContext) -> None:
         logger.info(f"Dialing outbound to {phone_number}")
         await dial_outbound(ctx, phone_number, metadata)
 
-    # Wait for participant — works for both inbound and outbound
-    # For inbound: returns immediately since caller is already in room
-    # For outbound: waits until the dialed person picks up
-    logger.info(f"Waiting for participant (existing: {len(existing_participants)})...")
+    # Start the agent — let the framework handle participant auto-subscription
+    agent.start(ctx.room)
+    logger.info("Agent pipeline started")
+
+    # Wait for participant to connect (inbound: immediate, outbound: waits for pickup)
     participant = await ctx.wait_for_participant()
-    logger.info(f"Participant ready: {participant.identity}")
+    logger.info(f"Participant connected: {participant.identity}")
 
-    # Start the agent bound to the participant
-    agent.start(ctx.room, participant=participant)
-    logger.info("Agent started, waiting for audio track...")
+    # Wait for the participant's audio track to be published.
+    # For outbound calls, the SIP participant joins the room BEFORE the phone
+    # picks up. We must wait until the phone actually connects (audio track appears).
+    logger.info("Waiting for participant audio track...")
+    max_wait = 30  # seconds
+    waited = 0.0
+    while waited < max_wait:
+        track_pubs = participant.track_publications
+        has_audio = any(
+            pub.kind == rtc.TrackKind.KIND_AUDIO
+            for pub in track_pubs.values()
+        )
+        if has_audio:
+            logger.info("Participant audio track detected — phone is connected")
+            break
+        await asyncio.sleep(0.3)
+        waited += 0.3
+    else:
+        logger.warning("Timed out waiting for participant audio track")
 
-    # Wait for the participant's audio track to be subscribed
-    # This ensures bidirectional audio is ready before greeting
-    await asyncio.sleep(1.0)
+    # Extra delay for media path to stabilize
+    await asyncio.sleep(0.5)
 
     # Speak the greeting
-    logger.info(f"Speaking greeting: {greeting}")
-    try:
-        result = agent.say(greeting, allow_interruptions=True)
-        if asyncio.iscoroutine(result):
-            await result
-        logger.info("Greeting sent successfully")
-    except TypeError:
-        # If allow_interruptions is not supported, try without it
-        try:
-            result = agent.say(greeting)
-            if asyncio.iscoroutine(result):
-                await result
-            logger.info("Greeting sent (no allow_interruptions)")
-        except Exception as e:
-            logger.error(f"Failed to say greeting (fallback): {e}", exc_info=True)
-    except Exception as e:
-        logger.error(f"Failed to say greeting: {e}", exc_info=True)
-
-    logger.info("Voice agent is running and listening")
+    logger.info(f"Saying greeting: '{greeting}'")
+    await agent.say(greeting)
+    logger.info("Greeting spoken, agent is now listening")
 
 
 # ──────────────────────────────────────────────
