@@ -161,8 +161,11 @@ def create_tts(provider: str = None, voice_id: str = None):
     if provider == "cartesia":
         import os
         voice = voice_id or config.TTS_PROVIDERS["cartesia"]["default_voice"]
+        tts_lang = config.TTS_PROVIDERS["cartesia"].get("language", "en")
         return cartesia.TTS(
+            model=config.TTS_PROVIDERS["cartesia"].get("model", "sonic-multilingual"),
             voice=voice,
+            language=tts_lang,
             api_key=os.getenv("CARTESIA_API_KEY", ""),
         )
     elif provider == "openai":
@@ -285,19 +288,28 @@ async def entrypoint(ctx: JobContext) -> None:
     else:
         greeting = config.INITIAL_GREETING
 
-    # Add strict language enforcement to prompt
+    # Add strict language consistency enforcement
     lang_names = {
         "hi": "Hindi", "en": "English", "ta": "Tamil", "te": "Telugu",
         "bn": "Bengali", "mr": "Marathi", "gu": "Gujarati", "kn": "Kannada",
-        "ml": "Malayalam", "pa": "Punjabi",
+        "ml": "Malayalam", "pa": "Punjabi", "multi": None,
     }
-    target_lang = lang_names.get(stt_language, "English")
-    system_prompt += f"\n\nSTRICT RULE: You MUST speak ONLY in {target_lang} for this entire call. Do NOT use any other language. Do NOT switch languages under any circumstances."
+    target_lang = lang_names.get(stt_language)
+    if target_lang:
+        system_prompt += f"\n\nSTRICT RULE: This call's language is set to {target_lang}. Speak ONLY in {target_lang}. Do NOT use any other language."
+    else:
+        system_prompt += "\n\nSTRICT RULE: Detect the caller's language from their FIRST sentence. Then speak ONLY in that language for the entire call. NEVER switch mid-call."
 
     # Create pipeline components
     # Only expose function tools with the default Nova prompt
     fnc_ctx = CallFunctions() if not custom_prompt else None
-    stt = deepgram.STT(model=config.STT_MODEL, language=stt_language)
+    stt = deepgram.STT(
+        model=config.STT_MODEL,
+        language=stt_language,
+        smart_format=True,
+        no_delay=True,
+        endpointing=300,
+    )
     llm_plugin = create_llm_plugin(model_provider)
     tts = create_tts(tts_provider, voice_id)
 
@@ -312,6 +324,9 @@ async def entrypoint(ctx: JobContext) -> None:
             role="system",
             text=system_prompt,
         ),
+        allow_interruptions=True,
+        interrupt_speech_duration=0.6,
+        min_endpointing_delay=0.5,
     )
 
     # Dial outbound if phone_number specified and no one is in the room yet

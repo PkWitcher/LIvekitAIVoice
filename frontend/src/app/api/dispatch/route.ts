@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
       prompt: body.prompt ?? "",
       model_provider: body.model_provider ?? "openai",
       voice_id: body.voice_id ?? "aura-asteria-en",
-      language: body.language ?? "en",
+      language: body.language ?? "multi",
     });
 
     // Create the room with metadata
