@@ -184,23 +184,6 @@ def create_tts(provider: str = None, voice_id: str = None):
 
 
 # ──────────────────────────────────────────────
-# TTS Filter — strip function call artifacts
-# ──────────────────────────────────────────────
-import re
-
-def before_tts_cb(agent, text: str) -> str:
-    """Filter out function call artifacts before sending to TTS."""
-    if not text:
-        return text
-    # Only remove obvious function call patterns
-    cleaned = re.sub(r'</?(?:function_call|tool_call|function|tool)[^>]*>', '', text)
-    cleaned = re.sub(r'\bfunction_\w+\b', '', cleaned)
-    cleaned = cleaned.strip()
-    # If cleaning removed everything, return original text
-    return cleaned if cleaned else text
-
-
-# ──────────────────────────────────────────────
 # Room Metadata Parser
 # ──────────────────────────────────────────────
 def parse_room_metadata(metadata: Optional[str]) -> dict:
@@ -312,7 +295,8 @@ async def entrypoint(ctx: JobContext) -> None:
         system_prompt += f"\n\nIMPORTANT: This call is set to {lang_names[stt_language]}. Always reply in {lang_names[stt_language]}."
 
     # Create pipeline components
-    fnc_ctx = CallFunctions()
+    # Only expose function tools with the default Nova prompt
+    fnc_ctx = CallFunctions() if not custom_prompt else None
     stt = deepgram.STT(model=config.STT_MODEL, language=stt_language)
     llm_plugin = create_llm_plugin(model_provider)
     tts = create_tts(tts_provider, voice_id)
