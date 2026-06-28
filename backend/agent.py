@@ -161,6 +161,11 @@ def create_tts(provider: str = None, voice_id: str = None):
 
     if provider == "cartesia":
         import os
+        cartesia_key = os.getenv("CARTESIA_API_KEY", "")
+        if not cartesia_key:
+            logger.warning("CARTESIA_API_KEY not set, falling back to Deepgram TTS")
+            voice = config.TTS_PROVIDERS["deepgram"]["default_voice"]
+            return deepgram.TTS(model=voice)
         voice = voice_id or config.TTS_PROVIDERS["cartesia"]["default_voice"]
         tts_model = config.TTS_PROVIDERS["cartesia"].get("model", "sonic-multilingual")
         tts_lang = config.TTS_PROVIDERS["cartesia"].get("language", "en")
@@ -169,13 +174,12 @@ def create_tts(provider: str = None, voice_id: str = None):
                 model=tts_model,
                 voice=voice,
                 language=tts_lang,
-                api_key=os.getenv("CARTESIA_API_KEY", ""),
+                api_key=cartesia_key,
             )
         except TypeError:
-            # Fallback if language/model params not supported in this version
             return cartesia.TTS(
                 voice=voice,
-                api_key=os.getenv("CARTESIA_API_KEY", ""),
+                api_key=cartesia_key,
             )
     elif provider == "openai":
         voice = voice_id or config.TTS_PROVIDERS["openai"]["default_voice"]
@@ -335,39 +339,19 @@ async def entrypoint(ctx: JobContext) -> None:
         logger.info(f"Dialing outbound to {phone_number}")
         await dial_outbound(ctx, phone_number, metadata)
 
-    # Start the agent — let the framework handle participant auto-subscription
+    # Start the agent
     agent.start(ctx.room)
     logger.info("Agent pipeline started")
 
-    # Wait for participant to connect (inbound: immediate, outbound: waits for pickup)
+    # Wait for participant
     participant = await ctx.wait_for_participant()
     logger.info(f"Participant connected: {participant.identity}")
 
-    # Wait for the participant's audio track to be published.
-    # For outbound calls, the SIP participant joins the room BEFORE the phone
-    # picks up. We must wait until the phone actually connects (audio track appears).
-    logger.info("Waiting for participant audio track...")
-    max_wait = 30  # seconds
-    waited = 0.0
-    while waited < max_wait:
-        track_pubs = participant.track_publications
-        has_audio = any(
-            pub.kind == rtc.TrackKind.KIND_AUDIO
-            for pub in track_pubs.values()
-        )
-        if has_audio:
-            logger.info("Participant audio track detected — phone is connected")
-            break
-        await asyncio.sleep(0.3)
-        waited += 0.3
-    else:
-        logger.warning("Timed out waiting for participant audio track")
-
-    # Extra delay for media path to stabilize
-    await asyncio.sleep(0.5)
+    # Wait for media to establish before speaking
+    await asyncio.sleep(2.0)
 
     # Speak the greeting
-    logger.info(f"Saying greeting: '{greeting}'")
+    logger.info(f"Saying greeting with TTS: {type(tts).__name__}")
     await agent.say(greeting)
     logger.info("Greeting spoken, agent is now listening")
 
