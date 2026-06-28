@@ -202,11 +202,28 @@ def create_tts(provider: str = None, voice_id: str = None):
         voice = voice_id or config.TTS_PROVIDERS["elevenlabs"]["default_voice"]
         model_id = config.TTS_PROVIDERS["elevenlabs"].get("model", "eleven_multilingual_v2")
         logger.info(f"Creating ElevenLabs TTS: voice={voice}, model={model_id}")
-        return elevenlabs.TTS(
-            voice=elevenlabs.Voice(id=voice),
-            model=model_id,
-            api_key=eleven_key,
-        )
+        # The plugin requires a Voice object with an 'id' attribute
+        try:
+            voice_obj = elevenlabs.Voice(id=voice)
+        except (AttributeError, TypeError):
+            # Fallback: create a simple object with .id attribute
+            class _Voice:
+                def __init__(self, vid):
+                    self.id = vid
+                    self.name = ""
+                    self.category = ""
+                    self.settings = None
+            voice_obj = _Voice(voice)
+        try:
+            return elevenlabs.TTS(
+                voice=voice_obj,
+                model=model_id,
+                api_key=eleven_key,
+            )
+        except Exception as e:
+            logger.error(f"ElevenLabs TTS creation failed: {e}, falling back to Deepgram")
+            voice = config.TTS_PROVIDERS["deepgram"]["default_voice"]
+            return deepgram.TTS(model=voice)
     elif provider == "deepgram":
         voice = voice_id or config.TTS_PROVIDERS["deepgram"]["default_voice"]
         valid_voices = config.TTS_PROVIDERS["deepgram"]["voices"]
