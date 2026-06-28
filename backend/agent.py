@@ -190,13 +190,14 @@ import re
 
 def before_tts_cb(agent, text: str) -> str:
     """Filter out function call artifacts before sending to TTS."""
-    # Remove function call patterns that Groq/Llama may leak
-    # e.g. "function_lookup_user", "<function_call>", "<tool_call>", etc.
-    text = re.sub(r'</?(?:function_call|tool_call|function|tool)[^>]*>', '', text)
-    text = re.sub(r'function_\w+', '', text)
-    text = re.sub(r'\{["\']?\w+["\']?\s*:\s*["\'][^"\']*["\']\}', '', text)
-    text = text.strip()
-    return text
+    if not text:
+        return text
+    # Only remove obvious function call patterns
+    cleaned = re.sub(r'</?(?:function_call|tool_call|function|tool)[^>]*>', '', text)
+    cleaned = re.sub(r'\bfunction_\w+\b', '', cleaned)
+    cleaned = cleaned.strip()
+    # If cleaning removed everything, return original text
+    return cleaned if cleaned else text
 
 
 # ──────────────────────────────────────────────
@@ -320,7 +321,6 @@ async def entrypoint(ctx: JobContext) -> None:
         llm=llm_plugin,
         tts=tts,
         fnc_ctx=fnc_ctx,
-        before_tts_cb=before_tts_cb,
         chat_ctx=llm.ChatContext().append(
             role="system",
             text=system_prompt,
