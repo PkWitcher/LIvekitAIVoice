@@ -7,6 +7,7 @@ Supports inbound and outbound calls via SIP trunks.
 import json
 import logging
 import ssl
+import asyncio
 from typing import Optional
 
 import certifi
@@ -335,16 +336,31 @@ async def entrypoint(ctx: JobContext) -> None:
     if phone_number and not is_inbound:
         await dial_outbound(ctx, phone_number, metadata)
 
-    # Wait for participant before starting the agent
-    # This ensures the agent binds to the correct audio track
-    participant = await ctx.wait_for_participant()
-    logger.info(f"Participant joined: {participant.identity}")
+    # Get the participant to bind the agent to
+    if is_inbound and existing_participants:
+        # For inbound calls, the caller is already in the room
+        participant = list(existing_participants.values())[0]
+        logger.info(f"Using existing participant: {participant.identity}")
+    else:
+        # For outbound calls, wait for the SIP participant to join
+        logger.info("Waiting for participant to join...")
+        participant = await ctx.wait_for_participant()
+        logger.info(f"Participant joined: {participant.identity}")
 
     # Start the agent with the specific participant
     agent.start(ctx.room, participant=participant)
 
+    # Brief delay to allow audio track subscription to complete
+    await asyncio.sleep(0.5)
+
     # Say the greeting
-    await agent.say(greeting)
+    try:
+        await agent.say(greeting, allow_interruptions=True)
+    except TypeError:
+        # Fallback if allow_interruptions not supported in this version
+        await agent.say(greeting)
+    except Exception as e:
+        logger.error(f"Failed to say greeting: {e}")
 
     logger.info("Voice agent is running")
 
