@@ -329,7 +329,6 @@ async def entrypoint(ctx: JobContext) -> None:
             role="system",
             text=system_prompt,
         ),
-        allow_interruptions=True,
     )
 
     # Dial outbound if phone_number specified and no one is in the room yet
@@ -341,19 +340,14 @@ async def entrypoint(ctx: JobContext) -> None:
 
     # Say the greeting once a participant connects
     if is_inbound:
-        await agent.say(greeting, allow_interruptions=True)
+        await agent.say(greeting)
     else:
         # Wait for the SIP participant to join before greeting
-        @ctx.room.on("participant_connected")
-        def on_participant_connected(participant: rtc.RemoteParticipant):
-            logger.info(f"Participant connected: {participant.identity}")
-
-        # Use a simple approach: wait for first participant then greet
         async def wait_and_greet():
             try:
                 participant = await ctx.wait_for_participant()
                 logger.info(f"Participant joined: {participant.identity}")
-                await agent.say(greeting, allow_interruptions=True)
+                await agent.say(greeting)
             except Exception as e:
                 logger.error(f"Error waiting for participant: {e}")
 
