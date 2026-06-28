@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase-browser";
 import { useRouter } from "next/navigation";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -48,6 +49,9 @@ export default function LoginPage() {
 
   return (
     <div className="page-bg flex items-center justify-center px-5 py-8">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       <div className="relative w-full max-w-md animate-in">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -56,7 +60,7 @@ export default function LoginPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Nova AI</h1>
+          <h1 className="text-lg font-bold text-white tracking-tight">Nova AI</h1>
           <p className="text-sm text-[var(--color-text-secondary)] mt-1">
             {isSignUp ? "Create your account" : "Sign in to your account"}
           </p>

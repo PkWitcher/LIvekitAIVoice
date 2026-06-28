@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase-browser";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import ThemeToggle from "@/components/ThemeToggle";
 
 interface UserStats {
   user_id: string;
@@ -116,16 +117,19 @@ export default function AdminDashboardPage() {
               </svg>
             </div>
             <div>
-              <h1 className="text-base sm:text-lg font-semibold text-white">Admin Panel</h1>
+              <h1 className="text-sm sm:text-base font-semibold text-white">Admin Panel</h1>
               <p className="text-[10px] text-[var(--color-text-muted)] hidden sm:block">Nova AI — User Management</p>
             </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="text-xs sm:text-sm text-[var(--color-text-secondary)] hover:text-red-400 transition-all px-3 sm:px-4 py-2 rounded-xl border border-[var(--color-border)] hover:border-red-500/30 hover:bg-red-500/5"
-          >
-            Sign Out
-          </button>
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
+            <button
+              onClick={handleLogout}
+              className="text-xs sm:text-sm text-[var(--color-text-secondary)] hover:text-red-400 transition-all px-3 sm:px-4 py-2 rounded-xl border border-[var(--color-border)] hover:border-red-500/30 hover:bg-red-500/5"
+            >
+              Sign Out
+            </button>
+          </div>
         </div>
       </header>
 

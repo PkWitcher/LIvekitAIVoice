@@ -1,6 +1,18 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import {
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
 
 interface Stats {
   total: number;
@@ -8,6 +20,23 @@ interface Stats {
   noAnswer: number;
   ringing: number;
   avgDuration: number;
+  outbound: number;
+  inbound: number;
+  pickupRate: number;
+}
+
+interface DailyData {
+  date: string;
+  total: number;
+  completed: number;
+  outbound: number;
+  inbound: number;
+}
+
+interface PreviousPeriod {
+  total: number;
+  completed: number;
+  pickupRate: number;
 }
 
 export default function DashboardStats() {
@@ -17,13 +46,26 @@ export default function DashboardStats() {
     noAnswer: 0,
     ringing: 0,
     avgDuration: 0,
+    outbound: 0,
+    inbound: 0,
+    pickupRate: 0,
+  });
+  const [daily, setDaily] = useState<DailyData[]>([]);
+  const [previousPeriod, setPreviousPeriod] = useState<PreviousPeriod>({
+    total: 0,
+    completed: 0,
+    pickupRate: 0,
   });
 
   const fetchStats = useCallback(async () => {
     try {
       const res = await fetch("/api/stats");
       const data = await res.json();
-      if (data.success) setStats(data.stats);
+      if (data.success) {
+        setStats(data.stats);
+        setDaily(data.daily || []);
+        setPreviousPeriod(data.previousPeriod || { total: 0, completed: 0, pickupRate: 0 });
+      }
     } catch {
       // silently fail
     }
@@ -31,7 +73,7 @@ export default function DashboardStats() {
 
   useEffect(() => {
     fetchStats();
-    const interval = setInterval(fetchStats, 5000);
+    const interval = setInterval(fetchStats, 10000);
     return () => clearInterval(interval);
   }, [fetchStats]);
 
@@ -42,81 +84,218 @@ export default function DashboardStats() {
     return m > 0 ? `${m}m ${sec}s` : `${sec}s`;
   };
 
-  const successRate = stats.total > 0
-    ? Math.round((stats.completed / stats.total) * 100)
-    : 0;
+  const calcChange = (current: number, previous: number) => {
+    if (previous === 0) return current > 0 ? "+100%" : "—";
+    const pct = Math.round(((current - previous) / previous) * 100);
+    return pct >= 0 ? `+${pct}%` : `${pct}%`;
+  };
 
-  const cards = [
-    {
-      label: "Total Calls",
-      value: stats.total.toString(),
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
-        </svg>
-      ),
-      color: "text-blue-400",
-      bg: "bg-blue-500/10",
-      borderColor: "border-blue-500/20",
-    },
-    {
-      label: "Completed",
-      value: stats.completed.toString(),
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-        </svg>
-      ),
-      color: "text-green-400",
-      bg: "bg-green-500/10",
-      borderColor: "border-green-500/20",
-    },
-    {
-      label: "Success Rate",
-      value: `${successRate}%`,
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
-        </svg>
-      ),
-      color: "text-violet-400",
-      bg: "bg-violet-500/10",
-      borderColor: "border-violet-500/20",
-    },
-    {
-      label: "Avg Duration",
-      value: formatDuration(stats.avgDuration),
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-        </svg>
-      ),
-      color: "text-amber-400",
-      bg: "bg-amber-500/10",
-      borderColor: "border-amber-500/20",
-    },
-  ];
+  const isPositive = (current: number, previous: number) => {
+    return current >= previous;
+  };
+
+  const formatDate = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+  };
+
+  const chartData = daily.map((d) => ({
+    ...d,
+    name: formatDate(d.date),
+  }));
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-      {cards.map((c, i) => (
-        <div
-          key={i}
-          className={`stat-card`}
-        >
-          <div className="flex items-center justify-between mb-2 sm:mb-3">
-            <span className="text-[10px] sm:text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wide">
-              {c.label}
-            </span>
-            <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg ${c.bg} flex items-center justify-center ${c.color}`}>
-              {c.icon}
-            </div>
-          </div>
-          <div className={`text-xl sm:text-3xl font-bold ${c.color}`}>
-            {c.value}
+    <div className="space-y-6">
+      {/* ── Stat Cards ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
+        <StatCard
+          label="Calls Made"
+          value={stats.total.toString()}
+          change={calcChange(stats.total, previousPeriod.total)}
+          positive={isPositive(stats.total, previousPeriod.total)}
+          color="blue"
+        />
+        <StatCard
+          label="Completed"
+          value={stats.completed.toString()}
+          change={calcChange(stats.completed, previousPeriod.completed)}
+          positive={isPositive(stats.completed, previousPeriod.completed)}
+          color="green"
+        />
+        <StatCard
+          label="Pickup Rate"
+          value={`${stats.pickupRate}%`}
+          change={calcChange(stats.pickupRate, previousPeriod.pickupRate)}
+          positive={isPositive(stats.pickupRate, previousPeriod.pickupRate)}
+          color="violet"
+        />
+        <StatCard
+          label="Outbound Calls"
+          value={stats.outbound.toString()}
+          change=""
+          positive={true}
+          color="cyan"
+        />
+        <StatCard
+          label="Inbound Calls"
+          value={stats.inbound.toString()}
+          change=""
+          positive={true}
+          color="amber"
+        />
+        <StatCard
+          label="Avg Duration"
+          value={formatDuration(stats.avgDuration)}
+          change=""
+          positive={true}
+          color="rose"
+        />
+      </div>
+
+      {/* ── Charts ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        {/* Usage Overview */}
+        <div className="glass-card p-4 sm:p-6">
+          <h3 className="text-sm font-semibold text-white mb-4">Usage Overview</h3>
+          <div className="h-64">
+            {chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                  <defs>
+                    <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fill: "#6b7280", fontSize: 11 }}
+                    axisLine={{ stroke: "#1f2937" }}
+                  />
+                  <YAxis
+                    tick={{ fill: "#6b7280", fontSize: 11 }}
+                    axisLine={{ stroke: "#1f2937" }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#111827",
+                      border: "1px solid #1f2937",
+                      borderRadius: "8px",
+                      color: "#fff",
+                    }}
+                  />
+                  <Legend wrapperStyle={{ color: "#9ca3af", fontSize: 12 }} />
+                  <Area
+                    type="monotone"
+                    dataKey="total"
+                    name="Total Calls"
+                    stroke="#3b82f6"
+                    fillOpacity={1}
+                    fill="url(#colorTotal)"
+                    strokeWidth={2}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="completed"
+                    name="Completed"
+                    stroke="#10b981"
+                    fillOpacity={1}
+                    fill="url(#colorCompleted)"
+                    strokeWidth={2}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-[var(--color-text-muted)] text-sm">
+                No call data yet
+              </div>
+            )}
           </div>
         </div>
-      ))}
+
+        {/* Inbound & Outbound */}
+        <div className="glass-card p-4 sm:p-6">
+          <h3 className="text-sm font-semibold text-white mb-4">Inbound & Outbound Calls</h3>
+          <div className="h-64">
+            {chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fill: "#6b7280", fontSize: 11 }}
+                    axisLine={{ stroke: "#1f2937" }}
+                  />
+                  <YAxis
+                    tick={{ fill: "#6b7280", fontSize: 11 }}
+                    axisLine={{ stroke: "#1f2937" }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#111827",
+                      border: "1px solid #1f2937",
+                      borderRadius: "8px",
+                      color: "#fff",
+                    }}
+                  />
+                  <Legend wrapperStyle={{ color: "#9ca3af", fontSize: 12 }} />
+                  <Bar dataKey="outbound" name="Outbound" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="inbound" name="Inbound" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-[var(--color-text-muted)] text-sm">
+                No call data yet
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  change,
+  positive,
+  color,
+}: {
+  label: string;
+  value: string;
+  change: string;
+  positive: boolean;
+  color: string;
+}) {
+  const colorMap: Record<string, { text: string }> = {
+    blue: { text: "text-blue-400" },
+    green: { text: "text-green-400" },
+    violet: { text: "text-violet-400" },
+    cyan: { text: "text-cyan-400" },
+    amber: { text: "text-amber-400" },
+    rose: { text: "text-rose-400" },
+  };
+
+  const c = colorMap[color] || colorMap.blue;
+
+  return (
+    <div className="stat-card">
+      <span className="text-[10px] sm:text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wide">
+        {label}
+      </span>
+      <div className={`text-xl sm:text-2xl font-bold mt-1 ${c.text}`}>{value}</div>
+      {change && (
+        <div className={`text-[10px] sm:text-xs mt-1 font-medium ${positive ? "text-green-400" : "text-red-400"}`}>
+          {change}
+          <span className="text-[var(--color-text-muted)] ml-1">vs prev period</span>
+        </div>
+      )}
     </div>
   );
 }

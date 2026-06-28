@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
           );
           const output = new EncodedFileOutput({
             fileType: 2, // OGG
-            filepath: `${roomName}.ogg`,
+            filepath: `/recordings/${roomName}.ogg`,
           });
           await egressClient.startRoomCompositeEgress(
             roomName,
