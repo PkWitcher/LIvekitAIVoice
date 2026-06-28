@@ -202,24 +202,11 @@ def create_tts(provider: str = None, voice_id: str = None):
         voice = voice_id or config.TTS_PROVIDERS["elevenlabs"]["default_voice"]
         model_id = config.TTS_PROVIDERS["elevenlabs"].get("model", "eleven_multilingual_v2")
         logger.info(f"Creating ElevenLabs TTS: voice={voice}, model={model_id}")
-        try:
-            return elevenlabs.TTS(
-                voice=voice,
-                model=model_id,
-                api_key=eleven_key,
-            )
-        except TypeError:
-            # Try alternate constructor signature
-            try:
-                return elevenlabs.TTS(
-                    voice_id=voice,
-                    model_id=model_id,
-                    api_key=eleven_key,
-                )
-            except Exception as e:
-                logger.error(f"Failed to create ElevenLabs TTS: {e}")
-                voice = config.TTS_PROVIDERS["deepgram"]["default_voice"]
-                return deepgram.TTS(model=voice)
+        return elevenlabs.TTS(
+            voice=elevenlabs.Voice(id=voice),
+            model=model_id,
+            api_key=eleven_key,
+        )
     elif provider == "deepgram":
         voice = voice_id or config.TTS_PROVIDERS["deepgram"]["default_voice"]
         valid_voices = config.TTS_PROVIDERS["deepgram"]["voices"]
