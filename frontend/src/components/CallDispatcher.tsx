@@ -127,8 +127,8 @@ export default function CallDispatcher() {
             onChange={(e) => setVoice(e.target.value)}
           >
             <optgroup label="ElevenLabs (Multilingual)">
-              <option value="RABOvaPec1ymXz02oDQi">Indian Voice 1 (Default)</option>
-              <option value="czQ9pLzjRaF61EAYjcPC">Indian Voice 2</option>
+              <option value="RABOvaPec1ymXz02oDQi">ElevenLabs Voice 1 (Default)</option>
+              <option value="czQ9pLzjRaF61EAYjcPC">ElevenLabs Voice 2</option>
               <option value="EXAVITQu4vr4xnSDxMaL">Sarah — Female</option>
               <option value="21m00Tcm4TlvDq8ikWAM">Rachel — Female</option>
               <option value="XrExE9yKIg1WjnnlVkGX">Matilda — Female</option>
