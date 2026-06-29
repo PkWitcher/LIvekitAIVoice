@@ -38,11 +38,11 @@ SPEECH STYLE:
 # Greetings
 # ──────────────────────────────────────────────
 INITIAL_GREETING = (
-    "Hello! This is Nova. How can I help you today?"
+    "Hello! How can I help you today?"
 )
 
 INBOUND_GREETING = (
-    "Hello! Nova here. How can I help you?"
+    "Hello! How can I help you?"
 )
 
 # ──────────────────────────────────────────────
