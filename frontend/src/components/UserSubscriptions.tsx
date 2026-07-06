@@ -171,23 +171,23 @@ export default function UserSubscriptions({ users }: { users: UserOption[] }) {
     }).format(cents / 100);
   };
 
-  const getPlanBadgeColor = (plan: string) => {
+  const getPlanConfig = (plan: string) => {
     switch (plan) {
-      case "free": return "bg-gray-500/10 text-gray-400 border-gray-500/20";
-      case "basic": return "bg-blue-500/10 text-blue-400 border-blue-500/20";
-      case "pro": return "bg-purple-500/10 text-purple-400 border-purple-500/20";
-      case "enterprise": return "bg-amber-500/10 text-amber-400 border-amber-500/20";
-      default: return "bg-gray-500/10 text-gray-400 border-gray-500/20";
+      case "free": return { color: "text-gray-400", bg: "bg-gray-500/8", border: "border-gray-500/20", icon: "○" };
+      case "basic": return { color: "text-blue-400", bg: "bg-blue-500/8", border: "border-blue-500/20", icon: "◆" };
+      case "pro": return { color: "text-purple-400", bg: "bg-purple-500/8", border: "border-purple-500/20", icon: "★" };
+      case "enterprise": return { color: "text-amber-400", bg: "bg-amber-500/8", border: "border-amber-500/20", icon: "◈" };
+      default: return { color: "text-gray-400", bg: "bg-gray-500/8", border: "border-gray-500/20", icon: "○" };
     }
   };
 
-  const getStatusBadgeColor = (status: string) => {
+  const getStatusConfig = (status: string) => {
     switch (status) {
-      case "active": return "bg-green-500/10 text-green-400 border-green-500/20";
-      case "trial": return "bg-blue-500/10 text-blue-400 border-blue-500/20";
-      case "expired": return "bg-red-500/10 text-red-400 border-red-500/20";
-      case "cancelled": return "bg-gray-500/10 text-gray-400 border-gray-500/20";
-      default: return "bg-gray-500/10 text-gray-400 border-gray-500/20";
+      case "active": return { color: "text-green-400", bg: "bg-green-500/8", border: "border-green-500/20", dot: "bg-green-400" };
+      case "trial": return { color: "text-blue-400", bg: "bg-blue-500/8", border: "border-blue-500/20", dot: "bg-blue-400" };
+      case "expired": return { color: "text-red-400", bg: "bg-red-500/8", border: "border-red-500/20", dot: "bg-red-400" };
+      case "cancelled": return { color: "text-gray-400", bg: "bg-gray-500/8", border: "border-gray-500/20", dot: "bg-gray-400" };
+      default: return { color: "text-gray-400", bg: "bg-gray-500/8", border: "border-gray-500/20", dot: "bg-gray-400" };
     }
   };
 
@@ -196,11 +196,19 @@ export default function UserSubscriptions({ users }: { users: UserOption[] }) {
     return Math.min(100, Math.round((used / max) * 100));
   };
 
+  const getUsageColor = (percent: number) => {
+    if (percent >= 90) return "bg-red-500";
+    if (percent >= 70) return "bg-amber-500";
+    return "bg-blue-500";
+  };
+
   if (loading) {
     return (
-      <div className="card p-8 text-center">
-        <span className="spinner" />
-        <span className="text-[var(--color-text-secondary)] ml-2">Loading subscriptions...</span>
+      <div className="card p-10 text-center">
+        <div className="flex items-center justify-center gap-3">
+          <span className="spinner" />
+          <span className="text-sm text-[var(--color-text-secondary)]">Loading subscriptions...</span>
+        </div>
       </div>
     );
   }
@@ -209,23 +217,31 @@ export default function UserSubscriptions({ users }: { users: UserOption[] }) {
     <>
       {/* Subscription Section */}
       <div className="card overflow-hidden !p-0">
-        <div className="p-5 sm:p-6 border-b border-[var(--color-border)]">
-          <div className="flex items-center justify-between">
+        <div className="p-4 sm:p-6 border-b border-[var(--color-border)]">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <h2 className="text-base font-semibold text-white">User Subscriptions</h2>
-              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Manage plans and usage limits per user</p>
+              <h2 className="text-sm sm:text-base font-semibold text-white tracking-tight">Subscriptions</h2>
+              <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">Manage plans, limits & billing per user</p>
             </div>
-            <button
-              onClick={openAddModal}
-              className="px-3 py-1.5 text-xs font-medium rounded-lg bg-purple-600 hover:bg-purple-500 text-white transition-colors"
-            >
-              + Assign Plan
-            </button>
+            <div className="flex items-center gap-2">
+              <span className="badge badge-blue">
+                {subscriptions.length} active
+              </span>
+              <button
+                onClick={openAddModal}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                Assign Plan
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Desktop table */}
-        <div className="hidden md:block overflow-x-auto">
+        <div className="hidden lg:block overflow-x-auto">
           <table className="premium-table">
             <thead>
               <tr>
@@ -235,86 +251,117 @@ export default function UserSubscriptions({ users }: { users: UserOption[] }) {
                 <th className="text-center">Calls Usage</th>
                 <th className="text-center">Minutes Usage</th>
                 <th className="text-center">Price/mo</th>
-                <th className="text-center">Started</th>
-                <th className="text-center">Expires</th>
+                <th className="text-center">Period</th>
                 <th className="text-center">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {subscriptions.map((sub) => (
-                <tr key={sub.id}>
-                  <td className="text-left">
-                    <span className="text-white font-medium">{sub.email}</span>
-                  </td>
-                  <td className="text-center">
-                    <span className={`inline-block px-2 py-0.5 text-[11px] font-semibold rounded-full border capitalize ${getPlanBadgeColor(sub.plan)}`}>
-                      {sub.plan}
-                    </span>
-                  </td>
-                  <td className="text-center">
-                    <span className={`inline-block px-2 py-0.5 text-[11px] font-semibold rounded-full border capitalize ${getStatusBadgeColor(sub.status)}`}>
-                      {sub.status}
-                    </span>
-                  </td>
-                  <td className="text-center">
-                    <div className="flex flex-col items-center gap-1">
-                      <span className="text-xs text-white">{sub.calls_used} / {sub.max_calls_per_month}</span>
-                      <div className="w-16 h-1.5 rounded-full bg-white/10 overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-purple-500 transition-all"
-                          style={{ width: `${getUsagePercent(sub.calls_used, sub.max_calls_per_month)}%` }}
-                        />
+              {subscriptions.map((sub) => {
+                const planCfg = getPlanConfig(sub.plan);
+                const statusCfg = getStatusConfig(sub.status);
+                const callPercent = getUsagePercent(sub.calls_used, sub.max_calls_per_month);
+                const minPercent = getUsagePercent(sub.minutes_used, sub.max_minutes_per_month);
+
+                return (
+                  <tr key={sub.id}>
+                    <td className="text-left">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-white/10 flex items-center justify-center text-[10px] font-bold text-blue-400 uppercase shrink-0">
+                          {sub.email?.charAt(0) || "?"}
+                        </div>
+                        <span className="text-white font-medium text-sm truncate max-w-[160px]">{sub.email}</span>
                       </div>
-                    </div>
-                  </td>
-                  <td className="text-center">
-                    <div className="flex flex-col items-center gap-1">
-                      <span className="text-xs text-white">{Math.round(sub.minutes_used)} / {sub.max_minutes_per_month}</span>
-                      <div className="w-16 h-1.5 rounded-full bg-white/10 overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-blue-500 transition-all"
-                          style={{ width: `${getUsagePercent(sub.minutes_used, sub.max_minutes_per_month)}%` }}
-                        />
+                    </td>
+                    <td className="text-center">
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded-lg border capitalize ${planCfg.bg} ${planCfg.color} ${planCfg.border}`}>
+                        <span className="text-[9px]">{planCfg.icon}</span>
+                        {sub.plan}
+                      </span>
+                    </td>
+                    <td className="text-center">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-lg border capitalize ${statusCfg.bg} ${statusCfg.color} ${statusCfg.border}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dot}`} />
+                        {sub.status}
+                      </span>
+                    </td>
+                    <td className="text-center">
+                      <div className="flex flex-col items-center gap-1.5 min-w-[100px]">
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-xs font-semibold text-white">{sub.calls_used}</span>
+                          <span className="text-[10px] text-[var(--color-text-muted)]">/ {sub.max_calls_per_month}</span>
+                        </div>
+                        <div className="w-full max-w-[80px] h-1.5 rounded-full bg-white/5 overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${getUsageColor(callPercent)}`}
+                            style={{ width: `${callPercent}%` }}
+                          />
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="text-center text-white text-sm">
-                    {formatAmount(sub.amount_cents, sub.currency)}
-                  </td>
-                  <td className="text-center text-[var(--color-text-secondary)] text-xs">
-                    {formatDate(sub.started_at)}
-                  </td>
-                  <td className="text-center text-[var(--color-text-secondary)] text-xs">
-                    {formatDate(sub.expires_at)}
-                  </td>
-                  <td className="text-center">
-                    <div className="flex items-center justify-center gap-1">
-                      <button
-                        onClick={() => openEditModal(sub)}
-                        className="p-1.5 rounded-lg hover:bg-white/5 text-[var(--color-text-secondary)] hover:text-white transition-colors"
-                        title="Edit"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => handleDelete(sub.user_id)}
-                        className="p-1.5 rounded-lg hover:bg-red-500/10 text-[var(--color-text-secondary)] hover:text-red-400 transition-colors"
-                        title="Remove"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="text-center">
+                      <div className="flex flex-col items-center gap-1.5 min-w-[100px]">
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-xs font-semibold text-white">{Math.round(sub.minutes_used)}</span>
+                          <span className="text-[10px] text-[var(--color-text-muted)]">/ {sub.max_minutes_per_month}</span>
+                        </div>
+                        <div className="w-full max-w-[80px] h-1.5 rounded-full bg-white/5 overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${getUsageColor(minPercent)}`}
+                            style={{ width: `${minPercent}%` }}
+                          />
+                        </div>
+                      </div>
+                    </td>
+                    <td className="text-center">
+                      <span className="text-sm font-semibold text-white">
+                        {formatAmount(sub.amount_cents, sub.currency)}
+                      </span>
+                    </td>
+                    <td className="text-center">
+                      <div className="flex flex-col items-center">
+                        <span className="text-[11px] text-[var(--color-text-secondary)]">{formatDate(sub.started_at)}</span>
+                        {sub.expires_at && (
+                          <span className="text-[10px] text-[var(--color-text-muted)]">→ {formatDate(sub.expires_at)}</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="text-center">
+                      <div className="flex items-center justify-center gap-0.5">
+                        <button
+                          onClick={() => openEditModal(sub)}
+                          className="p-2 rounded-lg hover:bg-white/5 text-[var(--color-text-muted)] hover:text-blue-400 transition-all"
+                          title="Edit subscription"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => handleDelete(sub.user_id)}
+                          className="p-2 rounded-lg hover:bg-red-500/8 text-[var(--color-text-muted)] hover:text-red-400 transition-all"
+                          title="Remove subscription"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
               {subscriptions.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="text-center py-12 text-[var(--color-text-muted)]">
-                    No subscriptions assigned yet
+                  <td colSpan={8} className="text-center py-16 text-[var(--color-text-muted)]">
+                    <div className="flex flex-col items-center gap-2">
+                      <svg className="w-8 h-8 opacity-40" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" />
+                      </svg>
+                      <span className="text-sm">No subscriptions assigned yet</span>
+                      <button onClick={openAddModal} className="mt-1 text-xs text-blue-400 hover:text-blue-300 transition-colors">
+                        + Assign your first plan
+                      </button>
+                    </div>
                   </td>
                 </tr>
               )}
@@ -322,49 +369,154 @@ export default function UserSubscriptions({ users }: { users: UserOption[] }) {
           </table>
         </div>
 
+        {/* Tablet grid */}
+        <div className="hidden md:grid lg:hidden grid-cols-2 gap-3 p-4">
+          {subscriptions.map((sub) => {
+            const planCfg = getPlanConfig(sub.plan);
+            const statusCfg = getStatusConfig(sub.status);
+            const callPercent = getUsagePercent(sub.calls_used, sub.max_calls_per_month);
+            const minPercent = getUsagePercent(sub.minutes_used, sub.max_minutes_per_month);
+
+            return (
+              <div key={sub.id} className="p-4 rounded-xl border border-[var(--color-border)] bg-white/[0.02] space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-white/10 flex items-center justify-center text-[9px] font-bold text-blue-400 uppercase">
+                      {sub.email?.charAt(0) || "?"}
+                    </div>
+                    <span className="text-xs text-white font-medium truncate max-w-[120px]">{sub.email}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => openEditModal(sub)} className="p-1 text-[var(--color-text-muted)] hover:text-blue-400">
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" /></svg>
+                    </button>
+                    <button onClick={() => handleDelete(sub.user_id)} className="p-1 text-[var(--color-text-muted)] hover:text-red-400">
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-md border capitalize ${planCfg.bg} ${planCfg.color} ${planCfg.border}`}>{sub.plan}</span>
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-md border capitalize ${statusCfg.bg} ${statusCfg.color} ${statusCfg.border}`}>
+                    <span className={`w-1 h-1 rounded-full ${statusCfg.dot}`} />{sub.status}
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  <div>
+                    <div className="flex justify-between text-[10px] mb-0.5">
+                      <span className="text-[var(--color-text-muted)]">Calls</span>
+                      <span className="text-white">{sub.calls_used}/{sub.max_calls_per_month}</span>
+                    </div>
+                    <div className="h-1 rounded-full bg-white/5 overflow-hidden">
+                      <div className={`h-full rounded-full ${getUsageColor(callPercent)}`} style={{ width: `${callPercent}%` }} />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-[10px] mb-0.5">
+                      <span className="text-[var(--color-text-muted)]">Minutes</span>
+                      <span className="text-white">{Math.round(sub.minutes_used)}/{sub.max_minutes_per_month}</span>
+                    </div>
+                    <div className="h-1 rounded-full bg-white/5 overflow-hidden">
+                      <div className={`h-full rounded-full ${getUsageColor(minPercent)}`} style={{ width: `${minPercent}%` }} />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between pt-1 border-t border-white/[0.04]">
+                  <span className="text-xs font-semibold text-white">{formatAmount(sub.amount_cents, sub.currency)}/mo</span>
+                  <span className="text-[10px] text-[var(--color-text-muted)]">{formatDate(sub.expires_at)}</span>
+                </div>
+              </div>
+            );
+          })}
+          {subscriptions.length === 0 && (
+            <div className="col-span-2 p-10 text-center text-sm text-[var(--color-text-muted)]">
+              No subscriptions assigned yet
+            </div>
+          )}
+        </div>
+
         {/* Mobile cards */}
         <div className="md:hidden divide-y divide-[var(--color-border)]">
-          {subscriptions.map((sub) => (
-            <div key={sub.id} className="p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-white font-medium truncate max-w-[180px]">{sub.email}</span>
-                <div className="flex items-center gap-1.5">
-                  <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full border capitalize ${getPlanBadgeColor(sub.plan)}`}>
-                    {sub.plan}
-                  </span>
-                  <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full border capitalize ${getStatusBadgeColor(sub.status)}`}>
-                    {sub.status}
-                  </span>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="p-2 rounded-lg bg-white/[0.02]">
-                  <p className="text-[10px] text-[var(--color-text-muted)] mb-1">Calls</p>
-                  <p className="text-xs text-white">{sub.calls_used} / {sub.max_calls_per_month}</p>
-                  <div className="w-full h-1 rounded-full bg-white/10 mt-1 overflow-hidden">
-                    <div className="h-full rounded-full bg-purple-500" style={{ width: `${getUsagePercent(sub.calls_used, sub.max_calls_per_month)}%` }} />
+          {subscriptions.map((sub) => {
+            const planCfg = getPlanConfig(sub.plan);
+            const statusCfg = getStatusConfig(sub.status);
+            const callPercent = getUsagePercent(sub.calls_used, sub.max_calls_per_month);
+            const minPercent = getUsagePercent(sub.minutes_used, sub.max_minutes_per_month);
+
+            return (
+              <div key={sub.id} className="p-4 space-y-3">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-white/10 flex items-center justify-center text-[10px] font-bold text-blue-400 uppercase">
+                      {sub.email?.charAt(0) || "?"}
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-sm text-white font-medium block truncate max-w-[160px]">{sub.email}</span>
+                      <span className="text-[10px] text-[var(--color-text-muted)]">Since {formatDate(sub.started_at)}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => openEditModal(sub)} className="p-1.5 rounded-lg hover:bg-white/5 text-[var(--color-text-muted)] hover:text-blue-400 transition-colors">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" /></svg>
+                    </button>
+                    <button onClick={() => handleDelete(sub.user_id)} className="p-1.5 rounded-lg hover:bg-red-500/8 text-[var(--color-text-muted)] hover:text-red-400 transition-colors">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+                    </button>
                   </div>
                 </div>
-                <div className="p-2 rounded-lg bg-white/[0.02]">
-                  <p className="text-[10px] text-[var(--color-text-muted)] mb-1">Minutes</p>
-                  <p className="text-xs text-white">{Math.round(sub.minutes_used)} / {sub.max_minutes_per_month}</p>
-                  <div className="w-full h-1 rounded-full bg-white/10 mt-1 overflow-hidden">
-                    <div className="h-full rounded-full bg-blue-500" style={{ width: `${getUsagePercent(sub.minutes_used, sub.max_minutes_per_month)}%` }} />
+
+                {/* Badges */}
+                <div className="flex items-center gap-2">
+                  <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-md border capitalize ${planCfg.bg} ${planCfg.color} ${planCfg.border}`}>
+                    {planCfg.icon} {sub.plan}
+                  </span>
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-md border capitalize ${statusCfg.bg} ${statusCfg.color} ${statusCfg.border}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dot}`} />{sub.status}
+                  </span>
+                  <span className="ml-auto text-xs font-semibold text-white">{formatAmount(sub.amount_cents, sub.currency)}/mo</span>
+                </div>
+
+                {/* Usage bars */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] text-[var(--color-text-muted)]">Calls</span>
+                      <span className="text-[10px] font-medium text-white">{callPercent}%</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
+                      <div className={`h-full rounded-full transition-all ${getUsageColor(callPercent)}`} style={{ width: `${callPercent}%` }} />
+                    </div>
+                    <p className="text-[9px] text-[var(--color-text-muted)] mt-1">{sub.calls_used} / {sub.max_calls_per_month}</p>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] text-[var(--color-text-muted)]">Minutes</span>
+                      <span className="text-[10px] font-medium text-white">{minPercent}%</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
+                      <div className={`h-full rounded-full transition-all ${getUsageColor(minPercent)}`} style={{ width: `${minPercent}%` }} />
+                    </div>
+                    <p className="text-[9px] text-[var(--color-text-muted)] mt-1">{Math.round(sub.minutes_used)} / {sub.max_minutes_per_month}</p>
                   </div>
                 </div>
+
+                {sub.expires_at && (
+                  <div className="flex items-center gap-1.5 text-[10px] text-[var(--color-text-muted)]">
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" /></svg>
+                    Expires {formatDate(sub.expires_at)}
+                  </div>
+                )}
               </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-[var(--color-text-secondary)]">{formatAmount(sub.amount_cents, sub.currency)}/mo</span>
-                <div className="flex gap-2">
-                  <button onClick={() => openEditModal(sub)} className="text-purple-400 hover:text-purple-300">Edit</button>
-                  <button onClick={() => handleDelete(sub.user_id)} className="text-red-400 hover:text-red-300">Remove</button>
-                </div>
-              </div>
-            </div>
-          ))}
+            );
+          })}
           {subscriptions.length === 0 && (
-            <div className="p-8 text-center text-sm text-[var(--color-text-muted)]">
-              No subscriptions assigned yet
+            <div className="p-10 text-center">
+              <svg className="w-8 h-8 mx-auto text-[var(--color-text-muted)] opacity-40 mb-2" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" />
+              </svg>
+              <p className="text-sm text-[var(--color-text-muted)]">No subscriptions yet</p>
+              <button onClick={openAddModal} className="mt-2 text-xs text-blue-400 hover:text-blue-300">+ Assign first plan</button>
             </div>
           )}
         </div>
@@ -372,27 +524,46 @@ export default function UserSubscriptions({ users }: { users: UserOption[] }) {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowModal(false)} />
-          <div className="relative w-full max-w-md card p-6 space-y-4 animate-in">
-            <h3 className="text-lg font-semibold text-white">
-              {editingSub ? "Edit Subscription" : "Assign Subscription"}
-            </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowModal(false)} />
+          <div className="relative w-full max-w-lg card p-5 sm:p-6 space-y-5 animate-in max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-semibold text-white tracking-tight">
+                  {editingSub ? "Edit Subscription" : "Assign Subscription"}
+                </h3>
+                <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
+                  {editingSub ? "Update plan details and limits" : "Select a user and configure their plan"}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowModal(false)}
+                className="p-2 rounded-lg hover:bg-white/5 text-[var(--color-text-muted)] hover:text-white transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
 
             {error && (
-              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400">
-                {error}
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/8 border border-red-500/20">
+                <svg className="w-4 h-4 text-red-400 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                </svg>
+                <span className="text-sm text-red-400">{error}</span>
               </div>
             )}
 
             {/* User Select */}
             <div>
-              <label className="block text-xs text-[var(--color-text-muted)] mb-1.5">User</label>
+              <label className="block text-[11px] text-[var(--color-text-muted)] uppercase tracking-wider font-semibold mb-2">User</label>
               <select
                 value={formUserId}
                 onChange={(e) => setFormUserId(e.target.value)}
                 disabled={!!editingSub}
-                className="w-full px-3 py-2 rounded-lg bg-white/5 border border-[var(--color-border)] text-sm text-white focus:outline-none focus:border-purple-500 disabled:opacity-50"
+                className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-[var(--color-border)] text-sm text-white focus:outline-none focus:border-blue-500/50 disabled:opacity-50 transition-colors"
               >
                 <option value="">Select a user...</option>
                 {users.map((u) => (
@@ -401,104 +572,121 @@ export default function UserSubscriptions({ users }: { users: UserOption[] }) {
               </select>
             </div>
 
-            {/* Plan */}
+            {/* Plan Selection */}
             <div>
-              <label className="block text-xs text-[var(--color-text-muted)] mb-1.5">Plan</label>
-              <div className="grid grid-cols-4 gap-1.5">
-                {["free", "basic", "pro", "enterprise"].map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => handlePlanChange(p)}
-                    className={`px-2 py-1.5 text-xs rounded-lg border transition-all capitalize ${
-                      formPlan === p
-                        ? "border-purple-500 bg-purple-500/10 text-purple-400"
-                        : "border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-white/20"
-                    }`}
-                  >
-                    {p}
-                  </button>
-                ))}
+              <label className="block text-[11px] text-[var(--color-text-muted)] uppercase tracking-wider font-semibold mb-2">Plan</label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {(["free", "basic", "pro", "enterprise"] as const).map((p) => {
+                  const cfg = getPlanConfig(p);
+                  const limits = PLAN_LIMITS[p];
+                  return (
+                    <button
+                      key={p}
+                      onClick={() => handlePlanChange(p)}
+                      className={`relative p-3 text-left rounded-xl border transition-all ${
+                        formPlan === p
+                          ? "border-blue-500/50 bg-blue-500/5 ring-1 ring-blue-500/20"
+                          : "border-[var(--color-border)] hover:border-white/15 bg-white/[0.02]"
+                      }`}
+                    >
+                      <span className={`text-xs font-semibold capitalize ${formPlan === p ? "text-blue-400" : cfg.color}`}>{p}</span>
+                      <p className="text-[9px] text-[var(--color-text-muted)] mt-0.5">{limits.calls} calls/mo</p>
+                      {formPlan === p && (
+                        <div className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-blue-400" />
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Status */}
+            {/* Status Selection */}
             <div>
-              <label className="block text-xs text-[var(--color-text-muted)] mb-1.5">Status</label>
-              <div className="grid grid-cols-4 gap-1.5">
-                {["active", "trial", "expired", "cancelled"].map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setFormStatus(s)}
-                    className={`px-2 py-1.5 text-xs rounded-lg border transition-all capitalize ${
-                      formStatus === s
-                        ? "border-green-500 bg-green-500/10 text-green-400"
-                        : "border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-white/20"
-                    }`}
-                  >
-                    {s}
-                  </button>
-                ))}
+              <label className="block text-[11px] text-[var(--color-text-muted)] uppercase tracking-wider font-semibold mb-2">Status</label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {(["active", "trial", "expired", "cancelled"] as const).map((s) => {
+                  const cfg = getStatusConfig(s);
+                  return (
+                    <button
+                      key={s}
+                      onClick={() => setFormStatus(s)}
+                      className={`flex items-center justify-center gap-1.5 px-3 py-2 text-xs rounded-xl border transition-all capitalize ${
+                        formStatus === s
+                          ? `${cfg.border} ${cfg.bg} ${cfg.color}`
+                          : "border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-white/15"
+                      }`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${formStatus === s ? cfg.dot : "bg-current opacity-40"}`} />
+                      {s}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
             {/* Limits */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs text-[var(--color-text-muted)] mb-1.5">Max Calls/mo</label>
+                <label className="block text-[11px] text-[var(--color-text-muted)] uppercase tracking-wider font-semibold mb-2">Max Calls/mo</label>
                 <input
                   type="number"
                   value={formMaxCalls}
                   onChange={(e) => setFormMaxCalls(parseInt(e.target.value) || 0)}
-                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-[var(--color-border)] text-sm text-white focus:outline-none focus:border-purple-500"
+                  className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-[var(--color-border)] text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors"
                 />
               </div>
               <div>
-                <label className="block text-xs text-[var(--color-text-muted)] mb-1.5">Max Minutes/mo</label>
+                <label className="block text-[11px] text-[var(--color-text-muted)] uppercase tracking-wider font-semibold mb-2">Max Minutes/mo</label>
                 <input
                   type="number"
                   value={formMaxMinutes}
                   onChange={(e) => setFormMaxMinutes(parseInt(e.target.value) || 0)}
-                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-[var(--color-border)] text-sm text-white focus:outline-none focus:border-purple-500"
+                  className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-[var(--color-border)] text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors"
                 />
               </div>
             </div>
 
-            {/* Amount & Expiry */}
+            {/* Price & Expiry */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs text-[var(--color-text-muted)] mb-1.5">Price (cents)</label>
+                <label className="block text-[11px] text-[var(--color-text-muted)] uppercase tracking-wider font-semibold mb-2">Price (cents)</label>
                 <input
                   type="number"
                   value={formAmount}
                   onChange={(e) => setFormAmount(parseInt(e.target.value) || 0)}
-                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-[var(--color-border)] text-sm text-white focus:outline-none focus:border-purple-500"
+                  className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-[var(--color-border)] text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors"
                 />
               </div>
               <div>
-                <label className="block text-xs text-[var(--color-text-muted)] mb-1.5">Expires</label>
+                <label className="block text-[11px] text-[var(--color-text-muted)] uppercase tracking-wider font-semibold mb-2">Expires On</label>
                 <input
                   type="date"
                   value={formExpires}
                   onChange={(e) => setFormExpires(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-[var(--color-border)] text-sm text-white focus:outline-none focus:border-purple-500"
+                  className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-[var(--color-border)] text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors"
                 />
               </div>
             </div>
 
             {/* Actions */}
-            <div className="flex items-center justify-end gap-2 pt-2">
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
               <button
                 onClick={() => setShowModal(false)}
-                className="px-4 py-2 text-sm rounded-lg border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-white hover:border-white/20 transition-colors"
+                className="px-4 py-2.5 text-sm rounded-xl border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-white hover:border-white/20 transition-all"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="px-4 py-2 text-sm rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-medium transition-colors disabled:opacity-50"
+                className="px-5 py-2.5 text-sm rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-medium transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 disabled:opacity-50 disabled:shadow-none"
               >
-                {saving ? "Saving..." : editingSub ? "Update" : "Assign"}
+                {saving ? (
+                  <span className="flex items-center gap-2">
+                    <span className="spinner" style={{ width: 12, height: 12, borderWidth: 1.5 }} />
+                    Saving...
+                  </span>
+                ) : editingSub ? "Update Plan" : "Assign Plan"}
               </button>
             </div>
           </div>
