@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase-browser";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
+import UserSubscriptions from "@/components/UserSubscriptions";
 
 interface UserStats {
   user_id: string;
@@ -266,6 +267,13 @@ export default function AdminDashboardPage() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Subscription Management */}
+        <div className="animate-in animate-in-delay-2">
+          <UserSubscriptions
+            users={(stats?.users || []).map((u) => ({ user_id: u.user_id, email: u.email }))}
+          />
         </div>
       </div>
     </div>
