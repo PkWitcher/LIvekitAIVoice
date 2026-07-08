@@ -216,12 +216,12 @@ export default function UserSubscriptions({ users }: { users: UserOption[] }) {
   return (
     <>
       {/* Subscription Section */}
-      <div className="card overflow-hidden !p-0">
-        <div className="p-4 sm:p-6 border-b border-[var(--color-border)]">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="admin-card">
+        <div className="admin-card-header">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 w-full">
             <div>
-              <h2 className="text-sm sm:text-base font-semibold text-white tracking-tight">Subscriptions</h2>
-              <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">Manage plans, limits & billing per user</p>
+              <h2 className="admin-card-title">Subscriptions</h2>
+              <p className="admin-card-subtitle">Manage plans, limits & billing per user</p>
             </div>
             <div className="flex items-center gap-2">
               <span className="badge badge-blue">
@@ -241,8 +241,8 @@ export default function UserSubscriptions({ users }: { users: UserOption[] }) {
         </div>
 
         {/* Desktop table */}
-        <div className="hidden lg:block overflow-x-auto">
-          <table className="premium-table">
+        <div className="hidden lg:block overflow-x-auto p-1">
+          <table className="admin-table">
             <thead>
               <tr>
                 <th className="text-left">User</th>
