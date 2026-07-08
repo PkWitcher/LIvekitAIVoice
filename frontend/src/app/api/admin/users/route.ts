@@ -41,10 +41,25 @@ export async function GET() {
       }
     }
 
+    // Get user profiles (name, phone)
+    const { data: profiles } = await supabase
+      .from("user_profiles")
+      .select("id, full_name, phone, created_at");
+
+    const profileMap: Record<string, { full_name: string; phone: string; registered_at: string }> = {};
+    if (profiles) {
+      for (const p of profiles) {
+        profileMap[p.id] = { full_name: p.full_name || "", phone: p.phone || "", registered_at: p.created_at };
+      }
+    }
+
     // Aggregate per user
     const userMap: Record<string, {
       user_id: string;
       email: string;
+      full_name: string;
+      phone: string;
+      registered_at: string | null;
       total_calls: number;
       completed_calls: number;
       failed_calls: number;
@@ -57,9 +72,13 @@ export async function GET() {
     for (const log of logs || []) {
       const uid = log.user_id;
       if (!userMap[uid]) {
+        const profile = profileMap[uid];
         userMap[uid] = {
           user_id: uid,
           email: emailMap[uid] || "Unknown",
+          full_name: profile?.full_name || "",
+          phone: profile?.phone || "",
+          registered_at: profile?.registered_at || null,
           total_calls: 0,
           completed_calls: 0,
           failed_calls: 0,
@@ -90,6 +109,9 @@ export async function GET() {
     const users = Object.values(userMap).map((u) => ({
       user_id: u.user_id,
       email: u.email,
+      full_name: u.full_name,
+      phone: u.phone,
+      registered_at: u.registered_at,
       total_calls: u.total_calls,
       completed_calls: u.completed_calls,
       failed_calls: u.failed_calls,
@@ -105,9 +127,13 @@ export async function GET() {
     if (authUsers) {
       for (const u of authUsers) {
         if (!userMap[u.id]) {
+          const profile = profileMap[u.id];
           users.push({
             user_id: u.id,
             email: u.email ?? "Unknown",
+            full_name: profile?.full_name || u.user_metadata?.full_name || "",
+            phone: profile?.phone || u.user_metadata?.phone || "",
+            registered_at: profile?.registered_at || u.created_at || null,
             total_calls: 0,
             completed_calls: 0,
             failed_calls: 0,

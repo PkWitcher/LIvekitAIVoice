@@ -10,6 +10,9 @@ import UserSubscriptions from "@/components/UserSubscriptions";
 interface UserStats {
   user_id: string;
   email: string;
+  full_name: string;
+  phone: string;
+  registered_at: string | null;
   total_calls: number;
   completed_calls: number;
   failed_calls: number;
@@ -301,12 +304,12 @@ export default function AdminDashboardPage() {
                     <thead>
                       <tr>
                         <th className="text-left">User</th>
+                        <th className="text-center">Phone</th>
                         <th className="text-center">Total</th>
                         <th className="text-center">Completed</th>
                         <th className="text-center">Failed</th>
                         <th className="text-center">No Answer</th>
                         <th className="text-center">Duration</th>
-                        <th className="text-center">Avg</th>
                         <th className="text-center">Last Active</th>
                       </tr>
                     </thead>
@@ -316,10 +319,16 @@ export default function AdminDashboardPage() {
                           <td className="text-left">
                             <div className="admin-user-cell">
                               <div className="admin-avatar">
-                                {user.email?.charAt(0) || "?"}
+                                {(user.full_name || user.email)?.charAt(0) || "?"}
                               </div>
-                              <span className="admin-user-email">{user.email}</span>
+                              <div className="admin-user-info">
+                                {user.full_name && <span className="admin-user-name">{user.full_name}</span>}
+                                <span className="admin-user-email">{user.email}</span>
+                              </div>
                             </div>
+                          </td>
+                          <td className="text-center">
+                            <span className="admin-table-muted text-xs font-mono">{user.phone || "—"}</span>
                           </td>
                           <td className="text-center">
                             <span className="admin-table-value">{user.total_calls}</span>
@@ -343,7 +352,6 @@ export default function AdminDashboardPage() {
                             </span>
                           </td>
                           <td className="text-center admin-table-secondary">{formatDuration(user.total_duration_seconds)}</td>
-                          <td className="text-center admin-table-muted">{formatDuration(user.avg_duration_seconds)}</td>
                           <td className="text-center admin-table-muted text-xs">{formatDate(user.last_call_at)}</td>
                         </tr>
                       ))}
@@ -368,9 +376,13 @@ export default function AdminDashboardPage() {
                       <div className="admin-mobile-card-header">
                         <div className="admin-user-cell">
                           <div className="admin-avatar">
-                            {user.email?.charAt(0) || "?"}
+                            {(user.full_name || user.email)?.charAt(0) || "?"}
                           </div>
-                          <span className="admin-user-email">{user.email}</span>
+                          <div className="admin-user-info">
+                            {user.full_name && <span className="admin-user-name">{user.full_name}</span>}
+                            <span className="admin-user-email">{user.email}</span>
+                            {user.phone && <span className="admin-user-phone">{user.phone}</span>}
+                          </div>
                         </div>
                         <span className="admin-mobile-date">{formatDate(user.last_call_at)}</span>
                       </div>
