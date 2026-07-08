@@ -8,6 +8,7 @@ import CallHistory from "@/components/CallHistory";
 import DashboardStats from "@/components/DashboardStats";
 import LogoutButton from "@/components/LogoutButton";
 import ThemeToggle from "@/components/ThemeToggle";
+import UpgradePlan from "@/components/UpgradePlan";
 import Link from "next/link";
 
 type Tab = "dashboard" | "calls" | "settings";
@@ -181,17 +182,8 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 ) : !subLoading && (
-                  <div className="animate-in animate-in-delay-2 sub-locked-section">
-                    <div className="sub-locked-overlay">
-                      <svg width="24" height="24" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
-                      </svg>
-                      <span>Subscribe to make calls</span>
-                    </div>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 opacity-30 pointer-events-none select-none">
-                      <CallDispatcher />
-                      <BulkDialer />
-                    </div>
+                  <div className="animate-in animate-in-delay-2">
+                    <UpgradePlan onSuccess={() => window.location.reload()} />
                   </div>
                 )}
 
@@ -236,17 +228,8 @@ export default function DashboardPage() {
                     <BulkDialer />
                   </div>
                 ) : !subLoading && (
-                  <div className="animate-in animate-in-delay-1 sub-locked-section">
-                    <div className="sub-locked-overlay">
-                      <svg width="24" height="24" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
-                      </svg>
-                      <span>Subscribe to make calls</span>
-                    </div>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 opacity-30 pointer-events-none select-none">
-                      <CallDispatcher />
-                      <BulkDialer />
-                    </div>
+                  <div className="animate-in animate-in-delay-1">
+                    <UpgradePlan onSuccess={() => window.location.reload()} />
                   </div>
                 )}
 

@@ -1184,6 +1184,201 @@ html {
   color: #4a5568;
 }
 
+/* ── Upgrade Plan Component ──────────────────── */
+.upgrade-section {
+  padding: 1.5rem;
+  border-radius: 16px;
+  background: rgba(12, 12, 16, 0.8);
+  border: 1px solid rgba(255,255,255,0.04);
+  backdrop-filter: blur(8px);
+}
+.upgrade-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+.upgrade-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+.upgrade-subtitle {
+  font-size: 0.8125rem;
+  color: #666;
+  margin-top: 0.25rem;
+}
+.upgrade-alert {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  border-radius: 10px;
+  font-size: 0.8125rem;
+  margin-bottom: 1.25rem;
+}
+.upgrade-alert-error {
+  background: rgba(239,68,68,0.06);
+  border: 1px solid rgba(239,68,68,0.12);
+  color: #f87171;
+}
+.upgrade-alert-success {
+  background: rgba(34,197,94,0.06);
+  border: 1px solid rgba(34,197,94,0.12);
+  color: #4ade80;
+}
+.upgrade-plans {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+@media (max-width: 768px) {
+  .upgrade-plans {
+    grid-template-columns: 1fr;
+  }
+}
+.upgrade-plan-card {
+  position: relative;
+  padding: 1.5rem 1.25rem;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+.upgrade-plan-card:hover {
+  border-color: rgba(255,255,255,0.1);
+  transform: translateY(-2px);
+}
+.upgrade-plan-card.popular {
+  border-color: rgba(59,130,246,0.3);
+  background: rgba(59,130,246,0.03);
+  box-shadow: 0 0 30px rgba(59,130,246,0.06);
+}
+.upgrade-popular-badge {
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #fff;
+  background: #3b82f6;
+  padding: 0.2rem 0.625rem;
+  border-radius: 100px;
+  white-space: nowrap;
+}
+.upgrade-plan-name {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #888;
+  margin-bottom: 0.5rem;
+}
+.upgrade-plan-card.popular .upgrade-plan-name {
+  color: #60a5fa;
+}
+.upgrade-plan-price {
+  margin-bottom: 0.75rem;
+}
+.upgrade-price-amount {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.03em;
+}
+.upgrade-price-period {
+  font-size: 0.75rem;
+  color: #666;
+}
+.upgrade-plan-limits {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  font-size: 0.6875rem;
+  color: #888;
+  margin-bottom: 1rem;
+}
+.upgrade-pay-btn {
+  width: 100%;
+  padding: 0.625rem 1rem;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #ccc;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.upgrade-pay-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.15);
+  color: #fff;
+}
+.upgrade-pay-btn.primary {
+  color: #fff;
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  border: none;
+  box-shadow: 0 4px 16px rgba(59,130,246,0.3);
+}
+.upgrade-pay-btn.primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(59,130,246,0.4);
+}
+.upgrade-pay-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+[data-theme="light"] .upgrade-section {
+  background: #ffffff;
+  border-color: #e2e4e8;
+}
+[data-theme="light"] .upgrade-title {
+  color: #1a1a2e;
+}
+[data-theme="light"] .upgrade-subtitle {
+  color: #8892a4;
+}
+[data-theme="light"] .upgrade-plan-card {
+  background: #fafafa;
+  border-color: #e2e4e8;
+}
+[data-theme="light"] .upgrade-plan-card:hover {
+  border-color: #d0d5dd;
+}
+[data-theme="light"] .upgrade-plan-card.popular {
+  background: rgba(59,130,246,0.02);
+  border-color: rgba(59,130,246,0.25);
+}
+[data-theme="light"] .upgrade-price-amount {
+  color: #1a1a2e;
+}
+[data-theme="light"] .upgrade-price-period {
+  color: #8892a4;
+}
+[data-theme="light"] .upgrade-plan-name {
+  color: #4a5568;
+}
+[data-theme="light"] .upgrade-plan-limits {
+  color: #4a5568;
+}
+[data-theme="light"] .upgrade-pay-btn {
+  color: #4a5568;
+  background: rgba(0,0,0,0.03);
+  border-color: #e2e4e8;
+}
+[data-theme="light"] .upgrade-pay-btn:hover:not(:disabled) {
+  background: rgba(0,0,0,0.06);
+  color: #1a1a2e;
+}
+
 /* ── Sidebar ─────────────────────────────────── */
 .sidebar-link {
   display: flex;
