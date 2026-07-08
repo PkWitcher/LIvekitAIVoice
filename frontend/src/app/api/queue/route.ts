@@ -34,6 +34,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
+    // Check subscription — user must have an active plan to make calls
+    const supabase = getSupabase();
+    const { data: subscription } = await supabase
+      ?.from("user_subscriptions")
+      .select("status, max_calls_per_month, calls_used")
+      .eq("user_id", user.id)
+      .single() ?? { data: null };
+
+    if (!subscription || (subscription.status !== "active" && subscription.status !== "trial")) {
+      return NextResponse.json(
+        { success: false, error: "No active subscription. Please contact admin to activate your plan." },
+        { status: 403 }
+      );
+    }
+
     const body = (await request.json()) as QueueBody;
 
     if (
@@ -43,6 +58,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: "phone_numbers array is required" },
         { status: 400 }
+      );
+    }
+
+    // Check if user has enough calls remaining
+    const remainingCalls = subscription.max_calls_per_month - subscription.calls_used;
+    if (body.phone_numbers.length > remainingCalls) {
+      return NextResponse.json(
+        { success: false, error: `Only ${remainingCalls} calls remaining this month. Reduce numbers or upgrade plan.` },
+        { status: 403 }
       );
     }
 
@@ -144,10 +168,19 @@ export async function POST(request: NextRequest) {
       await sleep(DIAL_DELAY_MS);
     }
 
+    // Update calls_used count in subscription
+    const dispatched = results.filter((r) => r.status === "dispatched").length;
+    if (dispatched > 0) {
+      await supabase
+        ?.from("user_subscriptions")
+        .update({ calls_used: subscription.calls_used + dispatched })
+        .eq("user_id", user.id);
+    }
+
     return NextResponse.json({
       success: true,
       total: results.length,
-      dispatched: results.filter((r) => r.status === "dispatched").length,
+      dispatched,
       failed: results.filter((r) => r.status === "failed").length,
       results,
     });

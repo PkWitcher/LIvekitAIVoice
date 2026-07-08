@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase-browser";
 import CallDispatcher from "@/components/CallDispatcher";
 import BulkDialer from "@/components/BulkDialer";
 import CallHistory from "@/components/CallHistory";
@@ -11,8 +12,44 @@ import Link from "next/link";
 
 type Tab = "dashboard" | "calls" | "settings";
 
+interface UserSubscription {
+  plan: string;
+  status: string;
+  max_calls_per_month: number;
+  calls_used: number;
+  max_minutes_per_month: number;
+  minutes_used: number;
+}
+
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
+  const [subscription, setSubscription] = useState<UserSubscription | null>(null);
+  const [subLoading, setSubLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchSubscription = async () => {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data } = await supabase
+          .from("user_subscriptions")
+          .select("plan, status, max_calls_per_month, calls_used, max_minutes_per_month, minutes_used")
+          .eq("user_id", user.id)
+          .single();
+
+        setSubscription(data);
+      } catch {
+        // no subscription
+      } finally {
+        setSubLoading(false);
+      }
+    };
+    fetchSubscription();
+  }, []);
+
+  const hasActivePlan = subscription && (subscription.status === "active" || subscription.status === "trial");
 
   return (
     <div className="page-bg">
@@ -100,19 +137,63 @@ export default function DashboardPage() {
                   </p>
                 </div>
 
+                {/* Subscription Status Banner */}
+                {!subLoading && !hasActivePlan && (
+                  <div className="sub-banner sub-banner-warning animate-in">
+                    <div className="sub-banner-icon">
+                      <svg width="20" height="20" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                      </svg>
+                    </div>
+                    <div className="sub-banner-content">
+                      <h4>No Active Subscription</h4>
+                      <p>Your account does not have an active plan. Please contact the admin to activate your subscription before making calls.</p>
+                    </div>
+                  </div>
+                )}
+
+                {!subLoading && hasActivePlan && (
+                  <div className="sub-banner sub-banner-active animate-in">
+                    <div className="sub-banner-icon active">
+                      <svg width="20" height="20" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                      </svg>
+                    </div>
+                    <div className="sub-banner-content">
+                      <h4>Plan: <span className="capitalize">{subscription!.plan}</span> — {subscription!.status === "trial" ? "Trial" : "Active"}</h4>
+                      <p>Calls: {subscription!.calls_used} / {subscription!.max_calls_per_month} &nbsp;·&nbsp; Minutes: {Math.round(Number(subscription!.minutes_used))} / {subscription!.max_minutes_per_month}</p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="animate-in animate-in-delay-1">
                   <DashboardStats />
                 </div>
 
-                <div className="animate-in animate-in-delay-2">
-                  <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-3 sm:mb-4">
-                    Quick Actions
-                  </h3>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                    <CallDispatcher />
-                    <BulkDialer />
+                {hasActivePlan ? (
+                  <div className="animate-in animate-in-delay-2">
+                    <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-3 sm:mb-4">
+                      Quick Actions
+                    </h3>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                      <CallDispatcher />
+                      <BulkDialer />
+                    </div>
                   </div>
-                </div>
+                ) : !subLoading && (
+                  <div className="animate-in animate-in-delay-2 sub-locked-section">
+                    <div className="sub-locked-overlay">
+                      <svg width="24" height="24" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+                      </svg>
+                      <span>Subscribe to make calls</span>
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 opacity-30 pointer-events-none select-none">
+                      <CallDispatcher />
+                      <BulkDialer />
+                    </div>
+                  </div>
+                )}
 
                 <div className="animate-in animate-in-delay-3">
                   <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-4">
@@ -135,10 +216,39 @@ export default function DashboardPage() {
                   </p>
                 </div>
 
-                <div className="animate-in animate-in-delay-1 grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                  <CallDispatcher />
-                  <BulkDialer />
-                </div>
+                {!subLoading && !hasActivePlan && (
+                  <div className="sub-banner sub-banner-warning animate-in">
+                    <div className="sub-banner-icon">
+                      <svg width="20" height="20" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+                      </svg>
+                    </div>
+                    <div className="sub-banner-content">
+                      <h4>Subscription Required</h4>
+                      <p>You need an active subscription to make calls. Contact admin to get started.</p>
+                    </div>
+                  </div>
+                )}
+
+                {hasActivePlan ? (
+                  <div className="animate-in animate-in-delay-1 grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                    <CallDispatcher />
+                    <BulkDialer />
+                  </div>
+                ) : !subLoading && (
+                  <div className="animate-in animate-in-delay-1 sub-locked-section">
+                    <div className="sub-locked-overlay">
+                      <svg width="24" height="24" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+                      </svg>
+                      <span>Subscribe to make calls</span>
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 opacity-30 pointer-events-none select-none">
+                      <CallDispatcher />
+                      <BulkDialer />
+                    </div>
+                  </div>
+                )}
 
                 <div className="animate-in animate-in-delay-2">
                   <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-4">

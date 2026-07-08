@@ -22,6 +22,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
+    // Check subscription — user must have an active plan to make calls
+    const supabase = getSupabase();
+    const { data: subscription } = await supabase
+      ?.from("user_subscriptions")
+      .select("status, max_calls_per_month, calls_used, max_minutes_per_month, minutes_used")
+      .eq("user_id", user.id)
+      .single() ?? { data: null };
+
+    if (!subscription || (subscription.status !== "active" && subscription.status !== "trial")) {
+      return NextResponse.json(
+        { success: false, error: "No active subscription. Please contact admin to activate your plan." },
+        { status: 403 }
+      );
+    }
+
+    if (subscription.calls_used >= subscription.max_calls_per_month) {
+      return NextResponse.json(
+        { success: false, error: "Monthly call limit reached. Please upgrade your plan." },
+        { status: 403 }
+      );
+    }
+
     const body = (await request.json()) as DispatchBody;
 
     if (!body.phone_number || typeof body.phone_number !== "string") {
@@ -81,7 +103,7 @@ export async function POST(request: NextRequest) {
     // Log call to Supabase first — the agent will handle SIP dialing
     // via dial_outbound() when it joins the room and reads metadata.
     // Do NOT create SIP participant here to avoid double-dialing race conditions.
-    await getSupabase()?.from("phone_logs").insert({
+    await supabase?.from("phone_logs").insert({
       user_id: user.id,
       phone_number: phone,
       direction: "outbound",
@@ -91,6 +113,12 @@ export async function POST(request: NextRequest) {
       voice_id: body.voice_id ?? "aura-asteria-en",
       prompt: body.prompt || null,
     });
+
+    // Increment calls_used in subscription
+    await supabase
+      ?.from("user_subscriptions")
+      .update({ calls_used: subscription.calls_used + 1 })
+      .eq("user_id", user.id);
 
     return NextResponse.json({
       success: true,

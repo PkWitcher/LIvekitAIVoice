@@ -888,6 +888,87 @@ html {
 .animate-in-delay-2 { animation-delay: 0.2s; opacity: 0; }
 .animate-in-delay-3 { animation-delay: 0.3s; opacity: 0; }
 
+/* ── Subscription Banner ─────────────────────── */
+.sub-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+  padding: 1rem 1.25rem;
+  border-radius: 14px;
+  border: 1px solid;
+}
+.sub-banner-warning {
+  background: rgba(245,158,11,0.04);
+  border-color: rgba(245,158,11,0.15);
+}
+.sub-banner-active {
+  background: rgba(34,197,94,0.04);
+  border-color: rgba(34,197,94,0.12);
+}
+.sub-banner-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: rgba(245,158,11,0.1);
+  color: #f59e0b;
+}
+.sub-banner-icon.active {
+  background: rgba(34,197,94,0.1);
+  color: #22c55e;
+}
+.sub-banner-content h4 {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 0.25rem;
+}
+.sub-banner-content p {
+  font-size: 0.75rem;
+  color: #888;
+  line-height: 1.5;
+}
+.sub-locked-section {
+  position: relative;
+}
+.sub-locked-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  z-index: 10;
+  color: #888;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+.sub-locked-overlay svg {
+  color: #666;
+}
+
+[data-theme="light"] .sub-banner-warning {
+  background: rgba(245,158,11,0.04);
+  border-color: rgba(245,158,11,0.2);
+}
+[data-theme="light"] .sub-banner-active {
+  background: rgba(34,197,94,0.04);
+  border-color: rgba(34,197,94,0.15);
+}
+[data-theme="light"] .sub-banner-content h4 {
+  color: #1a1a2e;
+}
+[data-theme="light"] .sub-banner-content p {
+  color: #4a5568;
+}
+[data-theme="light"] .sub-locked-overlay {
+  color: #4a5568;
+}
+
 /* ── Sidebar ─────────────────────────────────── */
 .sidebar-link {
   display: flex;
