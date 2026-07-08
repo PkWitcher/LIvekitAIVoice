@@ -525,21 +525,40 @@ export default function UserSubscriptions({ users }: { users: UserOption[] }) {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowModal(false)} />
-          <div className="relative w-full max-w-lg card p-5 sm:p-6 space-y-5 animate-in max-h-[90vh] overflow-y-auto">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setShowModal(false)} />
+          <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto animate-in" style={{
+            background: 'rgba(12, 12, 16, 0.95)',
+            border: '1px solid rgba(255,255,255,0.06)',
+            borderRadius: '20px',
+            padding: '0',
+            backdropFilter: 'blur(20px)',
+            boxShadow: '0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(139,92,246,0.05)'
+          }}>
             {/* Modal Header */}
-            <div className="flex items-center justify-between">
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '1.5rem 1.75rem',
+              borderBottom: '1px solid rgba(255,255,255,0.04)'
+            }}>
               <div>
-                <h3 className="text-base font-semibold text-white tracking-tight">
+                <h3 style={{ fontSize: '1.0625rem', fontWeight: 700, color: '#fff', letterSpacing: '-0.02em' }}>
                   {editingSub ? "Edit Subscription" : "Assign Subscription"}
                 </h3>
-                <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
+                <p style={{ fontSize: '0.75rem', color: '#666', marginTop: '0.25rem' }}>
                   {editingSub ? "Update plan details and limits" : "Select a user and configure their plan"}
                 </p>
               </div>
               <button
                 onClick={() => setShowModal(false)}
-                className="p-2 rounded-lg hover:bg-white/5 text-[var(--color-text-muted)] hover:text-white transition-colors"
+                style={{
+                  width: '32px', height: '32px', borderRadius: '10px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+                  color: '#666', cursor: 'pointer', transition: 'all 0.2s'
+                }}
+                className="hover:!border-white/15 hover:!text-white hover:!bg-white/5"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -547,23 +566,31 @@ export default function UserSubscriptions({ users }: { users: UserOption[] }) {
               </button>
             </div>
 
+            {/* Modal Body */}
+            <div style={{ padding: '1.5rem 1.75rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+
             {error && (
-              <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/8 border border-red-500/20">
-                <svg className="w-4 h-4 text-red-400 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '0.5rem',
+                padding: '0.75rem 1rem', borderRadius: '12px',
+                background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.12)',
+                fontSize: '0.8125rem', color: '#f87171'
+              }}>
+                <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
                 </svg>
-                <span className="text-sm text-red-400">{error}</span>
+                <span>{error}</span>
               </div>
             )}
 
             {/* User Select */}
             <div>
-              <label className="block text-[11px] text-[var(--color-text-muted)] uppercase tracking-wider font-semibold mb-2">User</label>
+              <label className="admin-modal-label">User</label>
               <select
                 value={formUserId}
                 onChange={(e) => setFormUserId(e.target.value)}
                 disabled={!!editingSub}
-                className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-[var(--color-border)] text-sm text-white focus:outline-none focus:border-blue-500/50 disabled:opacity-50 transition-colors"
+                className="admin-modal-input"
               >
                 <option value="">Select a user...</option>
                 {users.map((u) => (
@@ -574,7 +601,7 @@ export default function UserSubscriptions({ users }: { users: UserOption[] }) {
 
             {/* Plan Selection */}
             <div>
-              <label className="block text-[11px] text-[var(--color-text-muted)] uppercase tracking-wider font-semibold mb-2">Plan</label>
+              <label className="admin-modal-label">Plan</label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {(["free", "basic", "pro", "enterprise"] as const).map((p) => {
                   const cfg = getPlanConfig(p);
@@ -583,16 +610,17 @@ export default function UserSubscriptions({ users }: { users: UserOption[] }) {
                     <button
                       key={p}
                       onClick={() => handlePlanChange(p)}
-                      className={`relative p-3 text-left rounded-xl border transition-all ${
-                        formPlan === p
-                          ? "border-blue-500/50 bg-blue-500/5 ring-1 ring-blue-500/20"
-                          : "border-[var(--color-border)] hover:border-white/15 bg-white/[0.02]"
-                      }`}
+                      className="admin-modal-plan-btn"
+                      style={{
+                        borderColor: formPlan === p ? 'rgba(139,92,246,0.4)' : 'rgba(255,255,255,0.06)',
+                        background: formPlan === p ? 'rgba(139,92,246,0.06)' : 'rgba(255,255,255,0.02)',
+                        boxShadow: formPlan === p ? '0 0 0 1px rgba(139,92,246,0.1)' : 'none'
+                      }}
                     >
-                      <span className={`text-xs font-semibold capitalize ${formPlan === p ? "text-blue-400" : cfg.color}`}>{p}</span>
+                      <span className={`text-xs font-semibold capitalize ${formPlan === p ? "text-purple-400" : cfg.color}`}>{p}</span>
                       <p className="text-[9px] text-[var(--color-text-muted)] mt-0.5">{limits.calls} calls/mo</p>
                       {formPlan === p && (
-                        <div className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-blue-400" />
+                        <div className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-purple-400" style={{ boxShadow: '0 0 6px rgba(167,139,250,0.5)' }} />
                       )}
                     </button>
                   );
@@ -602,7 +630,7 @@ export default function UserSubscriptions({ users }: { users: UserOption[] }) {
 
             {/* Status Selection */}
             <div>
-              <label className="block text-[11px] text-[var(--color-text-muted)] uppercase tracking-wider font-semibold mb-2">Status</label>
+              <label className="admin-modal-label">Status</label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {(["active", "trial", "expired", "cancelled"] as const).map((s) => {
                   const cfg = getStatusConfig(s);
@@ -610,14 +638,14 @@ export default function UserSubscriptions({ users }: { users: UserOption[] }) {
                     <button
                       key={s}
                       onClick={() => setFormStatus(s)}
-                      className={`flex items-center justify-center gap-1.5 px-3 py-2 text-xs rounded-xl border transition-all capitalize ${
-                        formStatus === s
-                          ? `${cfg.border} ${cfg.bg} ${cfg.color}`
-                          : "border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-white/15"
-                      }`}
+                      className="admin-modal-status-btn"
+                      style={{
+                        borderColor: formStatus === s ? undefined : 'rgba(255,255,255,0.06)',
+                        background: formStatus === s ? undefined : 'rgba(255,255,255,0.02)'
+                      }}
                     >
                       <span className={`w-1.5 h-1.5 rounded-full ${formStatus === s ? cfg.dot : "bg-current opacity-40"}`} />
-                      {s}
+                      <span className={formStatus === s ? cfg.color : "text-[var(--color-text-secondary)]"}>{s}</span>
                     </button>
                   );
                 })}
@@ -627,21 +655,21 @@ export default function UserSubscriptions({ users }: { users: UserOption[] }) {
             {/* Limits */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] text-[var(--color-text-muted)] uppercase tracking-wider font-semibold mb-2">Max Calls/mo</label>
+                <label className="admin-modal-label">Max Calls/mo</label>
                 <input
                   type="number"
                   value={formMaxCalls}
                   onChange={(e) => setFormMaxCalls(parseInt(e.target.value) || 0)}
-                  className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-[var(--color-border)] text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors"
+                  className="admin-modal-input"
                 />
               </div>
               <div>
-                <label className="block text-[11px] text-[var(--color-text-muted)] uppercase tracking-wider font-semibold mb-2">Max Minutes/mo</label>
+                <label className="admin-modal-label">Max Minutes/mo</label>
                 <input
                   type="number"
                   value={formMaxMinutes}
                   onChange={(e) => setFormMaxMinutes(parseInt(e.target.value) || 0)}
-                  className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-[var(--color-border)] text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors"
+                  className="admin-modal-input"
                 />
               </div>
             </div>
@@ -649,41 +677,47 @@ export default function UserSubscriptions({ users }: { users: UserOption[] }) {
             {/* Price & Expiry */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] text-[var(--color-text-muted)] uppercase tracking-wider font-semibold mb-2">Price (cents)</label>
+                <label className="admin-modal-label">Price (cents)</label>
                 <input
                   type="number"
                   value={formAmount}
                   onChange={(e) => setFormAmount(parseInt(e.target.value) || 0)}
-                  className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-[var(--color-border)] text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors"
+                  className="admin-modal-input"
                 />
               </div>
               <div>
-                <label className="block text-[11px] text-[var(--color-text-muted)] uppercase tracking-wider font-semibold mb-2">Expires On</label>
+                <label className="admin-modal-label">Expires On</label>
                 <input
                   type="date"
                   value={formExpires}
                   onChange={(e) => setFormExpires(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-[var(--color-border)] text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors"
+                  className="admin-modal-input"
                 />
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.625rem',
+              padding: '1.25rem 1.75rem',
+              borderTop: '1px solid rgba(255,255,255,0.04)'
+            }}>
               <button
                 onClick={() => setShowModal(false)}
-                className="px-4 py-2.5 text-sm rounded-xl border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-white hover:border-white/20 transition-all"
+                className="admin-modal-btn-cancel"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="px-5 py-2.5 text-sm rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-medium transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 disabled:opacity-50 disabled:shadow-none"
+                className="admin-modal-btn-submit"
               >
                 {saving ? (
                   <span className="flex items-center gap-2">
-                    <span className="spinner" style={{ width: 12, height: 12, borderWidth: 1.5 }} />
+                    <span className="spinner" style={{ width: 14, height: 14, borderWidth: 1.5 }} />
                     Saving...
                   </span>
                 ) : editingSub ? "Update Plan" : "Assign Plan"}
