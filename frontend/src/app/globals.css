@@ -705,6 +705,170 @@ body {
   color: #888;
 }
 
+/* ── Pricing Cards ───────────────────────────── */
+.pricing-card {
+  height: 100%;
+  padding: 2rem 1.5rem;
+  border-radius: 16px;
+  background: rgba(10,10,10,0.6);
+  border: 1px solid #151515;
+  backdrop-filter: blur(4px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.pricing-card:hover {
+  border-color: #2a2a2a;
+  transform: translateY(-4px);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.3);
+}
+.pricing-card-highlight {
+  border-color: rgba(59,130,246,0.3);
+  background: rgba(59,130,246,0.03);
+  box-shadow: 0 0 40px rgba(59,130,246,0.08);
+}
+.pricing-card-highlight:hover {
+  border-color: rgba(59,130,246,0.5);
+  box-shadow: 0 16px 48px rgba(59,130,246,0.15);
+}
+.pricing-plan {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #888;
+  margin-bottom: 1rem;
+}
+.pricing-card-highlight .pricing-plan {
+  color: #60a5fa;
+}
+.pricing-price {
+  margin-bottom: 0.75rem;
+}
+.pricing-amount {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.03em;
+}
+.pricing-period {
+  font-size: 0.8125rem;
+  color: #666;
+  margin-left: 0.125rem;
+}
+.pricing-limits {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  font-size: 0.75rem;
+  color: #888;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  width: 100%;
+}
+.pricing-features {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  width: 100%;
+  flex: 1;
+}
+.pricing-features li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: #999;
+  text-align: left;
+}
+.pricing-features li svg {
+  color: #22c55e;
+  flex-shrink: 0;
+}
+.pricing-btn {
+  width: 100%;
+  justify-content: center;
+  padding: 0.75rem 1.5rem !important;
+  font-size: 0.875rem !important;
+  border-radius: 10px !important;
+}
+
+/* ── FAQ ─────────────────────────────────────── */
+.faq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.faq-item {
+  padding: 1.5rem 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.faq-item:first-child {
+  padding-top: 0;
+}
+.faq-item:last-child {
+  border-bottom: none;
+}
+.faq-question {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.01em;
+}
+.faq-answer {
+  font-size: 0.875rem;
+  color: #777;
+  line-height: 1.7;
+  margin: 0;
+}
+
+/* Light mode pricing & FAQ */
+[data-theme="light"] .pricing-card {
+  background: #ffffff;
+  border-color: #e2e4e8;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+[data-theme="light"] .pricing-card:hover {
+  border-color: #d0d5dd;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+}
+[data-theme="light"] .pricing-card-highlight {
+  border-color: rgba(59,130,246,0.3);
+  background: rgba(59,130,246,0.02);
+}
+[data-theme="light"] .pricing-amount {
+  color: #1a1a2e;
+}
+[data-theme="light"] .pricing-period {
+  color: #8892a4;
+}
+[data-theme="light"] .pricing-plan {
+  color: #4a5568;
+}
+[data-theme="light"] .pricing-limits {
+  color: #4a5568;
+  border-bottom-color: #e2e4e8;
+}
+[data-theme="light"] .pricing-features li {
+  color: #4a5568;
+}
+[data-theme="light"] .faq-item {
+  border-bottom-color: #e2e4e8;
+}
+[data-theme="light"] .faq-question {
+  color: #1a1a2e;
+}
+[data-theme="light"] .faq-answer {
+  color: #4a5568;
+}
+
 /* Footer */
 .landing-footer {
   position: relative;

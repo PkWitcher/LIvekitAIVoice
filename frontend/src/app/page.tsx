@@ -25,6 +25,7 @@ export default function LandingPage() {
             <div className="d-flex align-items-center gap-4">
               <a href="#features" className="nav-link-custom d-none d-md-block">Features</a>
               <a href="#how-it-works" className="nav-link-custom d-none d-md-block">How It Works</a>
+              <a href="#pricing" className="nav-link-custom d-none d-md-block">Pricing</a>
               <Link href="/admin/login" className="nav-link-custom d-none d-md-block">Admin</Link>
               <ThemeToggle />
               <Link href="/login" className="btn-glow">
@@ -141,6 +142,117 @@ export default function LandingPage() {
                 <p className="feature-desc">{s.desc}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Use Cases ── */}
+      <section className="landing-section">
+        <div className="container">
+          <div className="row justify-content-center mb-5 pb-3">
+            <div className="col-12 col-lg-7 text-center">
+              <h2 className="section-title">Built for every industry</h2>
+              <p className="section-subtitle">From healthcare to e-commerce — automate calls that matter.</p>
+            </div>
+          </div>
+
+          <div className="row g-4 justify-content-center">
+            {[
+              { icon: "🏥", title: "Healthcare", desc: "Appointment reminders, prescription refill alerts, and patient follow-up calls — reduce no-shows by 60%." },
+              { icon: "🛒", title: "E-Commerce", desc: "Order confirmations, delivery updates, abandoned cart recovery, and customer feedback collection." },
+              { icon: "🏦", title: "Finance & Banking", desc: "Payment reminders, fraud alerts, account verification calls, and loan follow-ups." },
+              { icon: "🏢", title: "Real Estate", desc: "Property viewing reminders, lead qualification calls, and tenant rent reminders." },
+              { icon: "🎓", title: "Education", desc: "Enrollment follow-ups, fee payment reminders, attendance alerts to parents." },
+              { icon: "🚗", title: "Automotive", desc: "Service reminders, insurance renewal calls, and test drive booking confirmations." },
+            ].map((uc, i) => (
+              <div key={i} className="col-12 col-md-6 col-lg-4">
+                <div className="feature-card">
+                  <div className="feature-icon">{uc.icon}</div>
+                  <h5 className="text-white fw-semibold mb-2">{uc.title}</h5>
+                  <p className="feature-desc">{uc.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Pricing ── */}
+      <section id="pricing" className="landing-section">
+        <div className="container">
+          <div className="row justify-content-center mb-5 pb-3">
+            <div className="col-12 col-lg-7 text-center">
+              <h2 className="section-title">Simple, transparent pricing</h2>
+              <p className="section-subtitle">Start free. Scale as you grow. No hidden fees.</p>
+            </div>
+          </div>
+
+          <div className="row g-4 justify-content-center">
+            {[
+              { plan: "Free", price: "₹0", period: "/month", calls: "50 calls", minutes: "100 minutes", features: ["Single call dispatch", "Call history", "Basic analytics"], highlight: false },
+              { plan: "Basic", price: "₹999", period: "/month", calls: "200 calls", minutes: "500 minutes", features: ["Bulk campaigns", "Call recording", "Priority support"], highlight: false },
+              { plan: "Pro", price: "₹2,999", period: "/month", calls: "1,000 calls", minutes: "2,000 minutes", features: ["Custom voice & scripts", "API access", "Advanced analytics"], highlight: true },
+              { plan: "Enterprise", price: "₹9,999", period: "/month", calls: "10,000 calls", minutes: "20,000 minutes", features: ["Dedicated infrastructure", "Custom integrations", "24/7 support"], highlight: false },
+            ].map((p, i) => (
+              <div key={i} className="col-12 col-sm-6 col-lg-3">
+                <div className={`pricing-card ${p.highlight ? "pricing-card-highlight" : ""}`}>
+                  <div className="pricing-plan">{p.plan}</div>
+                  <div className="pricing-price">
+                    <span className="pricing-amount">{p.price}</span>
+                    <span className="pricing-period">{p.period}</span>
+                  </div>
+                  <div className="pricing-limits">
+                    <span>{p.calls}</span>
+                    <span>{p.minutes}</span>
+                  </div>
+                  <ul className="pricing-features">
+                    {p.features.map((f, fi) => (
+                      <li key={fi}>
+                        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                        </svg>
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <Link href="/login" className={p.highlight ? "btn-primary-glow pricing-btn" : "btn-outline-custom pricing-btn"}>
+                    {p.plan === "Free" ? "Start Free" : "Get Started"}
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── FAQ ── */}
+      <section className="landing-section">
+        <div className="container">
+          <div className="row justify-content-center mb-5 pb-3">
+            <div className="col-12 col-lg-7 text-center">
+              <h2 className="section-title">Frequently asked questions</h2>
+              <p className="section-subtitle">Everything you need to know before getting started.</p>
+            </div>
+          </div>
+
+          <div className="row justify-content-center">
+            <div className="col-12 col-lg-8">
+              <div className="faq-list">
+                {[
+                  { q: "How does the AI voice sound?", a: "We use Deepgram's latest TTS models that produce natural, human-like speech. You can choose between multiple voice options including male and female voices." },
+                  { q: "Can the AI handle two-way conversations?", a: "Yes! The AI uses real-time speech-to-text and responds intelligently based on your prompt. It can handle objections, answer questions, and guide conversations." },
+                  { q: "What phone numbers are supported?", a: "Currently we support Indian (+91) numbers. International calling is on our roadmap and will be available soon." },
+                  { q: "Is my data secure?", a: "100%. The platform is fully self-hosted on your infrastructure. Call recordings, prompts, and user data never leave your servers." },
+                  { q: "How quickly can I get started?", a: "Under 5 minutes. Sign up, get your subscription activated by admin, and you can start making AI calls immediately from the dashboard." },
+                  { q: "What happens when the call limit is reached?", a: "You'll see a notification in your dashboard. Contact the admin to upgrade your plan or wait for the monthly reset." },
+                ].map((faq, i) => (
+                  <div key={i} className="faq-item">
+                    <h5 className="faq-question">{faq.q}</h5>
+                    <p className="faq-answer">{faq.a}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </section>
