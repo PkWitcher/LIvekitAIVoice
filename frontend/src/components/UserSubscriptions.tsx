@@ -229,7 +229,11 @@ export default function UserSubscriptions({ users }: { users: UserOption[] }) {
               </span>
               <button
                 onClick={openAddModal}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl text-white transition-all hover:-translate-y-0.5"
+                style={{
+                  background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+                  boxShadow: '0 6px 20px rgba(124,58,237,0.3)',
+                }}
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -524,8 +528,7 @@ export default function UserSubscriptions({ users }: { users: UserOption[] }) {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex min-h-full items-end sm:items-center justify-center p-4 sm:p-6">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-8 px-4 sm:py-12 sm:px-6">
           <div className="fixed inset-0 bg-black/80 backdrop-blur-md" onClick={() => setShowModal(false)} />
           <div className="relative w-full max-w-lg animate-in" style={{
             background: 'rgba(12, 12, 16, 0.95)',
@@ -533,8 +536,7 @@ export default function UserSubscriptions({ users }: { users: UserOption[] }) {
             borderRadius: '20px',
             padding: '0',
             backdropFilter: 'blur(20px)',
-            boxShadow: '0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(139,92,246,0.05)',
-            margin: '2rem auto'
+            boxShadow: '0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(139,92,246,0.05)'
           }}>
             {/* Modal Header */}
             <div style={{
@@ -725,7 +727,6 @@ export default function UserSubscriptions({ users }: { users: UserOption[] }) {
                 ) : editingSub ? "Update Plan" : "Assign Plan"}
               </button>
             </div>
-          </div>
           </div>
         </div>
       )}
