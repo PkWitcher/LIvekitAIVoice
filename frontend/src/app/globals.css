@@ -888,6 +888,57 @@ html {
 .animate-in-delay-2 { animation-delay: 0.2s; opacity: 0; }
 .animate-in-delay-3 { animation-delay: 0.3s; opacity: 0; }
 
+/* ═══════════════════════════════════════════════════
+   USER DASHBOARD — Premium Design Upgrades
+   ═══════════════════════════════════════════════════ */
+
+.dash-shell {
+  min-height: 100vh;
+  background: #050508;
+  position: relative;
+  overflow: hidden;
+}
+.dash-ambient {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+.dash-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+}
+.dash-orb-1 {
+  top: -15%;
+  right: -5%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(59,130,246,0.06) 0%, transparent 70%);
+}
+.dash-orb-2 {
+  bottom: -10%;
+  left: -5%;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(99,102,241,0.05) 0%, transparent 70%);
+}
+
+.dash-layout {
+  position: relative;
+  z-index: 1;
+}
+
+[data-theme="light"] .dash-shell {
+  background: #f8f9fa;
+}
+[data-theme="light"] .dash-orb-1 {
+  background: radial-gradient(circle, rgba(59,130,246,0.03) 0%, transparent 70%);
+}
+[data-theme="light"] .dash-orb-2 {
+  background: radial-gradient(circle, rgba(99,102,241,0.02) 0%, transparent 70%);
+}
+
 /* ── Subscription Banner ─────────────────────── */
 .sub-banner {
   display: flex;
@@ -974,11 +1025,13 @@ html {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.625rem 0.75rem;
-  border-radius: 8px;
+  padding: 0.625rem 0.875rem;
+  border-radius: 10px;
   font-size: 0.875rem;
+  font-weight: 500;
   color: var(--color-text-secondary);
-  transition: all 0.15s ease;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
   cursor: pointer;
 }
 .sidebar-link:hover {
@@ -987,8 +1040,12 @@ html {
 }
 .sidebar-link.active {
   color: white;
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.15);
+  background: rgba(59, 130, 246, 0.08);
+  border-color: rgba(59, 130, 246, 0.15);
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.05);
+}
+.sidebar-link.active svg {
+  color: #60a5fa;
 }
 
 /* ── Form elements ───────────────────────────── */
