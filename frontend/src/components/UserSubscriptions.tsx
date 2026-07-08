@@ -524,15 +524,17 @@ export default function UserSubscriptions({ users }: { users: UserOption[] }) {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setShowModal(false)} />
-          <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto animate-in" style={{
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-full items-end sm:items-center justify-center p-4 sm:p-6">
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-md" onClick={() => setShowModal(false)} />
+          <div className="relative w-full max-w-lg animate-in" style={{
             background: 'rgba(12, 12, 16, 0.95)',
             border: '1px solid rgba(255,255,255,0.06)',
             borderRadius: '20px',
             padding: '0',
             backdropFilter: 'blur(20px)',
-            boxShadow: '0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(139,92,246,0.05)'
+            boxShadow: '0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(139,92,246,0.05)',
+            margin: '2rem auto'
           }}>
             {/* Modal Header */}
             <div style={{
@@ -723,6 +725,7 @@ export default function UserSubscriptions({ users }: { users: UserOption[] }) {
                 ) : editingSub ? "Update Plan" : "Assign Plan"}
               </button>
             </div>
+          </div>
           </div>
         </div>
       )}
