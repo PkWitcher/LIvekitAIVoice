@@ -174,18 +174,39 @@ def create_tts(provider: str = None, voice_id: str = None, language: str = None)
         voice = voice_id or config.TTS_PROVIDERS["cartesia"]["default_voice"]
         tts_model = config.TTS_PROVIDERS["cartesia"].get("model", "sonic-multilingual")
         tts_lang = language or config.TTS_PROVIDERS["cartesia"].get("language", "en")
+        cartesia_key = os.getenv("CARTESIA_API_KEY", "").strip()
+        logger.info(f"Cartesia config: model={tts_model}, voice={voice}, lang={tts_lang}, key_len={len(cartesia_key)}")
+        
+        # Try with all params first, then fallback without language
         try:
-            return cartesia.TTS(
+            tts_instance = cartesia.TTS(
                 model=tts_model,
                 voice=voice,
                 language=tts_lang,
-                api_key=os.getenv("CARTESIA_API_KEY", ""),
+                api_key=cartesia_key,
             )
-        except TypeError:
-            return cartesia.TTS(
-                voice=voice,
-                api_key=os.getenv("CARTESIA_API_KEY", ""),
-            )
+            logger.info("Cartesia TTS created with language param")
+            return tts_instance
+        except TypeError as e:
+            logger.warning(f"Cartesia TTS TypeError (trying without language): {e}")
+            try:
+                tts_instance = cartesia.TTS(
+                    model=tts_model,
+                    voice=voice,
+                    api_key=cartesia_key,
+                )
+                logger.info("Cartesia TTS created without language param")
+                return tts_instance
+            except Exception as e2:
+                logger.error(f"Cartesia TTS failed completely: {e2}")
+                # Fall back to Deepgram
+                logger.warning("Falling back to Deepgram TTS")
+                voice = config.TTS_PROVIDERS["deepgram"]["default_voice"]
+                return deepgram.TTS(model=voice)
+        except Exception as e:
+            logger.error(f"Cartesia TTS unexpected error: {e}")
+            voice = config.TTS_PROVIDERS["deepgram"]["default_voice"]
+            return deepgram.TTS(model=voice)
     elif provider == "openai":
         voice = voice_id or config.TTS_PROVIDERS["openai"]["default_voice"]
         return openai.TTS(

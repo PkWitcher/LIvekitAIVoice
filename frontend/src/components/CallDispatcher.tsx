@@ -12,7 +12,7 @@ export default function CallDispatcher() {
   const [phone, setPhone] = useState("");
   const [prompt, setPrompt] = useState("");
   const [modelProvider] = useState("openai");
-  const [voice, setVoice] = useState("a0e99841-438c-4a64-b679-ae501e7d6091");
+  const [voice, setVoice] = useState("4877b818-c7fe-4c89-b1cf-eadf8e23da72");
   const [language, setLanguage] = useState("multi");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<DispatchResult | null>(null);
@@ -127,6 +127,8 @@ export default function CallDispatcher() {
             onChange={(e) => setVoice(e.target.value)}
           >
             <optgroup label="Cartesia (Multilingual — Recommended)">
+              <option value="4877b818-c7fe-4c89-b1cf-eadf8e23da72">Rohan — Hindi Male (Default)</option>
+              <option value="0f14d8cb-f039-41fe-a813-a9b4bee7eed8">Hindi Female</option>
               <option value="a0e99841-438c-4a64-b679-ae501e7d6091">Barbershop Man — Male</option>
               <option value="79a125e8-cd45-4c13-8a67-188112f4dd22">British Lady — Female</option>
               <option value="b7d50908-b17c-442d-ad8d-7c56e5dd3c37">Californian Girl — Female</option>

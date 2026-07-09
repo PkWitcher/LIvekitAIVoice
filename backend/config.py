@@ -151,7 +151,7 @@ TTS_PROVIDERS = {
 }
 
 DEFAULT_TTS_PROVIDER = "cartesia"
-DEFAULT_VOICE_ID = "a0e99841-438c-4a64-b679-ae501e7d6091"
+DEFAULT_VOICE_ID = "4877b818-c7fe-4c89-b1cf-eadf8e23da72"
 
 # ──────────────────────────────────────────────
 # SIP / Telephony Configuration
