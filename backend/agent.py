@@ -406,13 +406,12 @@ async def entrypoint(ctx: JobContext) -> None:
     # actually picks up (~5-10 seconds of ringing). We need to wait for actual
     # audio to flow. For inbound, the phone is already connected.
     if not is_inbound:
-        # Wait for the SIP call to be fully established (phone picks up)
-        # The phone needs ~6-10 seconds to ring and pick up
+        # Wait for SIP call to establish — reduced for faster response
         logger.info("Outbound call: waiting for phone to pick up...")
-        await asyncio.sleep(6.0)
+        await asyncio.sleep(2.0)
     else:
-        # Inbound: phone is already connected, small delay for media setup
-        await asyncio.sleep(1.0)
+        # Inbound: phone is already connected
+        await asyncio.sleep(0.5)
 
     # Speak the greeting
     if greeting:
