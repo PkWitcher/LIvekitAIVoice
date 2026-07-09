@@ -173,7 +173,10 @@ def create_tts(provider: str = None, voice_id: str = None, language: str = None)
         import os
         voice = voice_id or config.TTS_PROVIDERS["cartesia"]["default_voice"]
         tts_model = config.TTS_PROVIDERS["cartesia"].get("model", "sonic-multilingual")
+        # Cartesia needs specific language codes, "multi" is not valid — default to "hi" for Indian voices
         tts_lang = language or config.TTS_PROVIDERS["cartesia"].get("language", "en")
+        if tts_lang == "multi":
+            tts_lang = "hi"  # Default to Hindi for multilingual/auto mode
         cartesia_key = os.getenv("CARTESIA_API_KEY", "").strip()
         logger.info(f"Cartesia config: model={tts_model}, voice={voice}, lang={tts_lang}, key_len={len(cartesia_key)}")
         
