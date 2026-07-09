@@ -536,8 +536,7 @@ export default function UserSubscriptions({ users }: { users: UserOption[] }) {
             borderRadius: '20px',
             padding: '0',
             backdropFilter: 'blur(20px)',
-            boxShadow: '0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(139,92,246,0.05)',
-            height: '100%'
+            boxShadow: '0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(139,92,246,0.05)'
           }}>
             {/* Modal Header */}
             <div style={{
