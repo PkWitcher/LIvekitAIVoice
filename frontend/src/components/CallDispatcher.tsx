@@ -12,7 +12,7 @@ export default function CallDispatcher() {
   const [phone, setPhone] = useState("");
   const [prompt, setPrompt] = useState("");
   const [modelProvider] = useState("openai");
-  const [voice, setVoice] = useState("shimmer");
+  const [voice, setVoice] = useState("4877b818-c7fe-4c89-b1cf-eadf8e23da72");
   const [language, setLanguage] = useState("multi");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<DispatchResult | null>(null);
@@ -126,19 +126,9 @@ export default function CallDispatcher() {
             value={voice}
             onChange={(e) => setVoice(e.target.value)}
           >
-            <optgroup label="Cartesia (Multilingual — Recommended)">
+            <optgroup label="Cartesia Indian (Hindi/English — Recommended)">
               <option value="4877b818-c7fe-4c89-b1cf-eadf8e23da72">Rohan — Hindi Male (Default)</option>
               <option value="0f14d8cb-f039-41fe-a813-a9b4bee7eed8">Hindi Female</option>
-              <option value="a0e99841-438c-4a64-b679-ae501e7d6091">Barbershop Man — Male</option>
-              <option value="79a125e8-cd45-4c13-8a67-188112f4dd22">British Lady — Female</option>
-              <option value="b7d50908-b17c-442d-ad8d-7c56e5dd3c37">Californian Girl — Female</option>
-              <option value="c8605446-247c-4d39-acd4-8f4c28aa363c">Indian Man — Male</option>
-              <option value="638efaaa-4d0c-442e-b701-3fae16aad012">Indian Woman — Female</option>
-              <option value="69267136-1bdc-412f-ad78-0caad210fb40">French Woman — Female</option>
-              <option value="ee7ea9f8-c0c1-498c-9f62-dc2571e261c3">Teacher Lady — Female</option>
-              <option value="41534e16-2966-4c6b-9670-111411def906">Wise Man — Male</option>
-              <option value="fb26447f-308b-471e-8b00-8c9f04d3c4a5">Confident Man — Male</option>
-              <option value="34bde396-9fde-4ebf-ad03-e3a1d1e6d2c5">Sweet Lady — Female</option>
             </optgroup>
             <optgroup label="OpenAI (Multilingual)">
               <option value="shimmer">Shimmer — Female</option>

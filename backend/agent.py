@@ -172,37 +172,32 @@ def create_tts(provider: str = None, voice_id: str = None, language: str = None)
     if provider == "cartesia":
         import os
         voice = voice_id or config.TTS_PROVIDERS["cartesia"]["default_voice"]
-        tts_model = config.TTS_PROVIDERS["cartesia"].get("model", "sonic-multilingual")
-        tts_lang = language or config.TTS_PROVIDERS["cartesia"].get("language", "en")
-        if tts_lang == "multi":
-            tts_lang = "hi"
         cartesia_key = os.getenv("CARTESIA_API_KEY", "").strip()
-        logger.info(f"Cartesia config: model={tts_model}, voice={voice}, lang={tts_lang}, key_len={len(cartesia_key)}")
+        logger.info(f"Cartesia config: voice={voice}, key_len={len(cartesia_key)}")
         
-        # Try without language first (sonic-multilingual auto-detects from text)
         try:
             tts_instance = cartesia.TTS(
-                model=tts_model,
                 voice=voice,
                 api_key=cartesia_key,
+                sample_rate=24000,
             )
-            logger.info("Cartesia TTS created (auto-detect language mode)")
+            logger.info("Cartesia TTS created with sample_rate=24000")
             return tts_instance
-        except TypeError as e:
-            logger.warning(f"Cartesia TTS TypeError: {e}")
+        except TypeError:
+            # Older plugin version doesn't support sample_rate
             try:
                 tts_instance = cartesia.TTS(
                     voice=voice,
                     api_key=cartesia_key,
                 )
-                logger.info("Cartesia TTS created (minimal params)")
+                logger.info("Cartesia TTS created (default params)")
                 return tts_instance
             except Exception as e2:
-                logger.error(f"Cartesia TTS failed completely: {e2}")
+                logger.error(f"Cartesia TTS failed: {e2}")
                 voice = config.TTS_PROVIDERS["deepgram"]["default_voice"]
                 return deepgram.TTS(model=voice)
         except Exception as e:
-            logger.error(f"Cartesia TTS unexpected error: {e}")
+            logger.error(f"Cartesia TTS error: {e}")
             voice = config.TTS_PROVIDERS["deepgram"]["default_voice"]
             return deepgram.TTS(model=voice)
     elif provider == "openai":
