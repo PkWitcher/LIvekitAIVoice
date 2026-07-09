@@ -1220,6 +1220,7 @@ html {
 }
 .animate-in {
   animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  height: 100%;
 }
 .animate-in-delay-1 { animation-delay: 0.1s; opacity: 0; }
 .animate-in-delay-2 { animation-delay: 0.2s; opacity: 0; }
