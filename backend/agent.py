@@ -144,7 +144,7 @@ def create_llm_plugin(provider: str = None) -> openai.LLM:
     )
 
 
-def create_tts(provider: str = None, voice_id: str = None):
+def create_tts(provider: str = None, voice_id: str = None, language: str = None):
     """Create TTS instance based on provider and voice."""
     # Auto-detect provider from voice name — but ONLY for known prefixes
     OPENAI_VOICES = {"alloy", "echo", "shimmer", "nova", "fable", "onyx"}
@@ -173,7 +173,7 @@ def create_tts(provider: str = None, voice_id: str = None):
         import os
         voice = voice_id or config.TTS_PROVIDERS["cartesia"]["default_voice"]
         tts_model = config.TTS_PROVIDERS["cartesia"].get("model", "sonic-multilingual")
-        tts_lang = config.TTS_PROVIDERS["cartesia"].get("language", "en")
+        tts_lang = language or config.TTS_PROVIDERS["cartesia"].get("language", "en")
         try:
             return cartesia.TTS(
                 model=tts_model,
@@ -355,7 +355,7 @@ async def entrypoint(ctx: JobContext) -> None:
         language=stt_language,
     )
     llm_plugin = create_llm_plugin(model_provider)
-    tts = create_tts(tts_provider, voice_id)
+    tts = create_tts(tts_provider, voice_id, stt_language)
     logger.info(f"TTS provider resolved: {type(tts).__module__}.{type(tts).__name__}")
 
     initial_ctx = llm.ChatContext()
