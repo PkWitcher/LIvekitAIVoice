@@ -12,7 +12,7 @@ export default function CallDispatcher() {
   const [phone, setPhone] = useState("");
   const [prompt, setPrompt] = useState("");
   const [modelProvider] = useState("openai");
-  const [voice, setVoice] = useState("4877b818-c7fe-4c89-b1cf-eadf8e23da72");
+  const [voice, setVoice] = useState("shimmer");
   const [language, setLanguage] = useState("multi");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<DispatchResult | null>(null);
