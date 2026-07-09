@@ -6,13 +6,9 @@ services:
     container_name: voice-agent
     env_file:
       - .env
-    environment:
-      - LIVEKIT_URL=http://livekit:7880
     restart: unless-stopped
     volumes:
       - ./backend:/app
-    depends_on:
-      - livekit
 
   redis:
     image: redis:7-alpine
