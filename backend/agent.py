@@ -347,6 +347,10 @@ async def entrypoint(ctx: JobContext) -> None:
     if is_inbound:
         logger.info("Inbound call detected — user already in room")
         greeting = config.INBOUND_GREETING
+    elif custom_prompt:
+        # When user provides custom prompt, let the LLM generate the greeting
+        # based on the prompt instructions (e.g., "introduce yourself as Arjun")
+        greeting = None  # Will be handled by LLM's first response
     else:
         greeting = config.INITIAL_GREETING
 
@@ -358,9 +362,9 @@ async def entrypoint(ctx: JobContext) -> None:
     }
     target_lang = lang_names.get(stt_language)
     if target_lang:
-        system_prompt += f"\n\nSTRICT RULE: This call's language is set to {target_lang}. Speak ONLY in {target_lang}. Do NOT use any other language."
+        system_prompt += f"\n\nCRITICAL LANGUAGE RULE: You MUST speak ONLY in {target_lang}. Your very FIRST sentence and ALL responses must be in {target_lang}. NEVER use English unless the customer speaks English first. This is non-negotiable."
     else:
-        system_prompt += "\n\nSTRICT RULE: Detect the caller's language from their FIRST sentence. Then speak ONLY in that language for the entire call. NEVER switch mid-call."
+        system_prompt += "\n\nCRITICAL LANGUAGE RULE: Detect the caller's language from their FIRST sentence. Then speak ONLY in that language for the entire call. NEVER switch mid-call."
 
     # Create pipeline components
     fnc_ctx = CallFunctions() if not custom_prompt else None
@@ -411,9 +415,15 @@ async def entrypoint(ctx: JobContext) -> None:
         await asyncio.sleep(1.0)
 
     # Speak the greeting
-    logger.info(f"Saying greeting with TTS provider: {type(tts).__module__}")
-    await agent.say(greeting)
-    logger.info("Greeting dispatched, agent is now listening")
+    if greeting:
+        logger.info(f"Saying hardcoded greeting with TTS provider: {type(tts).__module__}")
+        await agent.say(greeting)
+        logger.info("Greeting dispatched, agent is now listening")
+    else:
+        # Let the LLM generate its own greeting based on the system prompt
+        logger.info("Using LLM-generated greeting from custom prompt")
+        initial_ctx.append(role="user", text="[The call has just connected. Introduce yourself and greet the customer as instructed in your system prompt. Speak in the language specified.]")
+        logger.info("LLM greeting triggered, agent is now active")
 
     # Keep the agent alive — without this the function exits and the agent stops
     # The agent will continue handling conversation until the room closes
