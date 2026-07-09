@@ -68,6 +68,21 @@ export default function LoginPage() {
         <div className="user-login-orb user-login-orb-1" />
         <div className="user-login-orb user-login-orb-2" />
         <div className="user-login-orb user-login-orb-3" />
+        <div className="bg-ring bg-ring-1" />
+        <div className="bg-ring bg-ring-2" />
+        <div className="bg-ring bg-ring-3" />
+      </div>
+
+      {/* Floating Particles */}
+      <div className="bg-particles">
+        <div className="bg-particle" />
+        <div className="bg-particle" />
+        <div className="bg-particle" />
+        <div className="bg-particle" />
+        <div className="bg-particle" />
+        <div className="bg-particle" />
+        <div className="bg-particle" />
+        <div className="bg-particle" />
       </div>
 
       {/* Top bar */}

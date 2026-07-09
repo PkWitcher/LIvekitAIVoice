@@ -49,6 +49,18 @@ export default function AdminLoginPage() {
       <div className="admin-login-bg">
         <div className="admin-login-orb admin-login-orb-1" />
         <div className="admin-login-orb admin-login-orb-2" />
+        <div className="bg-ring bg-ring-1" />
+        <div className="bg-ring bg-ring-2" />
+      </div>
+
+      {/* Floating Particles */}
+      <div className="bg-particles">
+        <div className="bg-particle" />
+        <div className="bg-particle" />
+        <div className="bg-particle" />
+        <div className="bg-particle" />
+        <div className="bg-particle" />
+        <div className="bg-particle" />
       </div>
 
       <div className="admin-login-topbar">

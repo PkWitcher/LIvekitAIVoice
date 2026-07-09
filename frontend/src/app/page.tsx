@@ -8,6 +8,21 @@ export default function LandingPage() {
       <div className="landing-glow">
         <div className="glow-orb glow-orb-top" />
         <div className="glow-orb glow-orb-bottom" />
+        <div className="bg-ring bg-ring-1" />
+        <div className="bg-ring bg-ring-2" />
+        <div className="bg-ring bg-ring-3" />
+      </div>
+
+      {/* ── Floating Particles ── */}
+      <div className="bg-particles">
+        <div className="bg-particle" />
+        <div className="bg-particle" />
+        <div className="bg-particle" />
+        <div className="bg-particle" />
+        <div className="bg-particle" />
+        <div className="bg-particle" />
+        <div className="bg-particle" />
+        <div className="bg-particle" />
       </div>
 
       {/* ── Nav ── */}
