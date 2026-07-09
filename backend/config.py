@@ -150,8 +150,8 @@ TTS_PROVIDERS = {
     },
 }
 
-DEFAULT_TTS_PROVIDER = "elevenlabs"
-DEFAULT_VOICE_ID = "RABOvaPec1ymXz02oDQi"
+DEFAULT_TTS_PROVIDER = "cartesia"
+DEFAULT_VOICE_ID = "a0e99841-438c-4a64-b679-ae501e7d6091"
 
 # ──────────────────────────────────────────────
 # SIP / Telephony Configuration
