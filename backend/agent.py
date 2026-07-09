@@ -173,37 +173,32 @@ def create_tts(provider: str = None, voice_id: str = None, language: str = None)
         import os
         voice = voice_id or config.TTS_PROVIDERS["cartesia"]["default_voice"]
         tts_model = config.TTS_PROVIDERS["cartesia"].get("model", "sonic-multilingual")
-        # Cartesia needs specific language codes, "multi" is not valid — default to "hi" for Indian voices
         tts_lang = language or config.TTS_PROVIDERS["cartesia"].get("language", "en")
         if tts_lang == "multi":
-            tts_lang = "hi"  # Default to Hindi for multilingual/auto mode
+            tts_lang = "hi"
         cartesia_key = os.getenv("CARTESIA_API_KEY", "").strip()
         logger.info(f"Cartesia config: model={tts_model}, voice={voice}, lang={tts_lang}, key_len={len(cartesia_key)}")
         
-        # Try with all params first, then fallback without language
+        # Try without language first (sonic-multilingual auto-detects from text)
         try:
             tts_instance = cartesia.TTS(
                 model=tts_model,
                 voice=voice,
-                language=tts_lang,
                 api_key=cartesia_key,
             )
-            logger.info("Cartesia TTS created with language param")
+            logger.info("Cartesia TTS created (auto-detect language mode)")
             return tts_instance
         except TypeError as e:
-            logger.warning(f"Cartesia TTS TypeError (trying without language): {e}")
+            logger.warning(f"Cartesia TTS TypeError: {e}")
             try:
                 tts_instance = cartesia.TTS(
-                    model=tts_model,
                     voice=voice,
                     api_key=cartesia_key,
                 )
-                logger.info("Cartesia TTS created without language param")
+                logger.info("Cartesia TTS created (minimal params)")
                 return tts_instance
             except Exception as e2:
                 logger.error(f"Cartesia TTS failed completely: {e2}")
-                # Fall back to Deepgram
-                logger.warning("Falling back to Deepgram TTS")
                 voice = config.TTS_PROVIDERS["deepgram"]["default_voice"]
                 return deepgram.TTS(model=voice)
         except Exception as e:
