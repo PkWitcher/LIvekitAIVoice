@@ -86,6 +86,9 @@ export async function POST(request: NextRequest) {
       language: body.language ?? "multi",
     });
 
+    console.log("[DISPATCH] Creating room:", roomName, "metadata:", metadata);
+    console.log("[DISPATCH] LiveKit URL:", LIVEKIT_URL, "Key:", LIVEKIT_API_KEY?.slice(0, 6) + "...");
+
     // Create the room with metadata
     const roomService = new RoomServiceClient(
       LIVEKIT_URL,
@@ -99,6 +102,8 @@ export async function POST(request: NextRequest) {
       emptyTimeout: 30,
       maxParticipants: 5,
     });
+
+    console.log("[DISPATCH] Room created successfully");
 
     // Log call to Supabase first — the agent will handle SIP dialing
     // via dial_outbound() when it joins the room and reads metadata.
