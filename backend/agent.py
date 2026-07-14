@@ -443,5 +443,6 @@ if __name__ == "__main__":
         WorkerOptions(
             entrypoint_fnc=entrypoint,
             prewarm_fnc=prewarm,
+            num_idle_processes=3,
         ),
     )
