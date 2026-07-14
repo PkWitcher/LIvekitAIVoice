@@ -107,12 +107,14 @@ export async function POST(request: NextRequest) {
 
     await roomService.createRoom({
       name: roomName,
-      metadata,
       emptyTimeout: 30,
       maxParticipants: 5,
     });
 
-    console.log("[DISPATCH] Room created successfully with wsUrl:", wsUrl);
+    // Explicitly set metadata after room creation (LiveKit Cloud requires this)
+    await roomService.updateRoomMetadata(roomName, metadata);
+
+    console.log("[DISPATCH] Room created and metadata set with wsUrl:", wsUrl);
 
     // Log call to Supabase first — the agent will handle SIP dialing
     // via dial_outbound() when it joins the room and reads metadata.
