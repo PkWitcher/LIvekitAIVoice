@@ -6,6 +6,14 @@ import { createServerSupabase } from "@/lib/supabase-server";
 const LIVEKIT_URL = process.env.LIVEKIT_URL ?? "http://localhost:7880";
 const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY ?? "";
 const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET ?? "";
+
+// RoomServiceClient needs wss:// or ws:// URL in livekit-server-sdk v2.9+
+function getLivekitWsUrl(url: string): string {
+  if (url.startsWith("wss://") || url.startsWith("ws://")) return url;
+  if (url.startsWith("https://")) return url.replace("https://", "wss://");
+  if (url.startsWith("http://")) return url.replace("http://", "ws://");
+  return url;
+}
 interface DispatchBody {
   phone_number: string;
   prompt?: string;
@@ -90,8 +98,9 @@ export async function POST(request: NextRequest) {
     console.log("[DISPATCH] LiveKit URL:", LIVEKIT_URL, "Key:", LIVEKIT_API_KEY?.slice(0, 6) + "...");
 
     // Create the room with metadata
+    const wsUrl = getLivekitWsUrl(LIVEKIT_URL);
     const roomService = new RoomServiceClient(
-      LIVEKIT_URL,
+      wsUrl,
       LIVEKIT_API_KEY,
       LIVEKIT_API_SECRET
     );
@@ -103,7 +112,7 @@ export async function POST(request: NextRequest) {
       maxParticipants: 5,
     });
 
-    console.log("[DISPATCH] Room created successfully");
+    console.log("[DISPATCH] Room created successfully with wsUrl:", wsUrl);
 
     // Log call to Supabase first — the agent will handle SIP dialing
     // via dial_outbound() when it joins the room and reads metadata.

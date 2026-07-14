@@ -8,6 +8,13 @@ const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY ?? "";
 const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET ?? "";
 const DIAL_DELAY_MS = 200;
 
+function getLivekitWsUrl(url: string): string {
+  if (url.startsWith("wss://") || url.startsWith("ws://")) return url;
+  if (url.startsWith("https://")) return url.replace("https://", "wss://");
+  if (url.startsWith("http://")) return url.replace("http://", "ws://");
+  return url;
+}
+
 interface QueueBody {
   phone_numbers: string[];
   prompt?: string;
@@ -84,13 +91,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const wsUrl = getLivekitWsUrl(LIVEKIT_URL);
     const roomService = new RoomServiceClient(
-      LIVEKIT_URL,
+      wsUrl,
       LIVEKIT_API_KEY,
       LIVEKIT_API_SECRET
     );
 
-    const sipClient = new SipClient(LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET);
+    const sipClient = new SipClient(wsUrl, LIVEKIT_API_KEY, LIVEKIT_API_SECRET);
 
     // Always auto-discover trunk (setup_sip_trunk.py recreates it on every startup)
     const trunks = await sipClient.listSipOutboundTrunk();
