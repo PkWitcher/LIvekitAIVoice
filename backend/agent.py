@@ -323,17 +323,12 @@ async def entrypoint(ctx: JobContext) -> None:
     # Parse room metadata for runtime config
     # Retry reading metadata — it may arrive after the agent joins (race condition with LiveKit Cloud)
     metadata = {}
-    for attempt in range(10):
+    for attempt in range(2):
         raw = ctx.room.metadata
         if raw:
-            logger.info(f"Room metadata received on attempt {attempt + 1}: {raw}")
             metadata = parse_room_metadata(raw)
             break
-        logger.info(f"Waiting for room metadata (attempt {attempt + 1}/10)...")
-        await asyncio.sleep(1.0)
-    
-    if not metadata:
-        logger.warning("Room metadata still empty after 10 attempts")
+        await asyncio.sleep(0.25)
 
     phone_number = metadata.get("phone_number")
     model_provider = metadata.get("model_provider", config.DEFAULT_LLM_PROVIDER)
