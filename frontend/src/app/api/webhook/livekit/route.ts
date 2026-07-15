@@ -15,19 +15,22 @@ const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY ?? "";
 
 // Supabase S3-compatible storage config
 function getS3Upload(filename: string): S3Upload | undefined {
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return undefined;
-  
-  // Supabase Storage S3 endpoint: https://<project>.supabase.co/storage/v1/s3
-  const projectUrl = SUPABASE_URL; // e.g., https://kkowrbtrlymhuzifctuw.supabase.co
-  const s3Endpoint = `${projectUrl}/storage/v1/s3`;
-  const projectRef = projectUrl.replace("https://", "").split(".")[0];
-  
+  const accessKey = process.env.SUPABASE_S3_ACCESS_KEY;
+  const secretKey = process.env.SUPABASE_S3_SECRET_KEY;
+  const endpoint = process.env.SUPABASE_S3_ENDPOINT;
+  const region = process.env.SUPABASE_S3_REGION || "ap-southeast-2";
+
+  if (!accessKey || !secretKey || !endpoint) {
+    console.log("[WEBHOOK] S3 credentials not configured, skipping recording upload");
+    return undefined;
+  }
+
   return new S3Upload({
-    accessKey: projectRef,
-    secret: SUPABASE_SERVICE_KEY,
-    bucket: "recordings",
-    region: "us-east-1",
-    endpoint: s3Endpoint,
+    accessKey,
+    secret: secretKey,
+    bucket: "recording",
+    region,
+    endpoint,
     forcePathStyle: true,
   });
 }
