@@ -68,6 +68,16 @@ export default function CallHistory() {
     failed: "text-red-400",
   };
 
+  // Extract filename from recording_url or room_name
+  const getRecordingFile = (call: CallLog): string | null => {
+    if (call.room_name) return `${call.room_name}.ogg`;
+    if (call.recording_url) {
+      const parts = call.recording_url.split("/");
+      return parts[parts.length - 1] || null;
+    }
+    return null;
+  };
+
   if (loading) {
     return (
       <div className="card p-8 text-center text-sm text-[var(--color-text-muted)]">
@@ -141,14 +151,13 @@ export default function CallHistory() {
                   {(call.voice_id ?? "").replace("aura-", "").replace("-en", "")}
                 </td>
                 <td className="px-5 py-3">
-                  {call.recording_url && call.status === "completed" ? (
+                  {call.recording_url && call.status === "completed" && getRecordingFile(call) ? (
                     <div className="flex items-center gap-2">
                       <audio controls preload="none" className="h-7 w-36">
-                        <source src={call.recording_url} type="audio/ogg" />
+                        <source src={`/api/recordings/${getRecordingFile(call)}`} type="audio/mpeg" />
                       </audio>
                       <a
-                        href={`/api/recordings/${call.room_name}.ogg`}
-                        download
+                        href={`/api/recordings/${getRecordingFile(call)}?download=1`}
                         className="p-1.5 rounded-lg hover:bg-white/5 text-[var(--color-text-muted)] hover:text-blue-400 transition-colors"
                         title="Download recording"
                       >
@@ -185,10 +194,9 @@ export default function CallHistory() {
             <div className="flex items-center gap-3 text-xs text-[var(--color-text-muted)]">
               <span>{formatDuration(call.duration_seconds)}</span>
               <span>{call.model_provider}</span>
-              {call.recording_url && call.status === "completed" && (
+              {call.recording_url && call.status === "completed" && getRecordingFile(call) && (
                 <a
-                  href={`/api/recordings/${call.room_name}.ogg`}
-                  download
+                  href={`/api/recordings/${getRecordingFile(call)}?download=1`}
                   className="text-blue-400 hover:text-blue-300 transition-colors"
                 >
                   Download
