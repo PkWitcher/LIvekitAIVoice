@@ -33,7 +33,7 @@ export default function AdminDashboardPage() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"overview" | "subscriptions">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "users" | "subscriptions">("overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const router = useRouter();
   const supabase = createClient();
@@ -161,6 +161,15 @@ export default function AdminDashboardPage() {
             <span>Overview</span>
           </button>
           <button
+            onClick={() => setActiveTab("users")}
+            className={`admin-nav-item ${activeTab === "users" ? "active" : ""}`}
+          >
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+            </svg>
+            <span>Users</span>
+          </button>
+          <button
             onClick={() => setActiveTab("subscriptions")}
             className={`admin-nav-item ${activeTab === "subscriptions" ? "active" : ""}`}
           >
@@ -209,12 +218,14 @@ export default function AdminDashboardPage() {
             </button>
             <div>
               <h1 className="admin-page-title">
-                {activeTab === "overview" ? "Dashboard Overview" : "Subscription Management"}
+                {activeTab === "overview" && "Dashboard Overview"}
+                {activeTab === "users" && "User Management"}
+                {activeTab === "subscriptions" && "Subscription Management"}
               </h1>
               <p className="admin-page-subtitle">
-                {activeTab === "overview"
-                  ? "Monitor user activity and system performance"
-                  : "Manage plans, limits & billing per user"}
+                {activeTab === "overview" && "Monitor system performance & call stats"}
+                {activeTab === "users" && "View all registered users and their activity"}
+                {activeTab === "subscriptions" && "Manage plans, limits & billing per user"}
               </p>
             </div>
           </div>
@@ -231,7 +242,7 @@ export default function AdminDashboardPage() {
         <div className="admin-content">
           {activeTab === "overview" && (
             <>
-              {/* Stats Grid */}
+              {/* Stats Grid — Overview only shows stats */}
               <div className="admin-stats-grid animate-in">
                 <div className="admin-stat-card admin-stat-blue">
                   <div className="admin-stat-icon">
@@ -285,9 +296,13 @@ export default function AdminDashboardPage() {
                   <div className="admin-stat-badge">Completed</div>
                 </div>
               </div>
+            </>
+          )}
 
-              {/* Users Table */}
-              <div className="admin-card animate-in animate-in-delay-1">
+          {activeTab === "users" && (
+            <>
+              {/* Users Section */}
+              <div className="admin-card animate-in">
                 <div className="admin-card-header">
                   <div>
                     <h2 className="admin-card-title">All Users</h2>
@@ -456,6 +471,15 @@ export default function AdminDashboardPage() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z" />
           </svg>
           <span>Overview</span>
+        </button>
+        <button
+          onClick={() => { setActiveTab("users"); setSidebarOpen(false); }}
+          className={`admin-bottom-nav-item ${activeTab === "users" ? "active" : ""}`}
+        >
+          <svg width="20" height="20" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+          </svg>
+          <span>Users</span>
         </button>
         <button
           onClick={() => { setActiveTab("subscriptions"); setSidebarOpen(false); }}
