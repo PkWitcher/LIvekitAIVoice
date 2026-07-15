@@ -3,12 +3,34 @@ import {
   WebhookReceiver,
   EgressClient,
   EncodedFileOutput,
+  S3Upload,
 } from "livekit-server-sdk";
 import { getSupabase } from "@/lib/supabase";
 
 const LIVEKIT_URL = process.env.LIVEKIT_URL ?? "http://localhost:7880";
 const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY ?? "";
 const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET ?? "";
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY ?? "";
+
+// Supabase S3-compatible storage config
+function getS3Upload(filename: string): S3Upload | undefined {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return undefined;
+  
+  // Supabase Storage S3 endpoint: https://<project>.supabase.co/storage/v1/s3
+  const projectUrl = SUPABASE_URL; // e.g., https://kkowrbtrlymhuzifctuw.supabase.co
+  const s3Endpoint = `${projectUrl}/storage/v1/s3`;
+  const projectRef = projectUrl.replace("https://", "").split(".")[0];
+  
+  return new S3Upload({
+    accessKey: projectRef,
+    secret: SUPABASE_SERVICE_KEY,
+    bucket: "recordings",
+    region: "us-east-1",
+    endpoint: s3Endpoint,
+    forcePathStyle: true,
+  });
+}
 
 // Track active egress IDs per room so we can stop them
 const activeEgress = new Map<string, string>();
@@ -89,15 +111,24 @@ export async function POST(request: NextRequest) {
       // Start recording only on first transition to connected
       if (data && data.length > 0) {
         try {
+          const wsUrl = LIVEKIT_URL.startsWith("https://") 
+            ? LIVEKIT_URL.replace("https://", "wss://") 
+            : LIVEKIT_URL.startsWith("http://") 
+              ? LIVEKIT_URL.replace("http://", "ws://") 
+              : LIVEKIT_URL;
           const egressClient = new EgressClient(
-            LIVEKIT_URL,
+            wsUrl,
             LIVEKIT_API_KEY,
             LIVEKIT_API_SECRET
           );
+          
+          const s3 = getS3Upload(`${roomName}.ogg`);
           const output = new EncodedFileOutput({
             fileType: 2, // OGG
-            filepath: `/recordings/${roomName}.ogg`,
+            filepath: `${roomName}.ogg`,
+            output: s3 ? { case: "s3", value: s3 } : undefined,
           });
+          
           const egressInfo = await egressClient.startRoomCompositeEgress(
             roomName,
             output,
@@ -144,13 +175,14 @@ export async function POST(request: NextRequest) {
             : 0;
           
           console.log(`[WEBHOOK] Marking completed, duration=${durationSeconds}s (from ${record.connected_at ? 'connected_at' : 'created_at'})`);
+          const recordingUrl = `${SUPABASE_URL}/storage/v1/object/public/recordings/${roomName}.ogg`;
           await supabase
             .from("phone_logs")
             .update({
               status: "completed",
               duration_seconds: durationSeconds,
               ended_at: now,
-              recording_url: `/api/recordings/${roomName}.ogg`,
+              recording_url: recordingUrl,
             })
             .eq("room_name", roomName);
         }
@@ -178,13 +210,14 @@ export async function POST(request: NextRequest) {
           const durationSeconds = startTime
             ? Math.round((Date.now() - new Date(startTime).getTime()) / 1000)
             : 0;
+          const recordingUrl = `${SUPABASE_URL}/storage/v1/object/public/recordings/${roomName}.ogg`;
           await supabase
             .from("phone_logs")
             .update({
               status: "completed",
               duration_seconds: durationSeconds,
               ended_at: now,
-              recording_url: `/api/recordings/${roomName}.ogg`,
+              recording_url: recordingUrl,
             })
             .eq("room_name", roomName);
         } else if (record.status === "ringing") {

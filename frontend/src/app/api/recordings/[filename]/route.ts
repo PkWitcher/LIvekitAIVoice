@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readFile, stat } from "fs/promises";
-import path from "path";
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 
 export async function GET(
   _request: NextRequest,
@@ -8,37 +8,12 @@ export async function GET(
 ) {
   const { filename } = await params;
 
-  // Sanitize filename — only allow alphanumeric, dash, dot, underscore
-  if (!/^[\w\-.]+\.ogg$/.test(filename)) {
-    return NextResponse.json({ error: "Invalid filename" }, { status: 400 });
+  if (!filename) {
+    return NextResponse.json({ error: "Filename required" }, { status: 400 });
   }
 
-  const filePath = path.join("/recordings", filename);
-
-  try {
-    const fileStat = await stat(filePath);
-    if (!fileStat.isFile() || fileStat.size === 0) {
-      return NextResponse.json(
-        { error: "Recording not ready" },
-        { status: 404 }
-      );
-    }
-
-    const buffer = await readFile(filePath);
-
-    return new NextResponse(buffer, {
-      status: 200,
-      headers: {
-        "Content-Type": "audio/ogg",
-        "Content-Length": String(fileStat.size),
-        "Accept-Ranges": "bytes",
-        "Cache-Control": "public, max-age=3600",
-      },
-    });
-  } catch {
-    return NextResponse.json(
-      { error: "Recording not found" },
-      { status: 404 }
-    );
-  }
+  // Redirect to Supabase Storage public URL
+  const storageUrl = `${SUPABASE_URL}/storage/v1/object/public/recordings/${filename}`;
+  
+  return NextResponse.redirect(storageUrl, 302);
 }
