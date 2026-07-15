@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
             : 0;
           
           console.log(`[WEBHOOK] Marking completed, duration=${durationSeconds}s (from ${record.connected_at ? 'connected_at' : 'created_at'})`);
-          const recordingUrl = `${SUPABASE_URL}/storage/v1/object/public/recordings/${roomName}.ogg`;
+          const recordingUrl = `${SUPABASE_URL}/storage/v1/object/public/recording/${roomName}.ogg`;
           await supabase
             .from("phone_logs")
             .update({
@@ -213,7 +213,7 @@ export async function POST(request: NextRequest) {
           const durationSeconds = startTime
             ? Math.round((Date.now() - new Date(startTime).getTime()) / 1000)
             : 0;
-          const recordingUrl = `${SUPABASE_URL}/storage/v1/object/public/recordings/${roomName}.ogg`;
+          const recordingUrl = `${SUPABASE_URL}/storage/v1/object/public/recording/${roomName}.ogg`;
           await supabase
             .from("phone_logs")
             .update({

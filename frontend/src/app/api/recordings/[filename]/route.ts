@@ -12,30 +12,33 @@ export async function GET(
     return NextResponse.json({ error: "Filename required" }, { status: 400 });
   }
 
-  // Fetch the actual file from Supabase Storage and proxy it
-  const storageUrl = `${SUPABASE_URL}/storage/v1/object/public/recordings/${filename}`;
+  // Fetch the actual file from Supabase Storage — try both bucket names
+  const urls = [
+    `${SUPABASE_URL}/storage/v1/object/public/recording/${filename}`,
+    `${SUPABASE_URL}/storage/v1/object/public/recordings/${filename}`,
+  ];
 
   try {
-    const res = await fetch(storageUrl);
+    let audioData: ArrayBuffer | null = null;
 
-    if (!res.ok) {
+    for (const storageUrl of urls) {
+      const res = await fetch(storageUrl);
+      if (!res.ok) continue;
+
+      const ct = res.headers.get("content-type");
+      if (ct?.includes("application/json")) continue;
+
+      audioData = await res.arrayBuffer();
+      if (audioData.byteLength > 0) break;
+      audioData = null;
+    }
+
+    if (!audioData) {
       return NextResponse.json(
         { error: "Recording not found" },
         { status: 404 }
       );
     }
-
-    const contentType = res.headers.get("content-type");
-
-    // If Supabase returned JSON (error / file not found), reject
-    if (contentType?.includes("application/json")) {
-      return NextResponse.json(
-        { error: "Recording not found" },
-        { status: 404 }
-      );
-    }
-
-    const audioData = await res.arrayBuffer();
     const downloadName = filename.replace(/\.ogg$/, ".mp3");
     const isDownload = request.nextUrl.searchParams.get("download") === "1";
 
