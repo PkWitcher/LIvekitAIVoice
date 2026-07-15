@@ -290,16 +290,16 @@ export default function AdminDashboardPage() {
               <div className="admin-card animate-in animate-in-delay-1">
                 <div className="admin-card-header">
                   <div>
-                    <h2 className="admin-card-title">User Activity</h2>
-                    <p className="admin-card-subtitle">Call usage breakdown per user</p>
+                    <h2 className="admin-card-title">All Users</h2>
+                    <p className="admin-card-subtitle">Complete details for each registered user</p>
                   </div>
                   <span className="badge badge-purple">
                     {stats?.users.length ?? 0} users
                   </span>
                 </div>
 
-                {/* Desktop table */}
-                <div className="hidden lg:block overflow-x-auto">
+                {/* Desktop table — hidden, replaced by user cards below */}
+                <div className="hidden">
                   <table className="admin-table">
                     <thead>
                       <tr>
@@ -369,8 +369,8 @@ export default function AdminDashboardPage() {
                   </table>
                 </div>
 
-                {/* Mobile cards */}
-                <div className="lg:hidden admin-mobile-list">
+                {/* User Detail Cards — visible on all screens */}
+                <div className="admin-user-cards-grid">
                   {stats?.users.map((user) => (
                     <div key={user.user_id} className="admin-mobile-card">
                       <div className="admin-mobile-card-header">
@@ -384,7 +384,10 @@ export default function AdminDashboardPage() {
                             {user.phone && <span className="admin-user-phone">{user.phone}</span>}
                           </div>
                         </div>
-                        <span className="admin-mobile-date">{formatDate(user.last_call_at)}</span>
+                        <div className="admin-user-card-meta">
+                          <span className="admin-mobile-date">Joined: {formatDate(user.registered_at)}</span>
+                          <span className="admin-mobile-date">Last: {formatDate(user.last_call_at)}</span>
+                        </div>
                       </div>
                       <div className="admin-mobile-stats-grid">
                         <div className="admin-mobile-stat">
@@ -409,10 +412,18 @@ export default function AdminDashboardPage() {
                           <svg width="12" height="12" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                           </svg>
-                          {formatDuration(user.total_duration_seconds)}
+                          Total: {formatDuration(user.total_duration_seconds)}
                         </span>
                         <span>Avg: {formatDuration(user.avg_duration_seconds)}</span>
                       </div>
+                      {user.phone && (
+                        <div className="admin-user-card-extra">
+                          <svg width="12" height="12" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
+                          </svg>
+                          <span className="font-mono text-xs">{user.phone}</span>
+                        </div>
+                      )}
                     </div>
                   ))}
                   {(!stats?.users || stats.users.length === 0) && (

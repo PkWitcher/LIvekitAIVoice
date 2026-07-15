@@ -31,14 +31,21 @@ export async function GET() {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 
-    // Get user emails from auth.users via admin API
-    const { data: { users: authUsers } } = await supabase.auth.admin.listUsers();
+    // Get ALL user emails from auth.users via admin API (with pagination)
+    const authUsers: any[] = [];
+    let listPage = 1;
+    const listPerPage = 50;
+    while (true) {
+      const { data: { users: pageUsers } } = await supabase.auth.admin.listUsers({ page: listPage, perPage: listPerPage });
+      if (!pageUsers || pageUsers.length === 0) break;
+      authUsers.push(...pageUsers);
+      if (pageUsers.length < listPerPage) break;
+      listPage++;
+    }
 
     const emailMap: Record<string, string> = {};
-    if (authUsers) {
-      for (const u of authUsers) {
-        emailMap[u.id] = u.email ?? "Unknown";
-      }
+    for (const u of authUsers) {
+      emailMap[u.id] = u.email ?? "Unknown";
     }
 
     // Get user profiles (name, phone)
