@@ -12,8 +12,38 @@ export async function GET(
     return NextResponse.json({ error: "Filename required" }, { status: 400 });
   }
 
-  // Redirect to Supabase Storage public URL
+  // Fetch the actual file from Supabase Storage and proxy it
   const storageUrl = `${SUPABASE_URL}/storage/v1/object/public/recordings/${filename}`;
-  
-  return NextResponse.redirect(storageUrl, 302);
+
+  try {
+    const res = await fetch(storageUrl);
+
+    if (!res.ok) {
+      return NextResponse.json(
+        { error: "Recording not found" },
+        { status: 404 }
+      );
+    }
+
+    const audioData = await res.arrayBuffer();
+
+    // Determine content type and build a clean download name
+    const isOgg = filename.endsWith(".ogg");
+    const contentType = isOgg ? "audio/ogg" : "audio/mpeg";
+    const downloadName = filename.replace(/\.ogg$/, ".mp3");
+
+    return new NextResponse(audioData, {
+      status: 200,
+      headers: {
+        "Content-Type": contentType,
+        "Content-Disposition": `attachment; filename="${downloadName}"`,
+        "Content-Length": String(audioData.byteLength),
+      },
+    });
+  } catch {
+    return NextResponse.json(
+      { error: "Failed to fetch recording" },
+      { status: 500 }
+    );
+  }
 }

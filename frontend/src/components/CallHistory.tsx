@@ -142,9 +142,21 @@ export default function CallHistory() {
                 </td>
                 <td className="px-5 py-3">
                   {call.recording_url && call.status === "completed" ? (
-                    <audio controls preload="none" className="h-7 w-36">
-                      <source src={call.recording_url} type="audio/ogg" />
-                    </audio>
+                    <div className="flex items-center gap-2">
+                      <audio controls preload="none" className="h-7 w-36">
+                        <source src={call.recording_url} type="audio/ogg" />
+                      </audio>
+                      <a
+                        href={`/api/recordings/${call.room_name}.ogg`}
+                        download
+                        className="p-1.5 rounded-lg hover:bg-white/5 text-[var(--color-text-muted)] hover:text-blue-400 transition-colors"
+                        title="Download recording"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                        </svg>
+                      </a>
+                    </div>
                   ) : (
                     <span className="text-[var(--color-text-muted)] text-xs">—</span>
                   )}
@@ -173,6 +185,15 @@ export default function CallHistory() {
             <div className="flex items-center gap-3 text-xs text-[var(--color-text-muted)]">
               <span>{formatDuration(call.duration_seconds)}</span>
               <span>{call.model_provider}</span>
+              {call.recording_url && call.status === "completed" && (
+                <a
+                  href={`/api/recordings/${call.room_name}.ogg`}
+                  download
+                  className="text-blue-400 hover:text-blue-300 transition-colors"
+                >
+                  Download
+                </a>
+              )}
               <span className="ml-auto">{formatTime(call.created_at)}</span>
             </div>
           </div>
