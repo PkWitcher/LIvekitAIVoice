@@ -274,7 +274,7 @@ export default function CallDispatcher() {
 
         <textarea
           id="prompt"
-          rows={3}
+          rows={8}
           placeholder="Generated script will appear here, or type your own..."
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}

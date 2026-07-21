@@ -267,7 +267,7 @@ export default function BulkDialer() {
 
         <textarea
           id="bulk-context"
-          rows={3}
+          rows={8}
           placeholder="Generated script will appear here, or type your own..."
           value={context}
           onChange={(e) => setContext(e.target.value)}
