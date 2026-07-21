@@ -6,6 +6,7 @@ import {
   S3Upload,
 } from "livekit-server-sdk";
 import { getSupabase } from "@/lib/supabase";
+import { sendWhatsAppMessage } from "@/lib/whatsapp";
 
 const LIVEKIT_URL = process.env.LIVEKIT_URL ?? "http://localhost:7880";
 const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY ?? "";
@@ -188,6 +189,20 @@ export async function POST(request: NextRequest) {
               recording_url: recordingUrl,
             })
             .eq("room_name", roomName);
+
+          // Send WhatsApp message — call completed
+          const { data: completedLog } = await supabase
+            .from("phone_logs")
+            .select("phone_number")
+            .eq("room_name", roomName)
+            .single();
+          if (completedLog?.phone_number) {
+            sendWhatsAppMessage({
+              to: completedLog.phone_number,
+              type: "call_completed",
+              callDuration: durationSeconds,
+            }).catch(() => {});
+          }
         }
       }
     }
@@ -231,6 +246,19 @@ export async function POST(request: NextRequest) {
               ended_at: now,
             })
             .eq("room_name", roomName);
+
+          // Send WhatsApp message — no answer / rejected
+          const { data: missedLog } = await supabase
+            .from("phone_logs")
+            .select("phone_number")
+            .eq("room_name", roomName)
+            .single();
+          if (missedLog?.phone_number) {
+            sendWhatsAppMessage({
+              to: missedLog.phone_number,
+              type: "call_missed",
+            }).catch(() => {});
+          }
         }
       }
     }
