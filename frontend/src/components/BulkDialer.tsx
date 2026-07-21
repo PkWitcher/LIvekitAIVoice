@@ -23,6 +23,8 @@ export default function BulkDialer() {
   const [results, setResults] = useState<DialResult[]>([]);
   const [brief, setBrief] = useState("");
   const [generating, setGenerating] = useState(false);
+  const [generated, setGenerated] = useState(false);
+  const [genError, setGenError] = useState("");
   const [savedPrompts, setSavedPrompts] = useState<SavedPrompt[]>([]);
   const [saving, setSaving] = useState(false);
   const [saveTitle, setSaveTitle] = useState("");
@@ -143,13 +145,15 @@ export default function BulkDialer() {
             type="text"
             placeholder="e.g. Remind about appointment on June 20"
             value={brief}
-            onChange={(e) => setBrief(e.target.value)}
+            onChange={(e) => { setBrief(e.target.value); setGenerated(false); setGenError(""); }}
             className="flex-1"
           />
           <button
             onClick={async () => {
               if (!brief.trim()) return;
               setGenerating(true);
+              setGenError("");
+              setGenerated(false);
               try {
                 const res = await fetch("/api/generate-prompt", {
                   method: "POST",
@@ -159,8 +163,11 @@ export default function BulkDialer() {
                 const data = await res.json();
                 if (data.success && data.prompt) {
                   setContext(data.prompt);
+                  setGenerated(true);
+                } else {
+                  setGenError(data.error || "Failed to generate");
                 }
-              } catch { /* silent */ }
+              } catch { setGenError("Network error"); }
               finally { setGenerating(false); }
             }}
             disabled={generating || !brief.trim()}
@@ -171,11 +178,19 @@ export default function BulkDialer() {
           >
             {generating ? (
               <><span className="spinner" style={{ width: 12, height: 12 }} /> Generating...</>
+            ) : generated ? (
+              <><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182" /></svg> Regenerate</>
             ) : (
               <><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 0 0-2.455 2.456Z" /></svg> Generate</>
             )}
           </button>
         </div>
+        {generated && (
+          <p className="text-[11px] text-green-400 mt-1.5">✓ Script generated and pasted below. You can edit it before launching.</p>
+        )}
+        {genError && (
+          <p className="text-[11px] text-red-400 mt-1.5">{genError}</p>
+        )}
       </div>
 
       {/* Campaign Script */}
