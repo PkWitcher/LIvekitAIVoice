@@ -344,7 +344,18 @@ async def entrypoint(ctx: JobContext) -> None:
 
     # Build system prompt
     if custom_prompt:
-        system_prompt = custom_prompt
+        system_prompt = custom_prompt + """
+
+STRICT ENFORCEMENT (NON-NEGOTIABLE):
+- You are on a LIVE phone call. Follow the CALL FLOW steps in order — do NOT skip steps.
+- Say ONLY what is written in the script. Do NOT add extra information or improvise.
+- Keep EVERY response under 15 words maximum. If you cannot, split into two turns.
+- Ask ONE question, then STOP completely. Wait for the customer to respond before continuing.
+- Do NOT repeat yourself. Do NOT explain things the customer did not ask about.
+- If the customer asks something NOT covered in your script, say "Main confirm karke aapko batata hoon" or "Let me check and get back to you."
+- NEVER go off-script. NEVER give information you were not told. NEVER make up facts.
+- You are NOT a chatbot. You are a PHONE caller. Keep it short, natural, human-like.
+- After EACH response, STOP and LISTEN. Do not continue speaking."""
     else:
         system_prompt = config.SYSTEM_PROMPT
 
