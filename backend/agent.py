@@ -426,8 +426,28 @@ async def entrypoint(ctx: JobContext) -> None:
         await agent.say(greeting)
         logger.info("Greeting dispatched, agent is now listening")
     else:
-        # Let the LLM generate its own greeting based on the system prompt
-        logger.info("Using LLM-generated greeting from custom prompt")
+        # Custom prompt: generate greeting from LLM based on the call flow step 1
+        logger.info("Custom prompt: generating greeting via LLM...")
+        try:
+            greeting_ctx = llm.ChatContext()
+            greeting_ctx.append(role="system", text=system_prompt)
+            greeting_ctx.append(role="user", text="The customer just picked up the phone. Say ONLY your greeting from step 1 of the call flow. Keep it under 20 words. Output ONLY the greeting text, nothing else.")
+            greeting_llm = create_llm_plugin(model_provider)
+            greeting_response = ""
+            async for chunk in greeting_llm.chat(chat_ctx=greeting_ctx):
+                if chunk.choices and chunk.choices[0].delta.content:
+                    greeting_response += chunk.choices[0].delta.content
+            greeting_response = greeting_response.strip()
+            if greeting_response:
+                logger.info(f"LLM greeting: {greeting_response[:80]}")
+                await agent.say(greeting_response)
+            else:
+                logger.warning("LLM returned empty greeting, using fallback")
+                await agent.say("Hello! How can I help you today?")
+        except Exception as e:
+            logger.error(f"Greeting generation failed: {e}, using fallback")
+            await agent.say("Hello! How can I help you today?")
+        logger.info("Custom greeting dispatched, agent is now listening")
         initial_ctx.append(role="user", text="[The call has just connected. Introduce yourself and greet the customer as instructed in your system prompt. Speak in the language specified.]")
         logger.info("LLM greeting triggered, agent is now active")
 
