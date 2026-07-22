@@ -6,6 +6,7 @@ Supports inbound and outbound calls via SIP trunks.
 
 import json
 import logging
+import re
 import ssl
 import asyncio
 from typing import Optional
@@ -265,6 +266,49 @@ def parse_room_metadata(metadata: Optional[str]) -> dict:
 
 
 # ──────────────────────────────────────────────
+# Extract Greeting from Custom Prompt
+# ──────────────────────────────────────────────
+
+def extract_greeting_from_prompt(prompt: str) -> Optional[str]:
+    """Extract the greeting (step 1) from a structured call prompt.
+    
+    Looks for patterns like:
+      1. Greet: "Namaste! Main Arjun bol raha hoon..."
+      1. "Hello! This is Priya calling from..."
+    """
+    if not prompt:
+        return None
+
+    # Pattern 1: Look for text in quotes after step 1
+    match = re.search(r'1\.\s*(?:Greet(?:ing)?:?\s*)?["\u201c]([^"\u201d]+)["\u201d]', prompt)
+    if match:
+        return match.group(1).strip()
+
+    # Pattern 2: Look for text in quotes on the line containing "1."
+    lines = prompt.split('\n')
+    for line in lines:
+        line_stripped = line.strip()
+        if re.match(r'^1\.', line_stripped):
+            # Extract any quoted text from this line
+            quote_match = re.search(r'["\u201c]([^"\u201d]+)["\u201d]', line_stripped)
+            if quote_match:
+                return quote_match.group(1).strip()
+            # If no quotes, take text after "1. Greet:" or "1."
+            text_match = re.match(r'^1\.\s*(?:Greet(?:ing)?:?\s*)?(.+)', line_stripped)
+            if text_match:
+                text = text_match.group(1).strip().strip('"\'')
+                if len(text) > 5:
+                    return text
+
+    # Pattern 3: Look for "Greet:" anywhere
+    greet_match = re.search(r'Greet(?:ing)?:\s*["\u201c]?([^"\u201d\n]+)["\u201d]?', prompt)
+    if greet_match:
+        return greet_match.group(1).strip()
+
+    return None
+
+
+# ──────────────────────────────────────────────
 # Outbound Dialing
 # ──────────────────────────────────────────────
 async def dial_outbound(ctx: JobContext, phone_number: str, metadata: dict) -> None:
@@ -437,27 +481,17 @@ STRICT ENFORCEMENT (NON-NEGOTIABLE):
         await agent.say(greeting)
         logger.info("Greeting dispatched, agent is now listening")
     else:
-        # Custom prompt: generate greeting from LLM based on the call flow step 1
-        logger.info("Custom prompt: generating greeting via LLM...")
-        try:
-            greeting_ctx = llm.ChatContext()
-            greeting_ctx.append(role="system", text=system_prompt)
-            greeting_ctx.append(role="user", text="The customer just picked up the phone. Say ONLY your greeting from step 1 of the call flow. Keep it under 20 words. Output ONLY the greeting text, nothing else.")
-            greeting_llm = create_llm_plugin(model_provider)
-            greeting_response = ""
-            async for chunk in greeting_llm.chat(chat_ctx=greeting_ctx):
-                if chunk.choices and chunk.choices[0].delta.content:
-                    greeting_response += chunk.choices[0].delta.content
-            greeting_response = greeting_response.strip()
-            if greeting_response:
-                logger.info(f"LLM greeting: {greeting_response[:80]}")
-                await agent.say(greeting_response)
-            else:
-                logger.warning("LLM returned empty greeting, using fallback")
-                await agent.say("Hello! How can I help you today?")
-        except Exception as e:
-            logger.error(f"Greeting generation failed: {e}, using fallback")
-            await agent.say("Hello! How can I help you today?")
+        # Custom prompt: extract greeting from CALL FLOW step 1 directly (no LLM call needed)
+        logger.info("Custom prompt: extracting greeting from prompt...")
+        extracted_greeting = extract_greeting_from_prompt(custom_prompt)
+        if extracted_greeting:
+            logger.info(f"Extracted greeting: {extracted_greeting[:80]}")
+            await agent.say(extracted_greeting)
+        else:
+            # Fallback: use a simple neutral greeting
+            logger.info("No greeting found in prompt, using neutral greeting")
+            await agent.say("Namaste!")
+        logger.info("Custom greeting dispatched, agent is now listening")
         logger.info("Custom greeting dispatched, agent is now listening")
         initial_ctx.append(role="user", text="[The call has just connected. Introduce yourself and greet the customer as instructed in your system prompt. Speak in the language specified.]")
         logger.info("LLM greeting triggered, agent is now active")
