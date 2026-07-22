@@ -179,9 +179,9 @@ LIVEKIT_API_SECRET = os.getenv("LIVEKIT_API_SECRET", "")
 # ──────────────────────────────────────────────
 # VAD (Voice Activity Detection) Configuration
 # ──────────────────────────────────────────────
-VAD_MIN_SILENCE_DURATION = 0.2    # respond faster after caller stops
-VAD_PADDING_DURATION = 0.15       # minimal padding
-VAD_THRESHOLD = 0.4               # more sensitive detection
+VAD_MIN_SILENCE_DURATION = 0.35   # wait longer before assuming caller stopped
+VAD_PADDING_DURATION = 0.25       # more padding for phone audio
+VAD_THRESHOLD = 0.45              # balanced sensitivity for SIP calls
 
 # ──────────────────────────────────────────────
 # Agent Identity

@@ -569,9 +569,6 @@ STRICT ENFORCEMENT (NON-NEGOTIABLE):
             logger.info("No greeting found in prompt, using neutral greeting")
             await agent.say("Namaste!")
         logger.info("Custom greeting dispatched, agent is now listening")
-        logger.info("Custom greeting dispatched, agent is now listening")
-        initial_ctx.append(role="user", text="[The call has just connected. Introduce yourself and greet the customer as instructed in your system prompt. Speak in the language specified.]")
-        logger.info("LLM greeting triggered, agent is now active")
 
     # Keep the agent alive — without this the function exits and the agent stops
     # The agent will continue handling conversation until the room closes
