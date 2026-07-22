@@ -504,6 +504,17 @@ STRICT ENFORCEMENT (NON-NEGOTIABLE):
     initial_ctx = llm.ChatContext()
     initial_ctx.append(role="system", text=system_prompt)
 
+    # Pre-add greeting to chat context so LLM knows it was already spoken
+    if not is_inbound:
+        if custom_prompt:
+            extracted = extract_greeting_from_prompt(custom_prompt)
+            if extracted:
+                initial_ctx.append(role="assistant", text=extracted)
+                logger.info("Added extracted greeting to LLM context")
+        elif greeting:
+            initial_ctx.append(role="assistant", text=greeting)
+            logger.info("Added hardcoded greeting to LLM context")
+
     # Build the voice pipeline agent
     agent = VoicePipelineAgent(
         vad=ctx.proc.userdata["vad"],
@@ -555,7 +566,7 @@ STRICT ENFORCEMENT (NON-NEGOTIABLE):
     # Speak the greeting
     if greeting:
         logger.info(f"Saying hardcoded greeting with TTS provider: {type(tts).__module__}")
-        await agent.say(greeting)
+        await agent.say(greeting, allow_interruptions=True)
         logger.info("Greeting dispatched, agent is now listening")
     else:
         # Custom prompt: extract greeting from CALL FLOW step 1 directly (no LLM call needed)
@@ -563,11 +574,11 @@ STRICT ENFORCEMENT (NON-NEGOTIABLE):
         extracted_greeting = extract_greeting_from_prompt(custom_prompt)
         if extracted_greeting:
             logger.info(f"Extracted greeting: {extracted_greeting[:80]}")
-            await agent.say(extracted_greeting)
+            await agent.say(extracted_greeting, allow_interruptions=True)
         else:
             # Fallback: use a simple neutral greeting
             logger.info("No greeting found in prompt, using neutral greeting")
-            await agent.say("Namaste!")
+            await agent.say("Namaste!", allow_interruptions=True)
         logger.info("Custom greeting dispatched, agent is now listening")
 
     # Keep the agent alive — without this the function exits and the agent stops
