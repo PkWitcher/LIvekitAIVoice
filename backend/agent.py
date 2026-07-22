@@ -9,6 +9,8 @@ import logging
 import re
 import ssl
 import asyncio
+import urllib.request
+import os
 from typing import Optional
 
 import certifi
@@ -37,6 +39,42 @@ logger.setLevel(logging.INFO)
 # SSL context for HTTPS calls
 # ──────────────────────────────────────────────
 ssl_ctx = ssl.create_default_context(cafile=certifi.where())
+
+
+# ──────────────────────────────────────────────
+# Transcript Saver — posts messages to Supabase
+# ──────────────────────────────────────────────
+SUPABASE_URL = os.getenv("SUPABASE_URL", os.getenv("NEXT_PUBLIC_SUPABASE_URL", ""))
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
+
+
+async def save_transcript(room_name: str, speaker: str, text: str):
+    """Save a transcript message to Supabase (non-blocking)."""
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY or not text.strip():
+        return
+    try:
+        url = f"{SUPABASE_URL}/rest/v1/call_transcripts"
+        payload = json.dumps({
+            "room_name": room_name,
+            "speaker": speaker,
+            "text": text.strip(),
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=payload,
+            method="POST",
+            headers={
+                "Content-Type": "application/json",
+                "apikey": SUPABASE_SERVICE_KEY,
+                "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+                "Prefer": "return=minimal",
+            },
+        )
+        await asyncio.get_event_loop().run_in_executor(
+            None, lambda: urllib.request.urlopen(req, context=ssl_ctx)
+        )
+    except Exception as e:
+        logger.debug(f"Transcript save failed: {e}")
 
 
 # ──────────────────────────────────────────────
@@ -484,6 +522,21 @@ STRICT ENFORCEMENT (NON-NEGOTIABLE):
     # Start the agent
     agent.start(ctx.room)
     logger.info("Agent pipeline started")
+
+    # ── Live Transcript: capture user & AI speech events ──
+    room_name_for_transcript = ctx.room.name
+
+    @agent.on("user_speech_committed")
+    def on_user_speech(msg):
+        text = msg.content if hasattr(msg, 'content') else str(msg)
+        if text and text.strip():
+            asyncio.create_task(save_transcript(room_name_for_transcript, "user", text))
+
+    @agent.on("agent_speech_committed")
+    def on_agent_speech(msg):
+        text = msg.content if hasattr(msg, 'content') else str(msg)
+        if text and text.strip():
+            asyncio.create_task(save_transcript(room_name_for_transcript, "ai", text))
 
     # Wait for participant
     participant = await ctx.wait_for_participant()

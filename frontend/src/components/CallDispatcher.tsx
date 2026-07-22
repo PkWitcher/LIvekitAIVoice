@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import LiveTranscript from "@/components/LiveTranscript";
 
 interface DispatchResult {
   success: boolean;
@@ -24,6 +25,8 @@ export default function CallDispatcher() {
   const [language, setLanguage] = useState("multi");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<DispatchResult | null>(null);
+  const [activeRoomName, setActiveRoomName] = useState<string | null>(null);
+  const [showTranscript, setShowTranscript] = useState(false);
   const [recentCalls, setRecentCalls] = useState<
     { phone: string; time: string; status: string }[]
   >([]);
@@ -412,14 +415,29 @@ export default function CallDispatcher() {
           }`}
         >
           {result.success ? (
-            <span>
-              Call dispatched — <span className="font-mono text-xs opacity-70">{result.room_name}</span>
-            </span>
+            <div className="flex items-center justify-between">
+              <span>
+                Call dispatched — <span className="font-mono text-xs opacity-70">{result.room_name}</span>
+              </span>
+              <button
+                onClick={() => { setActiveRoomName(result.room_name ?? null); setShowTranscript(true); }}
+                className="ml-2 px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 transition-colors whitespace-nowrap"
+              >
+                Live Transcript
+              </button>
+            </div>
           ) : (
             <span>{result.error}</span>
           )}
         </div>
       )}
+
+      {/* Live Transcript Sidebar */}
+      <LiveTranscript
+        roomName={activeRoomName}
+        isOpen={showTranscript}
+        onClose={() => setShowTranscript(false)}
+      />
 
       {/* Recent Calls */}
       {recentCalls.length > 0 && (

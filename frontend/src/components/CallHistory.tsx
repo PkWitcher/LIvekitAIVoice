@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import LiveTranscript from "@/components/LiveTranscript";
 
 interface CallLog {
   id: string;
@@ -21,6 +22,8 @@ interface CallLog {
 export default function CallHistory() {
   const [calls, setCalls] = useState<CallLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [transcriptRoom, setTranscriptRoom] = useState<string | null>(null);
+  const [showTranscript, setShowTranscript] = useState(false);
 
   const fetchCalls = useCallback(async () => {
     try {
@@ -124,6 +127,7 @@ export default function CallHistory() {
               <th className="px-5 py-3 font-medium">Model</th>
               <th className="px-5 py-3 font-medium">Voice</th>
               <th className="px-5 py-3 font-medium">Recording</th>
+              <th className="px-5 py-3 font-medium">Transcript</th>
               <th className="px-5 py-3 font-medium">Time</th>
             </tr>
           </thead>
@@ -173,6 +177,18 @@ export default function CallHistory() {
                 <td className="px-5 py-3 text-[var(--color-text-muted)]">
                   {formatTime(call.created_at)}
                 </td>
+                <td className="px-5 py-3">
+                  {call.room_name && call.status === "completed" ? (
+                    <button
+                      onClick={() => { setTranscriptRoom(call.room_name); setShowTranscript(true); }}
+                      className="text-[10px] px-2 py-1 rounded-md bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 transition-colors"
+                    >
+                      View
+                    </button>
+                  ) : (
+                    <span className="text-[var(--color-text-muted)] text-xs">—</span>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -202,11 +218,26 @@ export default function CallHistory() {
                   Download
                 </a>
               )}
+              {call.room_name && call.status === "completed" && (
+                <button
+                  onClick={() => { setTranscriptRoom(call.room_name); setShowTranscript(true); }}
+                  className="text-purple-400 hover:text-purple-300 transition-colors"
+                >
+                  Transcript
+                </button>
+              )}
               <span className="ml-auto">{formatTime(call.created_at)}</span>
             </div>
           </div>
         ))}
       </div>
+
+      {/* Transcript Sidebar */}
+      <LiveTranscript
+        roomName={transcriptRoom}
+        isOpen={showTranscript}
+        onClose={() => setShowTranscript(false)}
+      />
     </div>
   );
 }
