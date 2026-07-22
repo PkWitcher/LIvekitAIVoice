@@ -270,40 +270,64 @@ def parse_room_metadata(metadata: Optional[str]) -> dict:
 # ──────────────────────────────────────────────
 
 def extract_greeting_from_prompt(prompt: str) -> Optional[str]:
-    """Extract the greeting (step 1) from a structured call prompt.
+    """Extract the greeting from a structured call prompt.
     
-    Looks for patterns like:
+    Handles multiple formats:
       1. Greet: "Namaste! Main Arjun bol raha hoon..."
-      1. "Hello! This is Priya calling from..."
+      ## PEHLI BAAT
+      "Hello! Main Arjun bol raha hoon..."
+      CALL FLOW:
+      1. "Hello!..."
     """
     if not prompt:
         return None
 
-    # Pattern 1: Look for text in quotes after step 1
+    lines = prompt.split('\n')
+
+    # Pattern 1: Find "PEHLI BAAT" / "FIRST" / "GREETING" / "OPENING" header, then grab next quoted text
+    greeting_headers = [
+        r'PEHLI\s*BAAT', r'FIRST\s*(?:LINE|MESSAGE|THING)', r'GREETING', 
+        r'OPENING', r'CALL\s*(?:CONNECT|START)', r'SHURUAT',
+    ]
+    header_pattern = re.compile(r'(?:##?\s*)?(?:' + '|'.join(greeting_headers) + r')', re.IGNORECASE)
+    for i, line in enumerate(lines):
+        if header_pattern.search(line):
+            # Look at this line and the next few lines for quoted text
+            for j in range(i, min(i + 4, len(lines))):
+                quote_match = re.search(r'["\u201c]([^"\u201d]{10,})["\u201d]', lines[j])
+                if quote_match:
+                    return quote_match.group(1).strip()
+
+    # Pattern 2: Look for "1. Greet:" or "1." with quoted text
     match = re.search(r'1\.\s*(?:Greet(?:ing)?:?\s*)?["\u201c]([^"\u201d]+)["\u201d]', prompt)
     if match:
         return match.group(1).strip()
 
-    # Pattern 2: Look for text in quotes on the line containing "1."
-    lines = prompt.split('\n')
+    # Pattern 3: Look for numbered step 1 line with any quoted text
     for line in lines:
         line_stripped = line.strip()
         if re.match(r'^1\.', line_stripped):
-            # Extract any quoted text from this line
             quote_match = re.search(r'["\u201c]([^"\u201d]+)["\u201d]', line_stripped)
             if quote_match:
                 return quote_match.group(1).strip()
-            # If no quotes, take text after "1. Greet:" or "1."
             text_match = re.match(r'^1\.\s*(?:Greet(?:ing)?:?\s*)?(.+)', line_stripped)
             if text_match:
                 text = text_match.group(1).strip().strip('"\'')
                 if len(text) > 5:
                     return text
 
-    # Pattern 3: Look for "Greet:" anywhere
+    # Pattern 4: Look for "Greet:" anywhere
     greet_match = re.search(r'Greet(?:ing)?:\s*["\u201c]?([^"\u201d\n]+)["\u201d]?', prompt)
     if greet_match:
         return greet_match.group(1).strip()
+
+    # Pattern 5: Find the first quoted text longer than 15 chars (likely a greeting)
+    first_quote = re.search(r'["\u201c]([^"\u201d]{15,})["\u201d]', prompt)
+    if first_quote:
+        text = first_quote.group(1).strip()
+        # Only use if it sounds like a greeting (contains hello/namaste/hi/main)
+        if re.search(r'(?:hello|namaste|hi|main.*bol|this is|hey)', text, re.IGNORECASE):
+            return text
 
     return None
 

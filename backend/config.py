@@ -61,18 +61,18 @@ LLM_PROVIDERS = {
         "api_key_env": "GROQ_API_KEY",
         "base_url": "https://api.groq.com/openai/v1",
         "temperature": 0.6,
-        "max_tokens": 150,
+        "max_tokens": 80,
     },
     "openai": {
         "model": "gpt-4o-mini",
         "api_key_env": "OPENAI_API_KEY",
         "base_url": "https://api.openai.com/v1",
         "temperature": 0.4,
-        "max_tokens": 120,
+        "max_tokens": 80,
     },
 }
 
-DEFAULT_LLM_PROVIDER = "openai"
+DEFAULT_LLM_PROVIDER = "groq"
 
 # ──────────────────────────────────────────────
 # TTS (Text-to-Speech) Configuration
@@ -179,9 +179,9 @@ LIVEKIT_API_SECRET = os.getenv("LIVEKIT_API_SECRET", "")
 # ──────────────────────────────────────────────
 # VAD (Voice Activity Detection) Configuration
 # ──────────────────────────────────────────────
-VAD_MIN_SILENCE_DURATION = 0.3    # was 0.5 — respond faster after caller stops
-VAD_PADDING_DURATION = 0.2        # was 0.3 — less padding
-VAD_THRESHOLD = 0.45              # was 0.5 — slightly more sensitive
+VAD_MIN_SILENCE_DURATION = 0.2    # respond faster after caller stops
+VAD_PADDING_DURATION = 0.15       # minimal padding
+VAD_THRESHOLD = 0.4               # more sensitive detection
 
 # ──────────────────────────────────────────────
 # Agent Identity
