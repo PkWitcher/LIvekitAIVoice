@@ -13,8 +13,9 @@ export async function GET() {
 
     const { data, error } = await supabase
       .from("saved_prompts")
-      .select("id, title, prompt, created_at")
+      .select("id, title, prompt, starred, created_at")
       .eq("user_id", user.id)
+      .order("starred", { ascending: false })
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -80,6 +81,37 @@ export async function DELETE(request: NextRequest) {
     const { error } = await supabase
       .from("saved_prompts")
       .delete()
+      .eq("id", id)
+      .eq("user_id", user.id);
+
+    if (error) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch {
+    return NextResponse.json({ success: false, error: "Internal error" }, { status: 500 });
+  }
+}
+
+// PATCH — toggle starred status
+export async function PATCH(request: NextRequest) {
+  try {
+    const supabase = await createServerSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id, starred } = await request.json();
+    if (!id) {
+      return NextResponse.json({ success: false, error: "Prompt ID required" }, { status: 400 });
+    }
+
+    const { error } = await supabase
+      .from("saved_prompts")
+      .update({ starred: !!starred })
       .eq("id", id)
       .eq("user_id", user.id);
 

@@ -185,6 +185,27 @@ export async function POST(request: NextRequest) {
         .eq("user_id", user.id);
     }
 
+    // Auto-save prompt to user's saved_prompts if not already saved
+    if (body.prompt && body.prompt.trim().length > 10 && dispatched > 0) {
+      const promptText = body.prompt.trim();
+      const { data: existing } = await supabase
+        ?.from("saved_prompts")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("prompt", promptText)
+        .limit(1) ?? { data: null };
+
+      if (!existing || existing.length === 0) {
+        const firstLine = promptText.split('\n')[0].replace(/^#+\s*/, '').replace(/^Tu |^You are /i, '');
+        const autoTitle = firstLine.length > 40 ? firstLine.substring(0, 40) + '...' : firstLine;
+        await supabase?.from("saved_prompts").insert({
+          user_id: user.id,
+          title: autoTitle,
+          prompt: promptText,
+        });
+      }
+    }
+
     return NextResponse.json({
       success: true,
       total: results.length,

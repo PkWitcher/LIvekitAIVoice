@@ -12,6 +12,7 @@ interface SavedPrompt {
   id: string;
   title: string;
   prompt: string;
+  starred: boolean;
   created_at: string;
 }
 
@@ -69,6 +70,20 @@ export default function CallDispatcher() {
     try {
       await fetch(`/api/prompts?id=${id}`, { method: "DELETE" });
       setSavedPrompts((prev) => prev.filter((p) => p.id !== id));
+    } catch { /* silent */ }
+  };
+
+  const handleStarPrompt = async (id: string, starred: boolean) => {
+    try {
+      await fetch("/api/prompts", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, starred }),
+      });
+      setSavedPrompts((prev) =>
+        prev.map((p) => p.id === id ? { ...p, starred } : p)
+          .sort((a, b) => (b.starred ? 1 : 0) - (a.starred ? 1 : 0))
+      );
     } catch { /* silent */ }
   };
 
@@ -211,14 +226,37 @@ export default function CallDispatcher() {
                 {showSaveInput ? "Cancel" : "Save Script"}
               </button>
             )}
-            <button
-              onClick={() => setShowSavedList(!showSavedList)}
-              className="text-[10px] text-blue-400 hover:text-blue-300 transition-colors"
-            >
-              {showSavedList ? "Hide" : `Saved (${savedPrompts.length})`}
-            </button>
           </div>
         </div>
+
+        {/* Saved Prompts Dropdown */}
+        {savedPrompts.length > 0 && (
+          <div className="mb-2">
+            <select
+              onChange={(e) => {
+                const selected = savedPrompts.find((p) => p.id === e.target.value);
+                if (selected) setPrompt(selected.prompt);
+                e.target.value = "";
+              }}
+              defaultValue=""
+              className="!py-1.5 !text-xs w-full"
+            >
+              <option value="" disabled>Select a saved script ({savedPrompts.length})...</option>
+              {savedPrompts.filter(p => p.starred).length > 0 && (
+                <optgroup label="⭐ Starred">
+                  {savedPrompts.filter(p => p.starred).map((sp) => (
+                    <option key={sp.id} value={sp.id}>⭐ {sp.title}</option>
+                  ))}
+                </optgroup>
+              )}
+              <optgroup label="All Scripts">
+                {savedPrompts.filter(p => !p.starred).map((sp) => (
+                  <option key={sp.id} value={sp.id}>{sp.title}</option>
+                ))}
+              </optgroup>
+            </select>
+          </div>
+        )}
 
         {/* Save input */}
         {showSaveInput && (
@@ -240,36 +278,51 @@ export default function CallDispatcher() {
           </div>
         )}
 
-        {/* Saved prompts list */}
+        {/* Manage saved prompts (star/delete) */}
+        {savedPrompts.length > 0 && (
+          <div className="mb-2">
+            <button
+              onClick={() => setShowSavedList(!showSavedList)}
+              className="text-[10px] text-[var(--color-text-muted)] hover:text-white transition-colors"
+            >
+              {showSavedList ? "Hide manage" : "Manage saved scripts"}
+            </button>
+          </div>
+        )}
         {showSavedList && savedPrompts.length > 0 && (
-          <div className="mb-2 max-h-40 overflow-y-auto rounded-lg border border-[var(--color-border)] divide-y divide-[var(--color-border)]">
+          <div className="mb-2 max-h-48 overflow-y-auto rounded-lg border border-[var(--color-border)] divide-y divide-[var(--color-border)]">
             {savedPrompts.map((sp) => (
               <div
                 key={sp.id}
-                className="flex items-center justify-between px-3 py-2 hover:bg-white/[0.03] transition-colors cursor-pointer group"
+                className="flex items-center justify-between px-3 py-2 hover:bg-white/[0.03] transition-colors group"
               >
-                <button
-                  onClick={() => { setPrompt(sp.prompt); setShowSavedList(false); }}
-                  className="flex-1 text-left min-w-0"
-                >
-                  <span className="text-xs font-medium text-white block truncate">{sp.title}</span>
-                  <span className="text-[10px] text-[var(--color-text-muted)] block truncate">{sp.prompt.substring(0, 60)}...</span>
-                </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleDeletePrompt(sp.id); }}
-                  className="p-1 ml-2 rounded text-[var(--color-text-muted)] hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
-                  title="Delete"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-                  </svg>
-                </button>
+                <div className="flex-1 min-w-0">
+                  <span className="text-xs font-medium text-white block truncate">{sp.starred ? "⭐ " : ""}{sp.title}</span>
+                  <span className="text-[10px] text-[var(--color-text-muted)] block truncate">{sp.prompt.substring(0, 50)}...</span>
+                </div>
+                <div className="flex items-center gap-1 ml-2">
+                  <button
+                    onClick={() => handleStarPrompt(sp.id, !sp.starred)}
+                    className={`p-1 rounded transition-all ${sp.starred ? "text-yellow-400" : "text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100"}`}
+                    title={sp.starred ? "Unstar" : "Star"}
+                  >
+                    <svg className="w-3.5 h-3.5" fill={sp.starred ? "currentColor" : "none"} viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => handleDeletePrompt(sp.id)}
+                    className="p-1 rounded text-[var(--color-text-muted)] hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                    title="Delete"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             ))}
           </div>
-        )}
-        {showSavedList && savedPrompts.length === 0 && (
-          <p className="text-[10px] text-[var(--color-text-muted)] mb-2 px-1">No saved scripts yet</p>
         )}
 
         <textarea

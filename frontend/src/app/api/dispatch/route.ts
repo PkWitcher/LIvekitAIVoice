@@ -130,6 +130,29 @@ export async function POST(request: NextRequest) {
       prompt: body.prompt || null,
     });
 
+    // Auto-save prompt to user's saved_prompts if not already saved
+    if (body.prompt && body.prompt.trim().length > 10) {
+      const promptText = body.prompt.trim();
+      // Check if this exact prompt already exists for the user
+      const { data: existing } = await supabase
+        ?.from("saved_prompts")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("prompt", promptText)
+        .limit(1) ?? { data: null };
+
+      if (!existing || existing.length === 0) {
+        // Auto-generate title from first line or first 40 chars
+        const firstLine = promptText.split('\n')[0].replace(/^#+\s*/, '').replace(/^Tu |^You are /i, '');
+        const autoTitle = firstLine.length > 40 ? firstLine.substring(0, 40) + '...' : firstLine;
+        await supabase?.from("saved_prompts").insert({
+          user_id: user.id,
+          title: autoTitle,
+          prompt: promptText,
+        });
+      }
+    }
+
     // Increment calls_used in subscription
     await supabase
       ?.from("user_subscriptions")
