@@ -10,9 +10,10 @@ import DashboardStats from "@/components/DashboardStats";
 import LogoutButton from "@/components/LogoutButton";
 import ThemeToggle from "@/components/ThemeToggle";
 import UpgradePlan from "@/components/UpgradePlan";
+import TranscriptHistory from "@/components/TranscriptHistory";
 import Link from "next/link";
 
-type Tab = "dashboard" | "calls" | "settings";
+type Tab = "dashboard" | "calls" | "transcripts" | "settings";
 
 interface UserSubscription {
   plan: string;
@@ -86,6 +87,12 @@ export default function DashboardPage() {
               </svg>
               Calls
             </button>
+            <button onClick={() => setActiveTab("transcripts")} className={`sidebar-link w-full text-left ${activeTab === "transcripts" ? "active" : ""}`}>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+              </svg>
+              Transcripts
+            </button>
             <button onClick={() => setActiveTab("settings")} className={`sidebar-link w-full text-left ${activeTab === "settings" ? "active" : ""}`}>
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 0 1 1.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.559.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.894.149c-.424.07-.764.383-.929.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 0 1-1.449.12l-.738-.527c-.35-.25-.806-.272-1.204-.107-.397.165-.71.505-.78.929l-.15.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 0 1-.12-1.45l.527-.737c.25-.35.272-.806.108-1.204-.165-.397-.506-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.108-1.204l-.526-.738a1.125 1.125 0 0 1 .12-1.45l.773-.773a1.125 1.125 0 0 1 1.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894Z" />
@@ -123,6 +130,7 @@ export default function DashboardPage() {
             <div className="flex items-center gap-1 bg-[var(--color-bg-input)] rounded-lg p-1 border border-[var(--color-border)]">
               <button onClick={() => setActiveTab("dashboard")} className={`px-2 py-1 rounded-md text-[10px] font-medium transition-all ${activeTab === "dashboard" ? "bg-blue-500/20 text-blue-400" : "text-[var(--color-text-muted)]"}`}>Dashboard</button>
               <button onClick={() => setActiveTab("calls")} className={`px-2 py-1 rounded-md text-[10px] font-medium transition-all ${activeTab === "calls" ? "bg-blue-500/20 text-blue-400" : "text-[var(--color-text-muted)]"}`}>Calls</button>
+              <button onClick={() => setActiveTab("transcripts")} className={`px-2 py-1 rounded-md text-[10px] font-medium transition-all ${activeTab === "transcripts" ? "bg-blue-500/20 text-blue-400" : "text-[var(--color-text-muted)]"}`}>Chats</button>
               <button onClick={() => setActiveTab("settings")} className={`px-2 py-1 rounded-md text-[10px] font-medium transition-all ${activeTab === "settings" ? "bg-blue-500/20 text-blue-400" : "text-[var(--color-text-muted)]"}`}>Settings</button>
             </div>
             <ThemeToggle />
@@ -245,6 +253,24 @@ export default function DashboardPage() {
               </>
             )}
 
+            {/* ── Transcripts Tab ── */}
+            {activeTab === "transcripts" && (
+              <>
+                <div className="animate-in">
+                  <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1 tracking-tight">
+                    Transcripts
+                  </h2>
+                  <p className="text-sm text-[var(--color-text-secondary)]">
+                    View conversation history grouped by phone number.
+                  </p>
+                </div>
+
+                <div className="animate-in animate-in-delay-1">
+                  <TranscriptHistory />
+                </div>
+              </>
+            )}
+
             {/* ── Settings Tab ── */}
             {activeTab === "settings" && (
               <>
@@ -362,6 +388,15 @@ export default function DashboardPage() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
           </svg>
           <span>Calls</span>
+        </button>
+        <button
+          onClick={() => setActiveTab("transcripts")}
+          className={`dash-bottom-nav-item ${activeTab === "transcripts" ? "active" : ""}`}
+        >
+          <svg width="20" height="20" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+          </svg>
+          <span>Chats</span>
         </button>
         <button
           onClick={() => setActiveTab("settings")}
