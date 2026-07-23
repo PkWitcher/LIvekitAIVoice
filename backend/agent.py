@@ -528,33 +528,46 @@ IMPORTANT RULES:
     logger.info("Agent pipeline started")
 
     # ── Live Transcript: capture user & AI speech events ──
+    # Wrapped in try/except to never interfere with the voice pipeline
     room_name_for_transcript = ctx.room.name
 
     def extract_text(msg) -> str:
         """Extract text from various message types."""
-        if hasattr(msg, 'content') and msg.content:
-            return str(msg.content)
-        if hasattr(msg, 'text') and msg.text:
-            return str(msg.text)
-        if hasattr(msg, 'message') and msg.message:
-            return str(msg.message)
-        if isinstance(msg, str):
-            return msg
-        return str(msg) if msg else ""
+        try:
+            if hasattr(msg, 'content') and msg.content:
+                return str(msg.content)
+            if hasattr(msg, 'text') and msg.text:
+                return str(msg.text)
+            if hasattr(msg, 'message') and msg.message:
+                return str(msg.message)
+            if isinstance(msg, str):
+                return msg
+            return ""
+        except Exception:
+            return ""
 
-    @agent.on("user_speech_committed")
-    def on_user_speech(msg):
-        text = extract_text(msg)
-        logger.info(f"[EVENT] user_speech_committed: '{text[:60]}'")
-        if text.strip():
-            asyncio.create_task(save_transcript(room_name_for_transcript, "user", text))
+    try:
+        @agent.on("user_speech_committed")
+        def on_user_speech(msg):
+            try:
+                text = extract_text(msg)
+                if text.strip():
+                    asyncio.create_task(save_transcript(room_name_for_transcript, "user", text))
+            except Exception:
+                pass
 
-    @agent.on("agent_speech_committed")
-    def on_agent_speech(msg):
-        text = extract_text(msg)
-        logger.info(f"[EVENT] agent_speech_committed: '{text[:60]}'")
-        if text.strip():
-            asyncio.create_task(save_transcript(room_name_for_transcript, "ai", text))
+        @agent.on("agent_speech_committed")
+        def on_agent_speech(msg):
+            try:
+                text = extract_text(msg)
+                if text.strip():
+                    asyncio.create_task(save_transcript(room_name_for_transcript, "ai", text))
+            except Exception:
+                pass
+
+        logger.info("Transcript event listeners registered")
+    except Exception as e:
+        logger.warning(f"Could not register transcript events (agent will still work): {e}")
 
     # Wait for participant
     participant = await ctx.wait_for_participant()
