@@ -527,47 +527,29 @@ IMPORTANT RULES:
     agent.start(ctx.room)
     logger.info("Agent pipeline started")
 
-    # ── Live Transcript: capture user & AI speech events ──
-    # Wrapped in try/except to never interfere with the voice pipeline
+    # ── Live Transcript: poll chat context for new messages ──
+    # NOTE: Do NOT use agent.on() — it can replace internal handlers and break the pipeline
     room_name_for_transcript = ctx.room.name
+    last_msg_count = 0
 
-    def extract_text(msg) -> str:
-        """Extract text from various message types."""
-        try:
-            if hasattr(msg, 'content') and msg.content:
-                return str(msg.content)
-            if hasattr(msg, 'text') and msg.text:
-                return str(msg.text)
-            if hasattr(msg, 'message') and msg.message:
-                return str(msg.message)
-            if isinstance(msg, str):
-                return msg
-            return ""
-        except Exception:
-            return ""
-
-    try:
-        @agent.on("user_speech_committed")
-        def on_user_speech(msg):
+    async def poll_transcript():
+        nonlocal last_msg_count
+        while not shutdown_event.is_set():
             try:
-                text = extract_text(msg)
-                if text.strip():
-                    asyncio.create_task(save_transcript(room_name_for_transcript, "user", text))
+                msgs = agent.chat_ctx.messages if hasattr(agent, 'chat_ctx') else []
+                current_count = len(msgs)
+                if current_count > last_msg_count:
+                    for msg in msgs[last_msg_count:]:
+                        role = msg.role if hasattr(msg, 'role') else ''
+                        content = msg.content if hasattr(msg, 'content') else ''
+                        if role == 'assistant' and content and content.strip():
+                            await save_transcript(room_name_for_transcript, "ai", content.strip())
+                        elif role == 'user' and content and content.strip():
+                            await save_transcript(room_name_for_transcript, "user", content.strip())
+                    last_msg_count = current_count
             except Exception:
                 pass
-
-        @agent.on("agent_speech_committed")
-        def on_agent_speech(msg):
-            try:
-                text = extract_text(msg)
-                if text.strip():
-                    asyncio.create_task(save_transcript(room_name_for_transcript, "ai", text))
-            except Exception:
-                pass
-
-        logger.info("Transcript event listeners registered")
-    except Exception as e:
-        logger.warning(f"Could not register transcript events (agent will still work): {e}")
+            await asyncio.sleep(1.5)
 
     # Wait for participant
     participant = await ctx.wait_for_participant()
@@ -589,8 +571,11 @@ IMPORTANT RULES:
     logger.info("Greeting dispatched, agent is now listening")
 
     # Keep the agent alive — without this the function exits and the agent stops
-    # The agent will continue handling conversation until the room closes
     shutdown_event = asyncio.Event()
+
+    # Start transcript polling (runs in background, doesn't touch agent internals)
+    asyncio.create_task(poll_transcript())
+    logger.info("Transcript polling started")
 
     @ctx.room.on("disconnected")
     def on_disconnect():
