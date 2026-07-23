@@ -459,16 +459,12 @@ async def entrypoint(ctx: JobContext) -> None:
     if custom_prompt:
         system_prompt = custom_prompt + """
 
-STRICT ENFORCEMENT (NON-NEGOTIABLE):
-- You are on a LIVE phone call. Follow the CALL FLOW steps in order — do NOT skip steps.
-- Say ONLY what is written in the script. Do NOT add extra information or improvise.
-- Keep EVERY response under 15 words maximum. If you cannot, split into two turns.
-- Ask ONE question, then STOP completely. Wait for the customer to respond before continuing.
-- Do NOT repeat yourself. Do NOT explain things the customer did not ask about.
-- If the customer asks something NOT covered in your script, say "Main confirm karke aapko batata hoon" or "Let me check and get back to you."
-- NEVER go off-script. NEVER give information you were not told. NEVER make up facts.
-- You are NOT a chatbot. You are a PHONE caller. Keep it short, natural, human-like.
-- After EACH response, STOP and LISTEN. Do not continue speaking."""
+IMPORTANT RULES:
+- Keep responses SHORT (1-2 sentences max).
+- Follow the call flow steps in order.
+- Wait for customer to respond before asking next question.
+- If customer asks something not in your script, say you will check and get back.
+- Never make up information. Never be pushy."""
     else:
         system_prompt = config.SYSTEM_PROMPT
 
@@ -480,9 +476,10 @@ STRICT ENFORCEMENT (NON-NEGOTIABLE):
         logger.info("Inbound call detected — user already in room")
         greeting = config.INBOUND_GREETING
     elif custom_prompt:
-        # When user provides custom prompt, let the LLM generate the greeting
-        # based on the prompt instructions (e.g., "introduce yourself as Arjun")
-        greeting = None  # Will be handled by LLM's first response
+        # Extract greeting from prompt — use same path as default greeting
+        extracted = extract_greeting_from_prompt(custom_prompt)
+        greeting = extracted or "Hello!"
+        logger.info(f"Custom prompt greeting: {greeting[:50]}")
     else:
         greeting = config.INITIAL_GREETING
 
@@ -510,17 +507,6 @@ STRICT ENFORCEMENT (NON-NEGOTIABLE):
 
     initial_ctx = llm.ChatContext()
     initial_ctx.append(role="system", text=system_prompt)
-
-    # Pre-add greeting to chat context so LLM knows it was already spoken
-    if not is_inbound:
-        if custom_prompt:
-            extracted = extract_greeting_from_prompt(custom_prompt)
-            if extracted:
-                initial_ctx.append(role="assistant", text=extracted)
-                logger.info("Added extracted greeting to LLM context")
-        elif greeting:
-            initial_ctx.append(role="assistant", text=greeting)
-            logger.info("Added hardcoded greeting to LLM context")
 
     # Build the voice pipeline agent
     agent = VoicePipelineAgent(
@@ -584,23 +570,10 @@ STRICT ENFORCEMENT (NON-NEGOTIABLE):
     else:
         await asyncio.sleep(0.3)
 
-    # Speak the greeting
-    if greeting:
-        logger.info(f"Saying hardcoded greeting with TTS provider: {type(tts).__module__}")
-        await agent.say(greeting, allow_interruptions=True)
-        logger.info("Greeting dispatched, agent is now listening")
-    else:
-        # Custom prompt: extract greeting from CALL FLOW step 1 directly (no LLM call needed)
-        logger.info("Custom prompt: extracting greeting from prompt...")
-        extracted_greeting = extract_greeting_from_prompt(custom_prompt)
-        if extracted_greeting:
-            logger.info(f"Extracted greeting: {extracted_greeting[:80]}")
-            await agent.say(extracted_greeting, allow_interruptions=True)
-        else:
-            # Fallback: use a simple neutral greeting
-            logger.info("No greeting found in prompt, using neutral greeting")
-            await agent.say("Namaste!", allow_interruptions=True)
-        logger.info("Custom greeting dispatched, agent is now listening")
+    # Speak the greeting (always set now — same path for all cases)
+    logger.info(f"Speaking greeting: {greeting[:60]}")
+    await agent.say(greeting, allow_interruptions=True)
+    logger.info("Greeting dispatched, agent is now listening")
 
     # Keep the agent alive — without this the function exits and the agent stops
     # The agent will continue handling conversation until the room closes
