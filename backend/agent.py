@@ -516,16 +516,13 @@ IMPORTANT RULES:
         tts=tts,
         fnc_ctx=fnc_ctx,
         chat_ctx=initial_ctx,
+        allow_interruptions=True,
     )
 
     # Dial outbound if phone_number specified and no one is in the room yet
     if phone_number and not is_inbound:
         logger.info(f"Dialing outbound to {phone_number}")
         await dial_outbound(ctx, phone_number, metadata)
-
-    # Start the agent
-    agent.start(ctx.room)
-    logger.info("Agent pipeline started")
 
     # ── Live Transcript: poll chat context for new messages ──
     # NOTE: Do NOT use agent.on() — it can replace internal handlers and break the pipeline
@@ -551,7 +548,7 @@ IMPORTANT RULES:
                 pass
             await asyncio.sleep(1.5)
 
-    # Wait for participant
+    # Wait for participant FIRST — then start agent with that participant
     participant = await ctx.wait_for_participant()
     logger.info(f"Participant connected: {participant.identity}")
 
@@ -564,6 +561,10 @@ IMPORTANT RULES:
         await asyncio.sleep(0.5)
     else:
         await asyncio.sleep(0.3)
+
+    # Start the agent WITH the participant so it subscribes to their audio track
+    agent.start(ctx.room, participant=participant)
+    logger.info(f"Agent pipeline started, listening to {participant.identity}")
 
     # Speak the greeting (always set now — same path for all cases)
     logger.info(f"Speaking greeting: {greeting[:60]}")
