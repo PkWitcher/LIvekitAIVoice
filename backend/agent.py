@@ -552,50 +552,35 @@ IMPORTANT RULES:
     participant = await ctx.wait_for_participant()
     logger.info(f"Participant connected: {participant.identity}")
 
-    # Wait for the participant's AUDIO TRACK to be subscribed.
-    # Without this, the agent starts but STT receives no audio because
-    # the SIP media track hasn't been published/subscribed yet.
-    async def wait_for_audio_track(p: rtc.RemoteParticipant, timeout: float = 15.0) -> bool:
-        """Wait until at least one audio track is subscribed from participant."""
-        # Check if already has a subscribed audio track
-        for pub in p.track_publications.values():
-            if pub.kind == rtc.TrackKind.KIND_AUDIO and pub.track is not None:
-                logger.info(f"Audio track already subscribed: {pub.sid}")
-                return True
-
-        # Wait for track subscription
-        track_ready = asyncio.Event()
-
-        def on_track_subscribed(track: rtc.Track, publication: rtc.RemoteTrackPublication, participant: rtc.RemoteParticipant):
-            if track.kind == rtc.TrackKind.KIND_AUDIO:
-                logger.info(f"Audio track subscribed: {publication.sid}")
-                track_ready.set()
-
-        ctx.room.on("track_subscribed", on_track_subscribed)
-        try:
-            await asyncio.wait_for(track_ready.wait(), timeout=timeout)
-            return True
-        except asyncio.TimeoutError:
-            logger.warning(f"Timed out waiting for audio track from {p.identity} after {timeout}s")
-            return False
-        finally:
-            ctx.room.off("track_subscribed", on_track_subscribed)
-
-    logger.info("Waiting for participant audio track...")
-    audio_ready = await wait_for_audio_track(participant)
-    if audio_ready:
-        logger.info("Audio track ready — starting agent pipeline")
-    else:
-        logger.warning("No audio track detected — starting agent anyway (may miss initial speech)")
-
-    # Small buffer to let the audio pipeline stabilize after track subscription
-    await asyncio.sleep(0.2)
-
-    # Start the agent WITH the participant so it subscribes to their audio track
+    # Start the agent IMMEDIATELY so it registers its internal track listeners.
+    # The agent MUST be running when the audio track gets subscribed (via AutoSubscribe)
+    # otherwise it misses the subscription event and never receives audio.
     agent.start(ctx.room, participant=participant)
     logger.info(f"Agent pipeline started, listening to {participant.identity}")
 
-    # Speak the greeting (always set now — same path for all cases)
+    # Wait for audio track to actually be subscribed before speaking greeting.
+    # The agent is already running and will capture the track when it arrives.
+    # We just delay the greeting so the user's mic is ready when AI finishes speaking.
+    async def wait_for_track_ready(p, timeout: float = 10.0) -> bool:
+        """Poll until participant has a subscribed audio track."""
+        deadline = asyncio.get_event_loop().time() + timeout
+        while asyncio.get_event_loop().time() < deadline:
+            for pub in p.track_publications.values():
+                if pub.kind == rtc.TrackKind.KIND_AUDIO:
+                    if pub.track is not None:
+                        logger.info(f"Audio track ready: {pub.sid}")
+                        return True
+            await asyncio.sleep(0.3)
+        return False
+
+    track_ok = await wait_for_track_ready(participant)
+    if not track_ok:
+        logger.warning("Audio track not detected after 10s — greeting anyway")
+
+    # Small stabilization buffer after track subscription
+    await asyncio.sleep(0.3)
+
+    # NOW speak the greeting — audio pipeline is fully ready
     logger.info(f"Speaking greeting: {greeting[:60]}")
     await agent.say(greeting, allow_interruptions=True)
     logger.info("Greeting dispatched, agent is now listening")
