@@ -468,15 +468,28 @@ IMPORTANT RULES:
     else:
         system_prompt = config.SYSTEM_PROMPT
 
-    # Determine if inbound (user already in room) or outbound
+    # Determine if this is an outbound call or a true inbound call.
+    # KEY: If room metadata has phone_number, it's ALWAYS outbound — even if
+    # the participant is already in the room (which happens on agent reconnect/restart).
     existing_participants = ctx.room.remote_participants
-    is_inbound = len(existing_participants) > 0
+    participant_already_here = len(existing_participants) > 0
 
-    if is_inbound:
+    if phone_number:
+        # Outbound call — metadata explicitly says dial this number
+        is_outbound = True
+        if participant_already_here:
+            logger.info("Outbound call RECONNECT — participant already in room (agent restarted mid-call)")
+        else:
+            logger.info("Outbound call — will dial phone number")
+    else:
+        # No phone_number in metadata = true inbound call
+        is_outbound = False
         logger.info("Inbound call detected — user already in room")
+
+    # Determine greeting
+    if not is_outbound:
         greeting = config.INBOUND_GREETING
     elif custom_prompt:
-        # Extract greeting from prompt — use same path as default greeting
         extracted = extract_greeting_from_prompt(custom_prompt)
         greeting = extracted or "Hello!"
         logger.info(f"Custom prompt greeting: {greeting[:50]}")
@@ -519,8 +532,8 @@ IMPORTANT RULES:
         allow_interruptions=True,
     )
 
-    # Dial outbound if phone_number specified and no one is in the room yet
-    if phone_number and not is_inbound:
+    # Dial outbound ONLY if it's an outbound call AND participant isn't already here
+    if is_outbound and not participant_already_here:
         logger.info(f"Dialing outbound to {phone_number}")
         await dial_outbound(ctx, phone_number, metadata)
 
@@ -608,6 +621,6 @@ if __name__ == "__main__":
         WorkerOptions(
             entrypoint_fnc=entrypoint,
             prewarm_fnc=prewarm,
-            num_idle_processes=3,
+            num_idle_processes=1,
         ),
     )

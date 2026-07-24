@@ -36,13 +36,14 @@ async def main():
             trunks = await lk.sip.list_sip_outbound_trunk(
                 api.ListSIPOutboundTrunkRequest()
             )
-            # Delete old trunks and recreate with correct settings
+            # If a trunk already exists, reuse it (don't delete on restart!)
             if trunks.items:
-                for old_trunk in trunks.items:
-                    print(f"🗑️  Deleting old trunk: {old_trunk.sip_trunk_id}")
-                    await lk.sip.delete_sip_trunk(
-                        api.DeleteSIPTrunkRequest(sip_trunk_id=old_trunk.sip_trunk_id)
-                    )
+                trunk_id = trunks.items[0].sip_trunk_id
+                print(f"✅ Reusing existing SIP trunk: {trunk_id}")
+                with open("/tmp/sip_trunk_id", "w") as f:
+                    f.write(trunk_id)
+                await lk.aclose()
+                return
 
             # Create outbound SIP trunk with TCP transport
             trunk = await lk.sip.create_sip_outbound_trunk(
