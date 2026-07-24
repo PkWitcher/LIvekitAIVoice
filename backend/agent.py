@@ -552,15 +552,44 @@ IMPORTANT RULES:
     participant = await ctx.wait_for_participant()
     logger.info(f"Participant connected: {participant.identity}")
 
-    # For outbound calls, the SIP participant joins the room BEFORE the phone
-    # actually picks up (~5-10 seconds of ringing). We need to wait for actual
-    # audio to flow. For inbound, the phone is already connected.
-    if not is_inbound:
-        # Wait minimal time for SIP media to establish
-        logger.info("Outbound call: waiting for media...")
-        await asyncio.sleep(0.5)
+    # Wait for the participant's AUDIO TRACK to be subscribed.
+    # Without this, the agent starts but STT receives no audio because
+    # the SIP media track hasn't been published/subscribed yet.
+    async def wait_for_audio_track(p: rtc.RemoteParticipant, timeout: float = 15.0) -> bool:
+        """Wait until at least one audio track is subscribed from participant."""
+        # Check if already has a subscribed audio track
+        for pub in p.track_publications.values():
+            if pub.kind == rtc.TrackKind.KIND_AUDIO and pub.track is not None:
+                logger.info(f"Audio track already subscribed: {pub.sid}")
+                return True
+
+        # Wait for track subscription
+        track_ready = asyncio.Event()
+
+        def on_track_subscribed(track: rtc.Track, publication: rtc.RemoteTrackPublication, participant: rtc.RemoteParticipant):
+            if track.kind == rtc.TrackKind.KIND_AUDIO:
+                logger.info(f"Audio track subscribed: {publication.sid}")
+                track_ready.set()
+
+        ctx.room.on("track_subscribed", on_track_subscribed)
+        try:
+            await asyncio.wait_for(track_ready.wait(), timeout=timeout)
+            return True
+        except asyncio.TimeoutError:
+            logger.warning(f"Timed out waiting for audio track from {p.identity} after {timeout}s")
+            return False
+        finally:
+            ctx.room.off("track_subscribed", on_track_subscribed)
+
+    logger.info("Waiting for participant audio track...")
+    audio_ready = await wait_for_audio_track(participant)
+    if audio_ready:
+        logger.info("Audio track ready — starting agent pipeline")
     else:
-        await asyncio.sleep(0.3)
+        logger.warning("No audio track detected — starting agent anyway (may miss initial speech)")
+
+    # Small buffer to let the audio pipeline stabilize after track subscription
+    await asyncio.sleep(0.2)
 
     # Start the agent WITH the participant so it subscribes to their audio track
     agent.start(ctx.room, participant=participant)
