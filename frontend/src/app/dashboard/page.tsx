@@ -325,7 +325,7 @@ export default function DashboardPage() {
                           <p className="text-sm text-white">TTS Provider</p>
                           <p className="text-xs text-[var(--color-text-muted)]">Text-to-speech engine</p>
                         </div>
-                        <span className="text-xs text-purple-400 bg-purple-500/10 px-3 py-1 rounded-lg border border-purple-500/20">Cartesia</span>
+                        <span className="text-xs text-purple-400 bg-purple-500/10 px-3 py-1 rounded-lg border border-purple-500/20">Sarvam Bulbul</span>
                       </div>
                       <div className="border-t border-[var(--color-border)]" />
                       <div className="flex items-center justify-between">
@@ -333,7 +333,7 @@ export default function DashboardPage() {
                           <p className="text-sm text-white">STT Provider</p>
                           <p className="text-xs text-[var(--color-text-muted)]">Speech-to-text engine</p>
                         </div>
-                        <span className="text-xs text-green-400 bg-green-500/10 px-3 py-1 rounded-lg border border-green-500/20">Deepgram</span>
+                        <span className="text-xs text-green-400 bg-green-500/10 px-3 py-1 rounded-lg border border-green-500/20">Sarvam Saarika</span>
                       </div>
                     </div>
                   </div>

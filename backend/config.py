@@ -48,9 +48,9 @@ INBOUND_GREETING = (
 # ──────────────────────────────────────────────
 # STT (Speech-to-Text) Configuration
 # ──────────────────────────────────────────────
-STT_PROVIDER = "deepgram"
-STT_MODEL = "nova-2"
-STT_LANGUAGE = "multi"  # Auto-detect: en, hi, ta, te, bn, mr, gu, kn, ml, pa
+STT_PROVIDER = "sarvam"
+STT_MODEL = "saarika:v2"  # Sarvam Saarika STT
+STT_LANGUAGE = "unknown"  # Auto-detect: en, hi, ta, te, bn, mr, gu, kn, ml, pa
 
 # ──────────────────────────────────────────────
 # LLM Configuration
@@ -78,18 +78,28 @@ DEFAULT_LLM_PROVIDER = "groq"
 # TTS (Text-to-Speech) Configuration
 # ──────────────────────────────────────────────
 TTS_PROVIDERS = {
-    "deepgram": {
+    "sarvam": {
         "voices": {
-            "aura-asteria": "aura-asteria-en",
-            "aura-luna": "aura-luna-en",
-            "aura-stella": "aura-stella-en",
-            "aura-athena": "aura-athena-en",
-            "aura-hera": "aura-hera-en",
-            "aura-orion": "aura-orion-en",
-            "aura-arcas": "aura-arcas-en",
-            "aura-perseus": "aura-perseus-en",
+            # Sarvam Bulbul v3 voices (30+ available)
+            # Female voices
+            "anushka": "anushka",
+            "manisha": "manisha",
+            "vidya": "vidya",
+            "arya": "arya",
+            "priya": "priya",
+            "diya": "diya",
+            "saanvi": "saanvi",
+            # Male voices
+            "abhilash": "abhilash",
+            "karun": "karun",
+            "hitesh": "hitesh",
+            "shubh": "shubh",
+            "aravind": "aravind",
+            "kumar": "kumar",
+            "vian": "vian",
         },
-        "default_voice": "aura-asteria-en",
+        "default_voice": "anushka",
+        "model": "bulbul:v3",
     },
     "openai": {
         "voices": {
@@ -103,55 +113,27 @@ TTS_PROVIDERS = {
         "default_voice": "alloy",
         "model": "tts-1",
     },
-    "sarvam": {
-        "voices": {
-            "anushka": "anushka",
-            "aravind": "aravind",
-        },
-        "default_voice": "anushka",
-    },
-    "cartesia": {
-        "voices": {},
-        "default_voice": "0f14d8cb-f039-41fe-a813-a9b4bee7eed8",
-        "model": "sonic-multilingual",
-        "language": "en",
-    },
-    "elevenlabs": {
-        "voices": {
-            "rachel": "21m00Tcm4TlvDq8ikWAM",
-            "drew": "29vD33N1CtxCmqQRPOHJ",
-            "clyde": "2EiwWnXFnvU5JabPnv8n",
-            "paul": "5Q0t7uMcjvnagumLfvZi",
-            "domi": "AZnzlk1XvdvUeBnXmlld",
-            "dave": "CYw3kZ02Hs0563khs1Fj",
-            "fin": "D38z5RcWu1voky8WS1ja",
-            "sarah": "EXAVITQu4vr4xnSDxMaL",
-            "antoni": "ErXwobaYiN019PkySvjV",
-            "thomas": "GBv7mTt0atIp3Br8iCZE",
-            "charlie": "IKne3meq5aSn9XLyUdCD",
-            "emily": "LcfcDJNUP1GQjkzn1xUU",
-            "elli": "MF3mGyEYCl7XYWbV9V6O",
-            "callum": "N2lVS1w4EtoT3dr4eOWO",
-            "patrick": "ODq5zmih8GrVes37Dizd",
-            "harry": "SOYHLrjzK2X1ezoPC6cr",
-            "liam": "TX3LPaxmHKxFdv7VOQHJ",
-            "dorothy": "ThT5KcBeYPX3keUQqHPh",
-            "josh": "TxGEqnHWrfWFTfGW9XjX",
-            "arnold": "VR6AewLTigWG4xSOukaG",
-            "charlotte": "XB0fDUnXU5powFXDhCwa",
-            "matilda": "XrExE9yKIg1WjnnlVkGX",
-            "jessica": "cgSgspJ2msm6clMCkdW9",
-            "lily": "pFZP5JQG7iQjIQuC4Bku",
-            "indian_1": "RABOvaPec1ymXz02oDQi",
-            "indian_2": "czQ9pLzjRaF61EAYjcPC",
-        },
-        "default_voice": "RABOvaPec1ymXz02oDQi",
-        "model": "eleven_multilingual_v2",
-    },
 }
 
-DEFAULT_TTS_PROVIDER = "cartesia"
-DEFAULT_VOICE_ID = "4877b818-c7fe-4c89-b1cf-eadf8e23da72"
+DEFAULT_TTS_PROVIDER = "sarvam"
+DEFAULT_VOICE_ID = "anushka"
+
+# Sarvam language code mapping (BCP-47 codes required by Sarvam API)
+SARVAM_LANGUAGE_CODES = {
+    "en": "en-IN",
+    "hi": "hi-IN",
+    "ta": "ta-IN",
+    "te": "te-IN",
+    "bn": "bn-IN",
+    "mr": "mr-IN",
+    "gu": "gu-IN",
+    "kn": "kn-IN",
+    "ml": "ml-IN",
+    "pa": "pa-IN",
+    "od": "od-IN",
+    "multi": "hi-IN",   # default for auto-detect
+    "unknown": "hi-IN", # default for unknown
+}
 
 # ──────────────────────────────────────────────
 # SIP / Telephony Configuration

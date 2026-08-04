@@ -93,11 +93,11 @@ export default function LandingPage() {
 
           <div className="row g-4 justify-content-center">
             {[
-              { icon: "🎙️", title: "Natural Voice AI", desc: "Human-like speech powered by Deepgram TTS with multiple voice options — male and female." },
+              { icon: "🎙️", title: "Natural Voice AI", desc: "Human-like speech powered by Sarvam AI Bulbul TTS with 30+ Indian voice options — male and female." },
               { icon: "📊", title: "Bulk Campaigns", desc: "Dial hundreds of numbers in one click with customizable scripts for each campaign." },
               { icon: "📡", title: "Live Call Tracking", desc: "Real-time status updates — ringing, connected, completed, no-answer — with 1s refresh." },
               { icon: "🔊", title: "Call Recording", desc: "Every answered call is recorded automatically. Play back recordings from the dashboard." },
-              { icon: "💰", title: "Ultra Low Cost", desc: "Under ₹2 per minute using OpenAI + Deepgram (pay-per-use STT/TTS)." },
+              { icon: "💰", title: "Ultra Low Cost", desc: "Under ₹1.50 per minute using Sarvam AI (pay-per-use STT/TTS) — 3x cheaper than alternatives." },
               { icon: "🔒", title: "Self-Hosted & Secure", desc: "100% self-hosted on your infrastructure. No data leaves your servers — full control." },
             ].map((f, i) => (
               <div key={i} className="col-12 col-md-6 col-lg-4">
@@ -231,7 +231,7 @@ export default function LandingPage() {
             <div className="col-12 col-lg-8">
               <div className="faq-list">
                 {[
-                  { q: "How does the AI voice sound?", a: "We use Deepgram's latest TTS models that produce natural, human-like speech. You can choose between multiple voice options including male and female voices." },
+                  { q: "How does the AI voice sound?", a: "We use Sarvam AI's Bulbul v3 TTS models that produce natural, human-like speech in 10+ Indian languages. You can choose from 30+ voice options including male and female voices." },
                   { q: "Can the AI handle two-way conversations?", a: "Yes! The AI uses real-time speech-to-text and responds intelligently based on your prompt. It can handle objections, answer questions, and guide conversations." },
                   { q: "What phone numbers are supported?", a: "Currently we support Indian (+91) numbers. International calling is on our roadmap and will be available soon." },
                   { q: "Is my data secure?", a: "100%. The platform is fully self-hosted on your infrastructure. Call recordings, prompts, and user data never leave your servers." },
@@ -255,7 +255,7 @@ export default function LandingPage() {
           <div className="tech-divider" />
           <p className="tech-label">Powered By</p>
           <div className="d-flex flex-wrap align-items-center justify-content-center gap-4 gap-sm-5">
-            {["LiveKit", "Deepgram", "OpenAI", "Supabase", "Next.js", "Docker"].map((t) => (
+            {["LiveKit", "Sarvam AI", "OpenAI", "Supabase", "Next.js", "Docker"].map((t) => (
               <span key={t} className="tech-name">{t}</span>
             ))}
           </div>
@@ -283,7 +283,7 @@ export default function LandingPage() {
           <div className="tech-divider" />
           <div className="d-flex flex-column flex-sm-row align-items-center justify-content-between py-4 gap-3">
             <span className="footer-text">&copy; {new Date().getFullYear()} Nova AI &middot; ProArch</span>
-            <span className="footer-text">Built with LiveKit &middot; Deepgram &middot; OpenAI</span>
+            <span className="footer-text">Built with LiveKit &middot; Sarvam AI &middot; OpenAI</span>
           </div>
         </div>
       </footer>

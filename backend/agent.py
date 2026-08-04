@@ -1,6 +1,6 @@
 """
 LiveKit AI Voice Agent — Production PSTN Voice Agent
-Pipeline: VAD (Silero) → STT (Deepgram Nova-2) → LLM (Groq/OpenAI) → TTS (Deepgram/OpenAI/Sarvam/Cartesia)
+Pipeline: VAD (Silero) → STT (Sarvam Saarika) → LLM (Groq/OpenAI) → TTS (Sarvam Bulbul)
 Supports inbound and outbound calls via SIP trunks.
 """
 
@@ -11,6 +11,7 @@ import ssl
 import asyncio
 import urllib.request
 import os
+import base64
 from typing import Optional
 
 import certifi
@@ -23,9 +24,11 @@ from livekit.agents import (
     WorkerOptions,
     cli,
     llm,
+    stt as stt_module,
+    tts as tts_module,
 )
 from livekit.agents.pipeline import VoicePipelineAgent
-from livekit.plugins import cartesia, deepgram, elevenlabs, openai, silero
+from livekit.plugins import openai, silero
 
 import config
 
@@ -158,14 +161,215 @@ class CallFunctions(llm.FunctionContext):
 
 
 # ──────────────────────────────────────────────
+# Sarvam AI HTTP helpers
+# ──────────────────────────────────────────────
+SARVAM_API_KEY = os.getenv("SARVAM_API_KEY", "")
+SARVAM_BASE_URL = "https://api.sarvam.ai"
+
+
+async def sarvam_stt_request(audio_bytes: bytes, language: str = "unknown") -> str:
+    """Call Sarvam Saarika STT API and return transcript text."""
+    import io
+    url = f"{SARVAM_BASE_URL}/speech-to-text"
+    lang_code = config.SARVAM_LANGUAGE_CODES.get(language, "hi-IN")
+
+    # Build multipart form data
+    boundary = "----SarvamBoundary"
+    body = io.BytesIO()
+    # Audio file part
+    body.write(f"--{boundary}\r\n".encode())
+    body.write(b'Content-Disposition: form-data; name="file"; filename="audio.wav"\r\n')
+    body.write(b"Content-Type: audio/wav\r\n\r\n")
+    body.write(audio_bytes)
+    body.write(b"\r\n")
+    # Language code part
+    body.write(f"--{boundary}\r\n".encode())
+    body.write(b'Content-Disposition: form-data; name="language_code"\r\n\r\n')
+    body.write(lang_code.encode())
+    body.write(b"\r\n")
+    # Model part
+    body.write(f"--{boundary}\r\n".encode())
+    body.write(b'Content-Disposition: form-data; name="model"\r\n\r\n')
+    body.write(config.STT_MODEL.encode())
+    body.write(b"\r\n")
+    body.write(f"--{boundary}--\r\n".encode())
+
+    content_type = f"multipart/form-data; boundary={boundary}"
+    data = body.getvalue()
+
+    req = urllib.request.Request(
+        url,
+        data=data,
+        method="POST",
+        headers={
+            "Content-Type": content_type,
+            "api-subscription-key": SARVAM_API_KEY,
+        },
+    )
+    response = await asyncio.get_event_loop().run_in_executor(
+        None, lambda: urllib.request.urlopen(req, context=ssl_ctx)
+    )
+    result = json.loads(response.read().decode())
+    return result.get("transcript", "")
+
+
+async def sarvam_tts_request(text: str, speaker: str = "anushka", language: str = "hi-IN") -> bytes:
+    """Call Sarvam Bulbul TTS API and return raw audio bytes."""
+    url = f"{SARVAM_BASE_URL}/text-to-speech"
+    model = config.TTS_PROVIDERS["sarvam"].get("model", "bulbul:v3")
+
+    payload = json.dumps({
+        "text": text,
+        "language_code": language,
+        "speaker": speaker,
+        "model": model,
+        "speech_sample_rate": 24000,
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        url,
+        data=payload,
+        method="POST",
+        headers={
+            "Content-Type": "application/json",
+            "api-subscription-key": SARVAM_API_KEY,
+        },
+    )
+    response = await asyncio.get_event_loop().run_in_executor(
+        None, lambda: urllib.request.urlopen(req, context=ssl_ctx)
+    )
+    result = json.loads(response.read().decode())
+    audio_b64 = "".join(result.get("audios", []))
+    return base64.b64decode(audio_b64)
+
+
+# ──────────────────────────────────────────────
+# Sarvam TTS adapter for LiveKit pipeline
+# ──────────────────────────────────────────────
+class SarvamTTS(tts_module.TTS):
+    """Sarvam Bulbul TTS adapter for LiveKit VoicePipelineAgent."""
+
+    def __init__(self, voice: str = "anushka", language: str = "hi-IN"):
+        super().__init__(
+            capabilities=tts_module.TTSCapabilities(streaming=False),
+            sample_rate=24000,
+            num_channels=1,
+        )
+        self._voice = voice
+        self._language = language
+
+    def update_language(self, language: str):
+        """Update the language code for TTS."""
+        self._language = config.SARVAM_LANGUAGE_CODES.get(language, language)
+
+    def synthesize(self, text: str) -> "SarvamTTSStream":
+        return SarvamTTSStream(self, text)
+
+
+class SarvamTTSStream(tts_module.ChunkedStream):
+    """Stream adapter that calls Sarvam TTS API."""
+
+    def __init__(self, tts: SarvamTTS, text: str):
+        super().__init__(tts=tts, input_text=text)
+        self._tts = tts
+        self._text = text
+
+    async def _run(self):
+        try:
+            audio_bytes = await sarvam_tts_request(
+                self._text,
+                speaker=self._tts._voice,
+                language=self._tts._language,
+            )
+            # Send audio as a single frame
+            import numpy as np
+            samples = np.frombuffer(audio_bytes, dtype=np.int16)
+            frame = rtc.AudioFrame(
+                data=samples.tobytes(),
+                sample_rate=24000,
+                num_channels=1,
+                samples_per_channel=len(samples),
+            )
+            self._event_ch.send_nowait(
+                tts_module.SynthesizedAudio(
+                    request_id="",
+                    frame=frame,
+                )
+            )
+        except Exception as e:
+            logger.error(f"Sarvam TTS error: {e}")
+            raise
+
+
+# ──────────────────────────────────────────────
+# Sarvam STT adapter for LiveKit pipeline
+# ──────────────────────────────────────────────
+class SarvamSTT(stt_module.STT):
+    """Sarvam Saarika STT adapter for LiveKit VoicePipelineAgent."""
+
+    def __init__(self, language: str = "unknown"):
+        super().__init__(
+            capabilities=stt_module.STTCapabilities(
+                streaming=False,
+                interim_results=False,
+            ),
+        )
+        self._language = language
+
+    async def recognize(self, buffer: rtc.AudioFrame, *, language: str | None = None) -> stt_module.SpeechEvent:
+        """Recognize speech from an audio buffer using Sarvam API."""
+        import struct
+        import io
+
+        lang = language or self._language
+
+        # Convert AudioFrame to WAV bytes
+        audio_data = buffer.data
+        sample_rate = buffer.sample_rate
+        num_channels = buffer.num_channels
+        num_samples = len(audio_data) // 2  # 16-bit PCM
+
+        wav_buffer = io.BytesIO()
+        # Write WAV header
+        wav_buffer.write(b"RIFF")
+        data_size = num_samples * 2
+        wav_buffer.write(struct.pack("<I", 36 + data_size))
+        wav_buffer.write(b"WAVE")
+        wav_buffer.write(b"fmt ")
+        wav_buffer.write(struct.pack("<I", 16))  # chunk size
+        wav_buffer.write(struct.pack("<H", 1))   # PCM format
+        wav_buffer.write(struct.pack("<H", num_channels))
+        wav_buffer.write(struct.pack("<I", sample_rate))
+        wav_buffer.write(struct.pack("<I", sample_rate * num_channels * 2))
+        wav_buffer.write(struct.pack("<H", num_channels * 2))
+        wav_buffer.write(struct.pack("<H", 16))  # bits per sample
+        wav_buffer.write(b"data")
+        wav_buffer.write(struct.pack("<I", data_size))
+        wav_buffer.write(audio_data)
+        wav_bytes = wav_buffer.getvalue()
+
+        transcript = await sarvam_stt_request(wav_bytes, lang)
+
+        return stt_module.SpeechEvent(
+            type=stt_module.SpeechEventType.FINAL_TRANSCRIPT,
+            alternatives=[
+                stt_module.SpeechData(
+                    text=transcript,
+                    language=lang,
+                ),
+            ],
+        )
+
+
+# ──────────────────────────────────────────────
 # Provider Factories
 # ──────────────────────────────────────────────
-def create_stt() -> deepgram.STT:
-    """Create Deepgram STT instance."""
-    return deepgram.STT(
-        model=config.STT_MODEL,
-        language=config.STT_LANGUAGE,
-    )
+def create_stt(language: str = None):
+    """Create Sarvam STT instance."""
+    lang = language or config.STT_LANGUAGE
+    if not SARVAM_API_KEY:
+        logger.error("SARVAM_API_KEY not set — STT will fail")
+    return SarvamSTT(language=lang)
 
 
 def create_llm_plugin(provider: str = None) -> openai.LLM:
@@ -192,108 +396,36 @@ def create_llm_plugin(provider: str = None) -> openai.LLM:
 
 def create_tts(provider: str = None, voice_id: str = None, language: str = None):
     """Create TTS instance based on provider and voice."""
-    # Auto-detect provider from voice name — but ONLY for known prefixes
     OPENAI_VOICES = {"alloy", "echo", "shimmer", "nova", "fable", "onyx"}
-    ELEVENLABS_VOICE_IDS = set(config.TTS_PROVIDERS.get("elevenlabs", {}).get("voices", {}).values())
+    SARVAM_VOICES = set(config.TTS_PROVIDERS.get("sarvam", {}).get("voices", {}).values())
+
+    # Auto-detect provider from voice name
     if voice_id:
-        if voice_id.startswith("aura-"):
-            provider = "deepgram"
-        elif voice_id in OPENAI_VOICES:
+        if voice_id in OPENAI_VOICES:
             provider = "openai"
-        elif voice_id in ELEVENLABS_VOICE_IDS or (len(voice_id) >= 20 and len(voice_id) <= 24 and voice_id.isalnum()):
-            provider = "elevenlabs"
-        # NOTE: Do NOT auto-detect Cartesia by UUID — it fails silently without valid key
+        elif voice_id in SARVAM_VOICES:
+            provider = "sarvam"
+
     provider = provider or config.DEFAULT_TTS_PROVIDER
+    logger.info(f"TTS provider: {provider}, voice: {voice_id}, language: {language}")
 
-    logger.info(f"TTS provider: {provider}, voice: {voice_id}")
-
-    if provider == "cartesia":
-        import os
-        cartesia_key = os.getenv("CARTESIA_API_KEY", "").strip()
-        if not cartesia_key or len(cartesia_key) < 10:
-            logger.warning("CARTESIA_API_KEY missing or invalid, falling back to Deepgram TTS")
-            provider = "deepgram"
-            voice_id = None
-
-    if provider == "cartesia":
-        import os
-        voice = voice_id or config.TTS_PROVIDERS["cartesia"]["default_voice"]
-        cartesia_key = os.getenv("CARTESIA_API_KEY", "").strip()
-        logger.info(f"Cartesia config: voice={voice}, key_len={len(cartesia_key)}")
-        
-        try:
-            tts_instance = cartesia.TTS(
-                voice=voice,
-                api_key=cartesia_key,
-                sample_rate=24000,
-            )
-            logger.info("Cartesia TTS created with sample_rate=24000")
-            return tts_instance
-        except TypeError:
-            # Older plugin version doesn't support sample_rate
-            try:
-                tts_instance = cartesia.TTS(
-                    voice=voice,
-                    api_key=cartesia_key,
-                )
-                logger.info("Cartesia TTS created (default params)")
-                return tts_instance
-            except Exception as e2:
-                logger.error(f"Cartesia TTS failed: {e2}")
-                voice = config.TTS_PROVIDERS["deepgram"]["default_voice"]
-                return deepgram.TTS(model=voice)
-        except Exception as e:
-            logger.error(f"Cartesia TTS error: {e}")
-            voice = config.TTS_PROVIDERS["deepgram"]["default_voice"]
-            return deepgram.TTS(model=voice)
+    if provider == "sarvam":
+        voice = voice_id or config.TTS_PROVIDERS["sarvam"]["default_voice"]
+        lang_code = config.SARVAM_LANGUAGE_CODES.get(language or "hi", "hi-IN")
+        if not SARVAM_API_KEY:
+            logger.error("SARVAM_API_KEY not set — TTS will fail")
+        return SarvamTTS(voice=voice, language=lang_code)
     elif provider == "openai":
         voice = voice_id or config.TTS_PROVIDERS["openai"]["default_voice"]
         return openai.TTS(
             model=config.TTS_PROVIDERS["openai"].get("model", "tts-1"),
             voice=voice,
         )
-    elif provider == "elevenlabs":
-        import os
-        eleven_key = os.getenv("ELEVENLABS_API_KEY", "").strip()
-        if not eleven_key:
-            logger.warning("ELEVENLABS_API_KEY not set, falling back to Deepgram TTS")
-            voice = config.TTS_PROVIDERS["deepgram"]["default_voice"]
-            return deepgram.TTS(model=voice)
-        voice = voice_id or config.TTS_PROVIDERS["elevenlabs"]["default_voice"]
-        model_id = config.TTS_PROVIDERS["elevenlabs"].get("model", "eleven_multilingual_v2")
-        logger.info(f"Creating ElevenLabs TTS: voice={voice}, model={model_id}")
-        # The plugin requires a Voice object with an 'id' attribute
-        try:
-            voice_obj = elevenlabs.Voice(id=voice)
-        except (AttributeError, TypeError):
-            # Fallback: create a simple object with .id attribute
-            class _Voice:
-                def __init__(self, vid):
-                    self.id = vid
-                    self.name = ""
-                    self.category = ""
-                    self.settings = None
-            voice_obj = _Voice(voice)
-        try:
-            return elevenlabs.TTS(
-                voice=voice_obj,
-                model=model_id,
-                api_key=eleven_key,
-            )
-        except Exception as e:
-            logger.error(f"ElevenLabs TTS creation failed: {e}, falling back to Deepgram")
-            voice = config.TTS_PROVIDERS["deepgram"]["default_voice"]
-            return deepgram.TTS(model=voice)
-    elif provider == "deepgram":
-        voice = voice_id or config.TTS_PROVIDERS["deepgram"]["default_voice"]
-        valid_voices = config.TTS_PROVIDERS["deepgram"]["voices"]
-        if voice not in valid_voices and voice not in valid_voices.values():
-            logger.warning(f"Invalid Deepgram voice '{voice}', using default")
-            voice = config.TTS_PROVIDERS["deepgram"]["default_voice"]
-        return deepgram.TTS(model=voice)
     else:
-        voice = voice_id or config.TTS_PROVIDERS["deepgram"]["default_voice"]
-        return deepgram.TTS(model=voice)
+        # Default to Sarvam
+        voice = voice_id or config.TTS_PROVIDERS["sarvam"]["default_voice"]
+        lang_code = config.SARVAM_LANGUAGE_CODES.get(language or "hi", "hi-IN")
+        return SarvamTTS(voice=voice, language=lang_code)
 
 
 # ──────────────────────────────────────────────
@@ -510,10 +642,7 @@ IMPORTANT RULES:
 
     # Create pipeline components
     fnc_ctx = CallFunctions() if not custom_prompt else None
-    stt = deepgram.STT(
-        model=config.STT_MODEL,
-        language=stt_language,
-    )
+    stt = create_stt(stt_language)
     llm_plugin = create_llm_plugin(model_provider)
     tts = create_tts(tts_provider, voice_id, stt_language)
     logger.info(f"TTS provider resolved: {type(tts).__module__}.{type(tts).__name__}")

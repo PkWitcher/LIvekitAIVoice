@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
       phone_number: phone,
       prompt: body.prompt ?? "",
       model_provider: body.model_provider ?? "openai",
-      voice_id: body.voice_id ?? "aura-asteria-en",
+      voice_id: body.voice_id ?? "anushka",
       language: body.language ?? "multi",
     });
 
@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
       status: "ringing",
       room_name: roomName,
       model_provider: body.model_provider ?? "openai",
-      voice_id: body.voice_id ?? "aura-asteria-en",
+      voice_id: body.voice_id ?? "anushka",
       prompt: body.prompt || null,
     });
 

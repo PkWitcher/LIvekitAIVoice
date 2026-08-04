@@ -21,7 +21,7 @@ export default function CallDispatcher() {
   const [phone, setPhone] = useState("");
   const [prompt, setPrompt] = useState("");
   const [modelProvider] = useState("openai");
-  const [voice, setVoice] = useState("4877b818-c7fe-4c89-b1cf-eadf8e23da72");
+  const [voice, setVoice] = useState("anushka");
   const [language, setLanguage] = useState("multi");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<DispatchResult | null>(null);
@@ -367,9 +367,18 @@ export default function CallDispatcher() {
             value={voice}
             onChange={(e) => setVoice(e.target.value)}
           >
-            <optgroup label="Cartesia Indian (Hindi/English — Recommended)">
-              <option value="4877b818-c7fe-4c89-b1cf-eadf8e23da72">Rohan — Hindi Male (Default)</option>
-              <option value="0f14d8cb-f039-41fe-a813-a9b4bee7eed8">Hindi Female</option>
+            <optgroup label="Sarvam AI (Hindi/English/Indian Languages — Recommended)">
+              <option value="anushka">Anushka — Female (Default)</option>
+              <option value="priya">Priya — Female</option>
+              <option value="manisha">Manisha — Female</option>
+              <option value="vidya">Vidya — Female</option>
+              <option value="diya">Diya — Female</option>
+              <option value="abhilash">Abhilash — Male</option>
+              <option value="karun">Karun — Male</option>
+              <option value="shubh">Shubh — Male</option>
+              <option value="aravind">Aravind — Male</option>
+              <option value="hitesh">Hitesh — Male</option>
+              <option value="kumar">Kumar — Male</option>
             </optgroup>
             <optgroup label="OpenAI (Multilingual)">
               <option value="shimmer">Shimmer — Female</option>
@@ -377,10 +386,6 @@ export default function CallDispatcher() {
               <option value="alloy">Alloy — Neutral</option>
               <option value="echo">Echo — Male</option>
               <option value="onyx">Onyx — Male</option>
-            </optgroup>
-            <optgroup label="Deepgram (English Only)">
-              <option value="aura-asteria-en">Asteria — Female</option>
-              <option value="aura-orion-en">Orion — Male</option>
             </optgroup>
           </select>
         </div>

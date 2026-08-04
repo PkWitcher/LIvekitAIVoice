@@ -302,7 +302,7 @@ export default function LoginPage() {
             </div>
 
             <div className="user-login-footer">
-              <p>Powered by LiveKit &middot; Deepgram &middot; OpenAI</p>
+              <p>Powered by LiveKit &middot; Sarvam AI &middot; OpenAI</p>
             </div>
           </div>
         </div>

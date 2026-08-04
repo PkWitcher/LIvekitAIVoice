@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Project Quotation - AI Voice Agent Platform</title>
+<style>
+  body { font-family: 'Segoe UI', Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 40px; color: #333; line-height: 1.6; }
+  .header { text-align: center; border-bottom: 3px solid #2563eb; padding-bottom: 20px; margin-bottom: 30px; }
+  .header h1 { color: #2563eb; margin: 0; font-size: 28px; }
+  .header p { color: #666; margin: 5px 0; }
+  .meta { display: flex; justify-content: space-between; margin-bottom: 30px; }
+  .meta-box { background: #f8fafc; padding: 15px; border-radius: 8px; width: 48%; }
+  .meta-box h4 { margin: 0 0 8px 0; color: #2563eb; }
+  .meta-box p { margin: 3px 0; font-size: 14px; }
+  h2 { color: #1e40af; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-top: 35px; }
+  h3 { color: #374151; margin-top: 20px; }
+  table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+  th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+  th { background: #f1f5f9; font-weight: 600; color: #1e40af; }
+  .amount { text-align: right; font-weight: 600; }
+  .total-row { background: #eff6ff; font-weight: 700; font-size: 16px; }
+  .total-row td { border-top: 2px solid #2563eb; }
+  ul { padding-left: 20px; }
+  li { margin: 6px 0; }
+  .section-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 15px 0; }
+  .highlight { background: #eff6ff; border-left: 4px solid #2563eb; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0; }
+  .footer { margin-top: 50px; padding-top: 20px; border-top: 2px solid #e2e8f0; text-align: center; color: #666; font-size: 13px; }
+  .terms { font-size: 13px; color: #555; }
+  .badge { display: inline-block; background: #dbeafe; color: #1e40af; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  @media print { body { padding: 20px; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>PROJECT QUOTATION</h1>
+  <p><strong>AI Voice Agent Platform</strong></p>
+  <p>Automated Outbound & Inbound Calling System with AI</p>
+</div>
+
+<div class="meta">
+  <div class="meta-box">
+    <h4>From</h4>
+    <p><strong>Prashant Kishore</strong></p>
+    <p>Full-Stack Developer</p>
+    <p>AI & Voice Technology Specialist</p>
+  </div>
+  <div class="meta-box">
+    <h4>Quotation Details</h4>
+    <p><strong>Date:</strong> July 31, 2026</p>
+    <p><strong>Valid Until:</strong> August 30, 2026</p>
+    <p><strong>Ref:</strong> QT-2026-VA-001</p>
+  </div>
+</div>
+
+<h2>1. Project Overview</h2>
+<p>A complete AI-powered voice calling platform that enables businesses to make and receive phone calls using artificial intelligence. The AI agent speaks naturally, follows custom scripts/prompts, handles multilingual conversations, and provides real-time transcripts, call recordings, and analytics.</p>
+
+<h2>2. Scope of Work</h2>
+
+<h3>Core Platform Features</h3>
+<ul>
+  <li><strong>AI Voice Pipeline:</strong> Voice Activity Detection → Speech-to-Text → AI Brain → Text-to-Speech</li>
+  <li><strong>Outbound Calling:</strong> AI dials phone numbers and follows custom conversation scripts</li>
+  <li><strong>Inbound Calling:</strong> AI answers incoming calls with configured persona</li>
+  <li><strong>Bulk Dialer:</strong> Campaign-based multi-number calling with queue management</li>
+  <li><strong>Multilingual Support:</strong> Hindi, English, Tamil, Telugu, Bengali, Marathi + auto-detection</li>
+  <li><strong>Real-time Transcripts:</strong> Live conversation text during and after calls</li>
+  <li><strong>Call Recordings:</strong> Automatic recording with cloud storage and download</li>
+  <li><strong>Custom Prompts:</strong> Client-configurable AI scripts per campaign</li>
+</ul>
+
+<h3>Dashboard & Admin</h3>
+<ul>
+  <li><strong>User Dashboard:</strong> Call history, stats, transcript viewer, prompt management</li>
+  <li><strong>Admin Panel:</strong> User management, subscription control, system monitoring</li>
+  <li><strong>Authentication:</strong> Email-based signup/login with email verification</li>
+  <li><strong>Subscription & Payments:</strong> Razorpay integration with plan management</li>
+</ul>
+
+<h3>Technical Infrastructure</h3>
+<ul>
+  <li><strong>Multi-provider AI:</strong> Swappable LLM (OpenAI/Groq), STT &amp; TTS (Sarvam AI), Voice Cloning (Sarvam AI)</li>
+  <li><strong>SIP Telephony:</strong> PSTN integration for real phone calls (Indian numbers supported)</li>
+  <li><strong>WebRTC Media:</strong> LiveKit Cloud for real-time audio streaming</li>
+  <li><strong>Cloud Deployment:</strong> Production-ready hosting with auto-scaling</li>
+  <li><strong>Database:</strong> PostgreSQL with user data, call logs, transcripts</li>
+  <li><strong>WhatsApp Notifications:</strong> Post-call summary messages</li>
+</ul>
+
+<h2>3. Technology Stack</h2>
+<table>
+  <tr><th>Layer</th><th>Technology</th></tr>
+  <tr><td>Frontend</td><td>Next.js, React, TailwindCSS</td></tr>
+  <tr><td>Backend</td><td>Python (livekit-agents framework)</td></tr>
+  <tr><td>AI/ML</td><td>Groq/OpenAI (LLM), Sarvam Saarika (STT), Sarvam Bulbul (TTS), Silero VAD</td></tr>
+  <tr><td>Telephony</td><td>LiveKit Cloud + Vobiz SIP</td></tr>
+  <tr><td>Database</td><td>Supabase (PostgreSQL)</td></tr>
+  <tr><td>Hosting</td><td>Vercel (Frontend) + Render (Backend)</td></tr>
+  <tr><td>Payments</td><td>Razorpay</td></tr>
+</table>
+
+<h2>4. Pricing</h2>
+
+<table>
+  <tr><th>Item</th><th>Description</th><th class="amount">Amount (₹)</th></tr>
+  <tr><td>Platform Development</td><td>Full-stack development, AI integration, telephony setup, testing & deployment</td><td class="amount">3,00,000</td></tr>
+  <tr><td>Deployment & Configuration</td><td>Production setup, DNS, environment config, SIP trunk setup</td><td class="amount">25,000</td></tr>
+  <tr><td>Documentation & Handover</td><td>Technical docs, API docs, deployment guide, training session</td><td class="amount">25,000</td></tr>
+  <tr class="total-row"><td colspan="2">Total (One-Time)</td><td class="amount">₹3,50,000</td></tr>
+</table>
+
+<h3>Monthly Maintenance & Support (Optional)</h3>
+<table>
+  <tr><th>Plan</th><th>Includes</th><th class="amount">Amount (₹/mo)</th></tr>
+  <tr><td>Basic Support</td><td>Bug fixes, server monitoring, minor updates</td><td class="amount">20,000</td></tr>
+  <tr><td>Standard Support</td><td>Basic + new feature development (up to 20 hrs/mo)</td><td class="amount">40,000</td></tr>
+  <tr><td>Premium Support</td><td>Standard + priority response, scaling support, 24/7 monitoring</td><td class="amount">60,000</td></tr>
+</table>
+
+<div class="highlight">
+  <strong>Note:</strong> Infrastructure costs (Render, Vercel, LiveKit, Supabase, Sarvam AI, Vobiz) are paid directly by the client. Estimated ~₹8,000-12,000/mo fixed + ~₹1-1.50/min per call variable cost.
+</div>
+
+<h2>5. Timeline</h2>
+<table>
+  <tr><th>Phase</th><th>Duration</th><th>Deliverable</th></tr>
+  <tr><td>Phase 1: Core Platform</td><td>Week 1-3</td><td>Voice pipeline, calling, dashboard</td></tr>
+  <tr><td>Phase 2: Features</td><td>Week 4-5</td><td>Recordings, transcripts, bulk dialer, payments</td></tr>
+  <tr><td>Phase 3: Polish & Deploy</td><td>Week 6</td><td>Testing, deployment, handover</td></tr>
+  <tr class="total-row"><td colspan="2"><strong>Total Duration</strong></td><td><strong>6 Weeks</strong></td></tr>
+</table>
+
+<h2>6. Payment Terms</h2>
+<div class="section-box terms">
+  <ul>
+    <li><strong>50% Advance</strong> — ₹1,75,000 before project starts</li>
+    <li><strong>25% on Phase 2 delivery</strong> — ₹87,500 after features complete</li>
+    <li><strong>25% on Final Handover</strong> — ₹87,500 after deployment & testing</li>
+  </ul>
+  <p style="margin-top: 15px;"><strong>Payment Mode:</strong> Bank Transfer / UPI / Razorpay</p>
+</div>
+
+<h2>7. What Client Gets</h2>
+<div class="section-box">
+  <ul>
+    <li>✅ Complete source code ownership</li>
+    <li>✅ Production-deployed platform (ready to use)</li>
+    <li>✅ Admin panel for managing users & subscriptions</li>
+    <li>✅ Technical documentation</li>
+    <li>✅ 1 month free support after handover</li>
+    <li>✅ Knowledge transfer session (1-2 hours)</li>
+  </ul>
+</div>
+
+<h2>8. Terms & Conditions</h2>
+<div class="section-box terms">
+  <ol>
+    <li>Quotation valid for 30 days from date of issue.</li>
+    <li>Any scope changes after approval will be quoted separately.</li>
+    <li>Third-party service costs (APIs, hosting) are borne by the client.</li>
+    <li>Source code is handed over upon full payment.</li>
+    <li>Post-handover support beyond 1 month requires a maintenance plan.</li>
+    <li>GST (18%) applicable as per Indian tax laws, not included in above pricing.</li>
+  </ol>
+</div>
+
+<div class="footer">
+  <p><strong>Prashant Kishore</strong> | Full-Stack Developer | AI & Voice Technology</p>
+  <p>For queries, contact: [your email] | [your phone]</p>
+</div>
+
+</body>
+</html>
