@@ -316,7 +316,7 @@ class SarvamSTT(stt_module.STT):
         )
         self._language = language
 
-    async def recognize(self, buffer: rtc.AudioFrame, *, language: str | None = None) -> stt_module.SpeechEvent:
+    async def _recognize_impl(self, buffer: rtc.AudioFrame, *, language: str | None = None) -> stt_module.SpeechEvent:
         """Recognize speech from an audio buffer using Sarvam API."""
         import struct
         import io
