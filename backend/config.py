@@ -80,25 +80,49 @@ DEFAULT_LLM_PROVIDER = "groq"
 TTS_PROVIDERS = {
     "sarvam": {
         "voices": {
-            # Sarvam Bulbul v3 voices (30+ available)
+            # Sarvam Bulbul v3 voices (official list)
             # Female voices
-            "anushka": "anushka",
-            "manisha": "manisha",
-            "vidya": "vidya",
-            "arya": "arya",
+            "ritu": "ritu",
             "priya": "priya",
-            "diya": "diya",
-            "saanvi": "saanvi",
+            "neha": "neha",
+            "pooja": "pooja",
+            "simran": "simran",
+            "kavya": "kavya",
+            "ishita": "ishita",
+            "shreya": "shreya",
+            "roopa": "roopa",
+            "tanya": "tanya",
+            "shruti": "shruti",
+            "suhani": "suhani",
+            "kavitha": "kavitha",
+            "rupali": "rupali",
+            "niharika": "niharika",
             # Male voices
-            "abhilash": "abhilash",
-            "karun": "karun",
-            "hitesh": "hitesh",
+            "aditya": "aditya",
+            "ashutosh": "ashutosh",
+            "rahul": "rahul",
+            "rohan": "rohan",
+            "amit": "amit",
+            "dev": "dev",
+            "ratan": "ratan",
+            "varun": "varun",
+            "manan": "manan",
+            "sumit": "sumit",
+            "kabir": "kabir",
+            "aayan": "aayan",
             "shubh": "shubh",
-            "aravind": "aravind",
-            "kumar": "kumar",
-            "vian": "vian",
+            "advait": "advait",
+            "anand": "anand",
+            "tarun": "tarun",
+            "sunny": "sunny",
+            "mani": "mani",
+            "gokul": "gokul",
+            "vijay": "vijay",
+            "mohit": "mohit",
+            "rehan": "rehan",
+            "soham": "soham",
         },
-        "default_voice": "anushka",
+        "default_voice": "priya",
         "model": "bulbul:v3",
     },
     "openai": {
@@ -116,7 +140,7 @@ TTS_PROVIDERS = {
 }
 
 DEFAULT_TTS_PROVIDER = "sarvam"
-DEFAULT_VOICE_ID = "anushka"
+DEFAULT_VOICE_ID = "priya"
 
 # Sarvam language code mapping (BCP-47 codes required by Sarvam API)
 SARVAM_LANGUAGE_CODES = {

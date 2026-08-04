@@ -21,7 +21,7 @@ export default function CallDispatcher() {
   const [phone, setPhone] = useState("");
   const [prompt, setPrompt] = useState("");
   const [modelProvider] = useState("openai");
-  const [voice, setVoice] = useState("anushka");
+  const [voice, setVoice] = useState("priya");
   const [language, setLanguage] = useState("multi");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<DispatchResult | null>(null);
@@ -368,17 +368,20 @@ export default function CallDispatcher() {
             onChange={(e) => setVoice(e.target.value)}
           >
             <optgroup label="Sarvam AI (Hindi/English/Indian Languages — Recommended)">
-              <option value="anushka">Anushka — Female (Default)</option>
-              <option value="priya">Priya — Female</option>
-              <option value="manisha">Manisha — Female</option>
-              <option value="vidya">Vidya — Female</option>
-              <option value="diya">Diya — Female</option>
-              <option value="abhilash">Abhilash — Male</option>
-              <option value="karun">Karun — Male</option>
+              <option value="priya">Priya — Female (Default)</option>
+              <option value="ritu">Ritu — Female</option>
+              <option value="neha">Neha — Female</option>
+              <option value="kavya">Kavya — Female</option>
+              <option value="shreya">Shreya — Female</option>
+              <option value="simran">Simran — Female</option>
+              <option value="ishita">Ishita — Female</option>
+              <option value="rohan">Rohan — Male</option>
+              <option value="aditya">Aditya — Male</option>
+              <option value="rahul">Rahul — Male</option>
+              <option value="kabir">Kabir — Male</option>
               <option value="shubh">Shubh — Male</option>
-              <option value="aravind">Aravind — Male</option>
-              <option value="hitesh">Hitesh — Male</option>
-              <option value="kumar">Kumar — Male</option>
+              <option value="sunny">Sunny — Male</option>
+              <option value="vijay">Vijay — Male</option>
             </optgroup>
             <optgroup label="OpenAI (Multilingual)">
               <option value="shimmer">Shimmer — Female</option>
