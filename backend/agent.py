@@ -218,13 +218,19 @@ async def sarvam_tts_request(text: str, speaker: str = "anushka", language: str 
     url = f"{SARVAM_BASE_URL}/text-to-speech"
     model = config.TTS_PROVIDERS["sarvam"].get("model", "bulbul:v3")
 
+    # Skip empty/whitespace-only text
+    if not text or not text.strip():
+        logger.warning("Sarvam TTS: skipping empty text")
+        return b""
+
     payload = json.dumps({
-        "text": text,
+        "text": text.strip(),
         "language_code": language,
         "speaker": speaker,
         "model": model,
-        "speech_sample_rate": 24000,
     }).encode("utf-8")
+
+    logger.info(f"Sarvam TTS request: text='{text.strip()[:50]}', speaker={speaker}, lang={language}, model={model}")
 
     req = urllib.request.Request(
         url,
@@ -235,12 +241,17 @@ async def sarvam_tts_request(text: str, speaker: str = "anushka", language: str 
             "api-subscription-key": SARVAM_API_KEY,
         },
     )
-    response = await asyncio.get_event_loop().run_in_executor(
-        None, lambda: urllib.request.urlopen(req, context=ssl_ctx)
-    )
-    result = json.loads(response.read().decode())
-    audio_b64 = "".join(result.get("audios", []))
-    return base64.b64decode(audio_b64)
+    try:
+        response = await asyncio.get_event_loop().run_in_executor(
+            None, lambda: urllib.request.urlopen(req, context=ssl_ctx)
+        )
+        result = json.loads(response.read().decode())
+        audio_b64 = "".join(result.get("audios", []))
+        return base64.b64decode(audio_b64)
+    except urllib.error.HTTPError as e:
+        error_body = e.read().decode() if e.fp else "no body"
+        logger.error(f"Sarvam TTS HTTP {e.code}: {error_body}")
+        raise
 
 
 # ──────────────────────────────────────────────
@@ -276,11 +287,18 @@ class SarvamTTSStream(tts_module.ChunkedStream):
 
     async def _run(self):
         try:
+            # Skip empty text (LiveKit may send empty tokens)
+            if not self._text or not self._text.strip():
+                return
+
             audio_bytes = await sarvam_tts_request(
                 self._text,
                 speaker=self._tts._voice,
                 language=self._tts._language,
             )
+            if not audio_bytes:
+                return
+
             # Send audio as a single frame
             import numpy as np
             samples = np.frombuffer(audio_bytes, dtype=np.int16)
