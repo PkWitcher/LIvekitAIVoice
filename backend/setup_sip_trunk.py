@@ -1,11 +1,12 @@
 """
-Create the SIP trunk on the local LiveKit server.
+Create the SIP trunk on the LiveKit Cloud server.
 Runs automatically on container startup via start.sh.
 Also writes VOBIZ_SIP_TRUNK_ID so the agent picks it up.
 """
 
 import asyncio
 import os
+import sys
 import time
 
 from dotenv import load_dotenv
@@ -13,9 +14,9 @@ from livekit import api
 
 load_dotenv()
 
-LIVEKIT_URL = os.getenv("LIVEKIT_URL", "http://livekit:7880")
-LIVEKIT_API_KEY = os.getenv("LIVEKIT_API_KEY", "devkey")
-LIVEKIT_API_SECRET = os.getenv("LIVEKIT_API_SECRET", "secret")
+LIVEKIT_URL = os.getenv("LIVEKIT_URL", "")
+LIVEKIT_API_KEY = os.getenv("LIVEKIT_API_KEY", "")
+LIVEKIT_API_SECRET = os.getenv("LIVEKIT_API_SECRET", "")
 
 SIP_DOMAIN = os.getenv("VOBIZ_SIP_DOMAIN", "")
 SIP_USERNAME = os.getenv("VOBIZ_USERNAME", "")
@@ -24,11 +25,23 @@ SIP_OUTBOUND_NUMBER = os.getenv("VOBIZ_OUTBOUND_NUMBER", "")
 
 
 async def main():
-    # Wait for livekit to be ready
+    if not LIVEKIT_URL or not LIVEKIT_API_KEY or not LIVEKIT_API_SECRET:
+        print("❌ LIVEKIT_URL, LIVEKIT_API_KEY, and LIVEKIT_API_SECRET must be set")
+        sys.exit(1)
+
+    # Convert ws(s):// to http(s):// for API calls
+    api_url = LIVEKIT_URL
+    if api_url.startswith("wss://"):
+        api_url = "https://" + api_url[6:]
+    elif api_url.startswith("ws://"):
+        api_url = "http://" + api_url[5:]
+
+    print(f"Connecting to LiveKit at: {api_url}")
+
     for attempt in range(10):
         try:
             lk = api.LiveKitAPI(
-                url=LIVEKIT_URL,
+                url=api_url,
                 api_key=LIVEKIT_API_KEY,
                 api_secret=LIVEKIT_API_SECRET,
             )
