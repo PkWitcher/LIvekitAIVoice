@@ -20,12 +20,15 @@ export default function LandingNavbar() {
             <span className="landing-nav-brand-text">Nova AI</span>
           </Link>
 
+          {/* Desktop center links — hidden on mobile */}
+          <div className="landing-nav-center landing-nav-desktop">
+            <a href="#features" className="nav-link-custom">Features</a>
+            <a href="#how-it-works" className="nav-link-custom">How It Works</a>
+            <a href="#pricing" className="nav-link-custom">Pricing</a>
+            <Link href="/admin/login" className="nav-link-custom">Admin</Link>
+          </div>
+
           <div className="landing-nav-actions">
-            {/* Desktop links — hidden on mobile */}
-            <a href="#features" className="nav-link-custom landing-nav-desktop">Features</a>
-            <a href="#how-it-works" className="nav-link-custom landing-nav-desktop">How It Works</a>
-            <a href="#pricing" className="nav-link-custom landing-nav-desktop">Pricing</a>
-            <Link href="/admin/login" className="nav-link-custom landing-nav-desktop">Admin</Link>
             <ThemeToggle />
             <Link href="/login" className="btn-glow landing-nav-desktop">
               Sign In

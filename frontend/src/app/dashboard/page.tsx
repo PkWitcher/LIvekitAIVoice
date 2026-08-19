@@ -1,19 +1,56 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase-browser";
-import { useRouter } from "next/navigation";
-import CallDispatcher from "@/components/CallDispatcher";
-import BulkDialer from "@/components/BulkDialer";
-import CallHistory from "@/components/CallHistory";
-import DashboardStats from "@/components/DashboardStats";
-import LogoutButton from "@/components/LogoutButton";
-import ThemeToggle from "@/components/ThemeToggle";
-import UpgradePlan from "@/components/UpgradePlan";
-import TranscriptHistory from "@/components/TranscriptHistory";
-import Link from "next/link";
+import { useState, useEffect, useCallback } from 'react';
+import { createClient } from '@/lib/supabase-browser';
+import { useRouter } from 'next/navigation';
+import {
+  Phone,
+  CheckCircle2,
+  XCircle,
+  PhoneOff,
+  Clock,
+  TrendingUp,
+  LayoutDashboard,
+  FileText,
+  Settings,
+  Bell,
+  Sun,
+  Moon,
+  ChevronDown,
+  LogOut,
+} from 'lucide-react';
 
-type Tab = "dashboard" | "calls" | "transcripts" | "settings";
+// --- Types ---
+interface Stats {
+  total: number;
+  completed: number;
+  noAnswer: number;
+  ringing: number;
+  avgDuration: number;
+  outbound: number;
+  inbound: number;
+  pickupRate: number;
+}
+
+interface DailyData {
+  date: string;
+  total: number;
+  completed: number;
+}
+
+interface PreviousPeriod {
+  total: number;
+  completed: number;
+  pickupRate: number;
+}
+
+interface CallLog {
+  id: string;
+  phone_number: string;
+  status: string;
+  duration_seconds: number | null;
+  created_at: string;
+}
 
 interface UserSubscription {
   plan: string;
@@ -25,403 +62,447 @@ interface UserSubscription {
 }
 
 export default function DashboardPage() {
-  const [activeTab, setActiveTab] = useState<Tab>("dashboard");
+  const [activeNav, setActiveNav] = useState<string>('dashboard');
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [daily, setDaily] = useState<DailyData[]>([]);
+  const [previousPeriod, setPreviousPeriod] = useState<PreviousPeriod>({ total: 0, completed: 0, pickupRate: 0 });
+  const [calls, setCalls] = useState<CallLog[]>([]);
   const [subscription, setSubscription] = useState<UserSubscription | null>(null);
-  const [subLoading, setSubLoading] = useState(true);
+  const [userName, setUserName] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const router = useRouter();
   const supabase = createClient();
 
+  // Theme
   useEffect(() => {
-    const fetchSubscription = async () => {
-      try {
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const { data } = await supabase
-          .from("user_subscriptions")
-          .select("plan, status, max_calls_per_month, calls_used, max_minutes_per_month, minutes_used")
-          .eq("user_id", user.id)
-          .single();
-
-        setSubscription(data);
-      } catch {
-        // no subscription
-      } finally {
-        setSubLoading(false);
-      }
-    };
-    fetchSubscription();
+    const saved = localStorage.getItem('theme') as 'dark' | 'light' | null;
+    if (saved) {
+      setTheme(saved);
+      document.documentElement.setAttribute('data-theme', saved);
+    }
   }, []);
 
-  const hasActivePlan = subscription && (subscription.status === "active" || subscription.status === "trial");
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    localStorage.setItem('theme', next);
+    document.documentElement.setAttribute('data-theme', next);
+  };
+
+  // Fetch user info + subscription
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const email = user.email || '';
+      setUserName(email.split('@')[0] || 'User');
+
+      const { data } = await supabase
+        .from('user_subscriptions')
+        .select('plan, status, max_calls_per_month, calls_used, max_minutes_per_month, minutes_used')
+        .eq('user_id', user.id)
+        .single();
+      if (data) setSubscription(data);
+    };
+    fetchUser();
+  }, []);
+
+  // Fetch stats + calls
+  const fetchData = useCallback(async () => {
+    try {
+      const [statsRes, callsRes] = await Promise.all([
+        fetch('/api/stats'),
+        fetch('/api/calls'),
+      ]);
+      const statsData = await statsRes.json();
+      const callsData = await callsRes.json();
+
+      if (statsData.success) {
+        setStats(statsData.stats);
+        setDaily(statsData.daily || []);
+        setPreviousPeriod(statsData.previousPeriod || { total: 0, completed: 0, pickupRate: 0 });
+      }
+      if (callsData.success) {
+        setCalls(callsData.calls || []);
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 5000);
+    return () => clearInterval(interval);
+  }, [fetchData]);
+
+  // --- Helpers ---
+  const formatDuration = (s: number | null) => {
+    if (!s) return '—';
+    const m = Math.floor(s / 60);
+    const sec = Math.round(s % 60);
+    return m > 0 ? `${m}m ${sec}s` : `${sec}s`;
+  };
+
+  const formatNumber = (n: number) => n.toLocaleString('en-IN');
+
+  const calcChange = (current: number, previous: number) => {
+    if (previous === 0) return current > 0 ? '+100%' : '—';
+    const pct = Math.round(((current - previous) / previous) * 100);
+    return pct >= 0 ? `+${pct}%` : `${pct}%`;
+  };
+
+  const timeAgo = (iso: string) => {
+    const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return new Date(iso).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'bg-emerald-500/10 text-emerald-400';
+      case 'failed':
+        return 'bg-red-500/10 text-red-400';
+      case 'no-answer':
+        return 'bg-amber-500/10 text-amber-400';
+      case 'ringing':
+      case 'initiated':
+        return 'bg-yellow-500/10 text-yellow-400';
+      case 'connected':
+        return 'bg-blue-500/10 text-blue-400';
+      default:
+        return 'bg-white/[0.06] text-[#888]';
+    }
+  };
+
+  const statusLabel = (s: string) => s.replace('-', ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+  const userInitial = userName ? userName[0].toUpperCase() : 'U';
+  const displayName = userName.charAt(0).toUpperCase() + userName.slice(1);
+
+  // Compute failed count from stats
+  const failed = stats ? stats.total - stats.completed - stats.noAnswer - stats.ringing : 0;
+  const totalMinutes = stats ? Math.round((stats.avgDuration * stats.total) / 60) : 0;
+  const successRate = stats && stats.total > 0 ? ((stats.completed / stats.total) * 100).toFixed(1) : '0';
+
+  // Build last 7 days chart data
+  const last7 = daily.slice(-7);
+  const maxCompleted = Math.max(...last7.map(d => d.completed), 1);
+  const maxFailed = Math.max(...last7.map(d => d.total - d.completed), 1);
+
+  const getBarHeight = (value: number, max: number) => {
+    const pct = Math.round((value / max) * 100);
+    if (pct <= 0) return 'h-0';
+    if (pct <= 10) return 'h-2';
+    if (pct <= 20) return 'h-4';
+    if (pct <= 30) return 'h-6';
+    if (pct <= 40) return 'h-8';
+    if (pct <= 50) return 'h-12';
+    if (pct <= 60) return 'h-16';
+    if (pct <= 70) return 'h-20';
+    if (pct <= 80) return 'h-24';
+    if (pct <= 90) return 'h-28';
+    return 'h-32';
+  };
+
+  const dayLabel = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('en-IN', { weekday: 'short' });
+  };
+
+  // Subscription
+  const hasSub = subscription && (subscription.status === 'active' || subscription.status === 'trial');
+  const callsPct = subscription ? Math.min((subscription.calls_used / subscription.max_calls_per_month) * 100, 100) : 0;
+  const minsPct = subscription ? Math.min((Math.round(Number(subscription.minutes_used)) / subscription.max_minutes_per_month) * 100, 100) : 0;
+
+  const recentCalls = calls.slice(0, 5);
+  const activeCalls = calls.filter(c => c.status === 'ringing' || c.status === 'connected').length;
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push('/login');
+    router.refresh();
+  };
 
   return (
-    <div className="page-bg">
-      {/* ── Sidebar + Main Layout ── */}
-      <div className="flex h-screen overflow-hidden">
-        {/* ── Sidebar (fixed, not scrollable) ── */}
-        <aside className="hidden lg:flex flex-col w-64 h-screen border-r border-[var(--color-border)] bg-[#080808]/80 backdrop-blur-xl px-4 py-6 relative z-10 shrink-0">
-          <Link href="/" className="flex items-center gap-3 mb-10 px-2">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-lg shadow-blue-500/20">
-              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
-              </svg>
+    <div data-dashboard className="flex min-h-screen bg-[#050505] text-[#e5e5e5] font-[Inter,system-ui,sans-serif] antialiased">
+      {/* Sidebar */}
+      <aside className="w-60 border-r border-white/[0.04] bg-[#0a0a0a] flex flex-col justify-between px-4 py-5">
+        <div>
+          <div className="flex items-center gap-3 px-2 py-2 mb-8">
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
+              <Phone className="w-[18px] h-[18px]" />
             </div>
             <div>
-              <h1 className="text-sm font-semibold text-white leading-tight whitespace-nowrap">Nova AI</h1>
-              <p className="text-[10px] text-[var(--color-text-muted)]">Voice Platform</p>
+              <h1 className="font-semibold text-white text-sm leading-tight">Nova AI</h1>
+              <span className="text-[10px] text-[#666] font-medium">Voice Platform</span>
             </div>
-          </Link>
+          </div>
 
-          <nav className="space-y-1 flex-1">
-            <button onClick={() => setActiveTab("dashboard")} className={`sidebar-link w-full text-left ${activeTab === "dashboard" ? "active" : ""}`}>
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25a2.25 2.25 0 0 1-2.25-2.25v-2.25Z" />
-              </svg>
-              Dashboard
+          <nav className="space-y-1">
+            <button
+              onClick={() => setActiveNav('dashboard')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all ${
+                activeNav === 'dashboard'
+                  ? 'bg-white/[0.06] text-blue-400'
+                  : 'text-[#888] hover:text-[#ccc] hover:bg-white/[0.03]'
+              }`}
+            >
+              <LayoutDashboard className="w-4 h-4" />
+              <span>Dashboard</span>
             </button>
-            <button onClick={() => setActiveTab("calls")} className={`sidebar-link w-full text-left ${activeTab === "calls" ? "active" : ""}`}>
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
-              </svg>
-              Calls
+
+            <button
+              onClick={() => setActiveNav('calls')}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all ${
+                activeNav === 'calls'
+                  ? 'bg-white/[0.06] text-blue-400'
+                  : 'text-[#888] hover:text-[#ccc] hover:bg-white/[0.03]'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Phone className="w-4 h-4" />
+                <span>Calls</span>
+              </div>
+              {activeCalls > 0 && (
+                <span className="bg-blue-500/15 text-blue-400 text-[10px] px-2 py-0.5 rounded-full font-semibold">
+                  {activeCalls}
+                </span>
+              )}
             </button>
-            <button onClick={() => setActiveTab("transcripts")} className={`sidebar-link w-full text-left ${activeTab === "transcripts" ? "active" : ""}`}>
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
-              </svg>
-              Transcripts
+
+            <button
+              onClick={() => setActiveNav('transcripts')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all ${
+                activeNav === 'transcripts'
+                  ? 'bg-white/[0.06] text-blue-400'
+                  : 'text-[#888] hover:text-[#ccc] hover:bg-white/[0.03]'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              <span>Transcripts</span>
             </button>
-            <button onClick={() => setActiveTab("settings")} className={`sidebar-link w-full text-left ${activeTab === "settings" ? "active" : ""}`}>
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 0 1 1.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.559.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.894.149c-.424.07-.764.383-.929.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 0 1-1.449.12l-.738-.527c-.35-.25-.806-.272-1.204-.107-.397.165-.71.505-.78.929l-.15.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 0 1-.12-1.45l.527-.737c.25-.35.272-.806.108-1.204-.165-.397-.506-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.108-1.204l-.526-.738a1.125 1.125 0 0 1 .12-1.45l.773-.773a1.125 1.125 0 0 1 1.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894Z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-              </svg>
-              Settings
+
+            <button
+              onClick={() => setActiveNav('settings')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all ${
+                activeNav === 'settings'
+                  ? 'bg-white/[0.06] text-blue-400'
+                  : 'text-[#888] hover:text-[#ccc] hover:bg-white/[0.03]'
+              }`}
+            >
+              <Settings className="w-4 h-4" />
+              <span>Settings</span>
             </button>
           </nav>
+        </div>
 
-          <div className="mt-auto pt-4 border-t border-[var(--color-border)]">
-            <div className="flex items-center justify-between px-3 py-2">
-              <LogoutButton />
-              <ThemeToggle />
+        <div className="space-y-3 pt-4 border-t border-white/[0.04]">
+          <div className="flex items-center gap-3 px-3">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 text-white font-medium flex items-center justify-center text-xs shadow-md shadow-blue-500/20">
+              {userInitial}
             </div>
-            <div className="flex items-center gap-2 px-3 py-2">
-              <span className="w-2 h-2 rounded-full bg-green-500 shadow-sm shadow-green-500/50" />
-              <span className="text-xs text-[var(--color-text-secondary)]">System Online</span>
+            <div className="overflow-hidden">
+              <p className="text-xs font-semibold text-white truncate">{displayName}</p>
+              <p className="text-[10px] text-[#666]">{hasSub ? `${subscription!.plan.charAt(0).toUpperCase() + subscription!.plan.slice(1)} Plan` : 'No Plan'}</p>
             </div>
           </div>
-        </aside>
+          <button onClick={handleLogout} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-red-400/80 hover:bg-red-500/[0.06] transition-colors">
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Logout</span>
+          </button>
+        </div>
+      </aside>
 
-        {/* ── Main Content (scrollable) ── */}
-        <main className="flex-1 overflow-y-auto relative z-10 pb-20 lg:pb-0">
-          {/* Top bar for mobile */}
-          <header className="lg:hidden glass-header flex items-center justify-between px-4 py-4 sticky top-0 z-20">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-lg shadow-blue-500/20">
-                <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
-                </svg>
+      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+        <header className="flex items-center justify-between px-8 py-4 border-b border-white/[0.04]">
+          <div>
+            <h2 className="text-lg font-semibold text-white tracking-tight">Dashboard</h2>
+            <p className="text-xs text-[#666] mt-0.5">Welcome back, {displayName}!</p>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <button onClick={toggleTheme} className="p-2 rounded-lg text-[#666] hover:text-[#aaa] hover:bg-white/[0.04] transition-colors" title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+            <button className="relative p-2 rounded-lg text-[#666] hover:text-[#aaa] hover:bg-white/[0.04] transition-colors">
+              <Bell className="w-4 h-4" />
+              {activeCalls > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                  {activeCalls}
+                </span>
+              )}
+            </button>
+            <div className="flex items-center gap-2 pl-3 ml-1 cursor-pointer">
+              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 text-white flex items-center justify-center text-[11px] font-medium">
+                {userInitial}
               </div>
-              <span className="text-sm font-semibold text-white whitespace-nowrap">Nova AI</span>
-            </Link>
-            {/* Mobile tab switcher */}
-            <div className="flex items-center gap-1 bg-[var(--color-bg-input)] rounded-lg p-1 border border-[var(--color-border)]">
-              <button onClick={() => setActiveTab("dashboard")} className={`px-2 py-1 rounded-md text-[10px] font-medium transition-all ${activeTab === "dashboard" ? "bg-blue-500/20 text-blue-400" : "text-[var(--color-text-muted)]"}`}>Dashboard</button>
-              <button onClick={() => setActiveTab("calls")} className={`px-2 py-1 rounded-md text-[10px] font-medium transition-all ${activeTab === "calls" ? "bg-blue-500/20 text-blue-400" : "text-[var(--color-text-muted)]"}`}>Calls</button>
-              <button onClick={() => setActiveTab("transcripts")} className={`px-2 py-1 rounded-md text-[10px] font-medium transition-all ${activeTab === "transcripts" ? "bg-blue-500/20 text-blue-400" : "text-[var(--color-text-muted)]"}`}>Chats</button>
-              <button onClick={() => setActiveTab("settings")} className={`px-2 py-1 rounded-md text-[10px] font-medium transition-all ${activeTab === "settings" ? "bg-blue-500/20 text-blue-400" : "text-[var(--color-text-muted)]"}`}>Settings</button>
+              <span className="text-xs font-medium text-[#aaa]">{displayName}</span>
+              <ChevronDown className="w-3 h-3 text-[#555]" />
             </div>
-            <ThemeToggle />
-          </header>
+          </div>
+        </header>
 
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8">
-            {/* ── Dashboard Tab ── */}
-            {activeTab === "dashboard" && (
-              <>
-                <div className="animate-in">
-                  <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1 tracking-tight">
-                    Dashboard
-                  </h2>
-                  <p className="text-sm text-[var(--color-text-secondary)]">
-                    Manage your AI voice calls, campaigns, and recordings.
-                  </p>
-                </div>
-
-                {/* Subscription Status Banner */}
-                {!subLoading && !hasActivePlan && (
-                  <div className="sub-banner sub-banner-warning animate-in">
-                    <div className="sub-banner-icon">
-                      <svg width="20" height="20" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-                      </svg>
-                    </div>
-                    <div className="sub-banner-content">
-                      <h4>No Active Subscription</h4>
-                      <p>Your account does not have an active plan. Please contact the admin to activate your subscription before making calls.</p>
-                    </div>
-                  </div>
-                )}
-
-                {!subLoading && hasActivePlan && (
-                  <div className="sub-banner sub-banner-active animate-in">
-                    <div className="sub-banner-icon active">
-                      <svg width="20" height="20" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                      </svg>
-                    </div>
-                    <div className="sub-banner-content">
-                      <h4>Plan: <span className="capitalize">{subscription!.plan}</span> — {subscription!.status === "trial" ? "Trial" : "Active"}</h4>
-                      <p>Calls: {subscription!.calls_used} / {subscription!.max_calls_per_month} &nbsp;·&nbsp; Minutes: {Math.round(Number(subscription!.minutes_used))} / {subscription!.max_minutes_per_month}</p>
-                    </div>
-                  </div>
-                )}
-
-                <div className="animate-in animate-in-delay-1">
-                  <DashboardStats />
-                </div>
-
-                {hasActivePlan ? (
-                  <div className="animate-in animate-in-delay-2">
-                    <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-3 sm:mb-4">
-                      Quick Actions
-                    </h3>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                      <CallDispatcher />
-                      <BulkDialer />
-                    </div>
-                  </div>
-                ) : !subLoading && (
-                  <div className="animate-in animate-in-delay-2">
-                    <UpgradePlan onSuccess={() => window.location.reload()} />
-                  </div>
-                )}
-
-                <div className="animate-in animate-in-delay-3">
-                  <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-4">
-                    Recent Activity
-                  </h3>
-                  <CallHistory />
-                </div>
-              </>
-            )}
-
-            {/* ── Calls Tab ── */}
-            {activeTab === "calls" && (
-              <>
-                <div className="animate-in">
-                  <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1 tracking-tight">
-                    Calls
-                  </h2>
-                  <p className="text-sm text-[var(--color-text-secondary)]">
-                    Dispatch calls and view call history.
-                  </p>
-                </div>
-
-                {!subLoading && !hasActivePlan && (
-                  <div className="sub-banner sub-banner-warning animate-in">
-                    <div className="sub-banner-icon">
-                      <svg width="20" height="20" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
-                      </svg>
-                    </div>
-                    <div className="sub-banner-content">
-                      <h4>Subscription Required</h4>
-                      <p>You need an active subscription to make calls. Contact admin to get started.</p>
-                    </div>
-                  </div>
-                )}
-
-                {hasActivePlan ? (
-                  <div className="animate-in animate-in-delay-1 grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                    <CallDispatcher />
-                    <BulkDialer />
-                  </div>
-                ) : !subLoading && (
-                  <div className="animate-in animate-in-delay-1">
-                    <UpgradePlan onSuccess={() => window.location.reload()} />
-                  </div>
-                )}
-
-                <div className="animate-in animate-in-delay-2">
-                  <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-4">
-                    Call History
-                  </h3>
-                  <CallHistory />
-                </div>
-              </>
-            )}
-
-            {/* ── Transcripts Tab ── */}
-            {activeTab === "transcripts" && (
-              <>
-                <div className="animate-in">
-                  <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1 tracking-tight">
-                    Transcripts
-                  </h2>
-                  <p className="text-sm text-[var(--color-text-secondary)]">
-                    View conversation history grouped by phone number.
-                  </p>
-                </div>
-
-                <div className="animate-in animate-in-delay-1">
-                  <TranscriptHistory />
-                </div>
-              </>
-            )}
-
-            {/* ── Settings Tab ── */}
-            {activeTab === "settings" && (
-              <>
-                <div className="animate-in">
-                  <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1 tracking-tight">
-                    Settings
-                  </h2>
-                  <p className="text-sm text-[var(--color-text-secondary)]">
-                    Configure your voice platform preferences.
-                  </p>
-                </div>
-
-                <div className="animate-in animate-in-delay-1 space-y-4">
-                  {/* General Settings */}
-                  <div className="stat-card">
-                    <h3 className="text-sm font-semibold text-white mb-4">General</h3>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-white">Theme</p>
-                          <p className="text-xs text-[var(--color-text-muted)]">Switch between dark and light mode</p>
-                        </div>
-                        <ThemeToggle />
-                      </div>
-                      <div className="border-t border-[var(--color-border)]" />
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-white">Notifications</p>
-                          <p className="text-xs text-[var(--color-text-muted)]">Get notified when calls complete</p>
-                        </div>
-                        <div className="w-10 h-5 rounded-full bg-blue-500/20 border border-blue-500/40 relative cursor-pointer">
-                          <div className="w-4 h-4 rounded-full bg-blue-500 absolute top-0.5 right-0.5 shadow-sm" />
+        <div className="px-8 py-6 space-y-7 max-w-7xl">
+          {/* Metrics */}
+          {loading ? (
+            <div className="text-center py-12 text-[#555] text-sm">Loading dashboard…</div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-6">
+                {[
+                  { title: 'TOTAL CALLS', value: formatNumber(stats?.total ?? 0), change: calcChange(stats?.total ?? 0, previousPeriod.total), isPos: (stats?.total ?? 0) >= previousPeriod.total, sub: 'This month', icon: Phone },
+                  { title: 'COMPLETED', value: formatNumber(stats?.completed ?? 0), change: calcChange(stats?.completed ?? 0, previousPeriod.completed), isPos: (stats?.completed ?? 0) >= previousPeriod.completed, sub: stats && stats.total > 0 ? `${((stats.completed / stats.total) * 100).toFixed(1)}% rate` : '0% rate', icon: CheckCircle2 },
+                  { title: 'FAILED', value: formatNumber(Math.max(failed, 0)), change: '—', isPos: true, sub: stats && stats.total > 0 ? `${((Math.max(failed, 0) / stats.total) * 100).toFixed(1)}% rate` : '0% rate', icon: XCircle },
+                  { title: 'NO ANSWER', value: formatNumber(stats?.noAnswer ?? 0), change: '—', isPos: true, sub: stats && stats.total > 0 ? `${((stats.noAnswer / stats.total) * 100).toFixed(1)}% rate` : '0% rate', icon: PhoneOff },
+                  { title: 'TOTAL MINUTES', value: formatNumber(totalMinutes), change: '—', isPos: true, sub: stats && stats.total > 0 ? `~${(stats.avgDuration / 60).toFixed(1)}/call` : '—', icon: Clock },
+                  { title: 'SUCCESS RATE', value: `${successRate}%`, change: stats ? `${previousPeriod.pickupRate > 0 ? (Number(successRate) > previousPeriod.pickupRate ? '+' : '') + (Number(successRate) - previousPeriod.pickupRate).toFixed(1) + '%' : '—'}` : '—', isPos: Number(successRate) >= previousPeriod.pickupRate, sub: previousPeriod.pickupRate > 0 ? `vs ${previousPeriod.pickupRate}% last mo` : 'This month', icon: TrendingUp },
+                ].map((m, i) => {
+                  const Icon = m.icon;
+                  return (
+                    <div key={i} className="bg-white/[0.03] border border-white/[0.04] p-4 rounded-xl flex flex-col justify-between transition-all hover:bg-white/[0.05]">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-[10px] font-semibold tracking-wider text-[#666] uppercase">{m.title}</span>
+                        <div className="w-7 h-7 rounded-lg bg-white/[0.04] flex items-center justify-center text-[#555]">
+                          <Icon className="w-3.5 h-3.5" />
                         </div>
                       </div>
-                    </div>
-                  </div>
-
-                  {/* Voice Settings */}
-                  <div className="stat-card">
-                    <h3 className="text-sm font-semibold text-white mb-4">Voice & AI</h3>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-white">LLM Provider</p>
-                          <p className="text-xs text-[var(--color-text-muted)]">Language model for AI responses</p>
+                      <div>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-2xl font-bold text-white tracking-tight">{m.value}</span>
+                          {m.change !== '—' && (
+                            <span className={`text-[11px] font-medium ${m.isPos ? 'text-emerald-400' : 'text-red-400'}`}>{m.change}</span>
+                          )}
                         </div>
-                        <span className="text-xs text-blue-400 bg-blue-500/10 px-3 py-1 rounded-lg border border-blue-500/20">OpenAI</span>
-                      </div>
-                      <div className="border-t border-[var(--color-border)]" />
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-white">TTS Provider</p>
-                          <p className="text-xs text-[var(--color-text-muted)]">Text-to-speech engine</p>
-                        </div>
-                        <span className="text-xs text-purple-400 bg-purple-500/10 px-3 py-1 rounded-lg border border-purple-500/20">Sarvam Bulbul</span>
-                      </div>
-                      <div className="border-t border-[var(--color-border)]" />
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-white">STT Provider</p>
-                          <p className="text-xs text-[var(--color-text-muted)]">Speech-to-text engine</p>
-                        </div>
-                        <span className="text-xs text-green-400 bg-green-500/10 px-3 py-1 rounded-lg border border-green-500/20">Sarvam Saarika</span>
+                        <span className="text-[11px] text-[#555] mt-1 block">{m.sub}</span>
                       </div>
                     </div>
-                  </div>
+                  );
+                })}
+              </div>
 
-                  {/* SIP Settings */}
-                  <div className="stat-card">
-                    <h3 className="text-sm font-semibold text-white mb-4">SIP Configuration</h3>
-                    <div className="space-y-4">
+              {/* Middle Row */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-7">
+                {/* Subscription Card */}
+                <div className="lg:col-span-4 bg-white/[0.03] border border-white/[0.04] rounded-xl p-5 flex flex-col justify-between">
+                  {hasSub ? (
+                    <div>
                       <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-white">SIP Provider</p>
-                          <p className="text-xs text-[var(--color-text-muted)]">Telephony provider for calls</p>
-                        </div>
-                        <span className="text-xs text-orange-400 bg-orange-500/10 px-3 py-1 rounded-lg border border-orange-500/20">Vobiz</span>
-                      </div>
-                      <div className="border-t border-[var(--color-border)]" />
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-white">Status</p>
-                          <p className="text-xs text-[var(--color-text-muted)]">SIP trunk connection status</p>
-                        </div>
-                        <span className="flex items-center gap-1.5 text-xs text-green-400">
-                          <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                          Connected
+                        <h3 className="font-semibold text-white text-sm">Subscription</h3>
+                        <span className="bg-blue-500/10 text-blue-400 text-[11px] px-2.5 py-0.5 rounded-full font-medium capitalize">
+                          {subscription!.plan} Plan
                         </span>
                       </div>
+                      <div className="space-y-4 mt-5">
+                        <div>
+                          <div className="flex justify-between text-xs mb-2">
+                            <span className="text-[#888]">Calls Used</span>
+                            <span className="text-[#aaa] font-medium">{formatNumber(subscription!.calls_used)} / {formatNumber(subscription!.max_calls_per_month)}</span>
+                          </div>
+                          <div className="w-full bg-white/[0.06] h-1.5 rounded-full overflow-hidden">
+                            <div className="bg-gradient-to-r from-blue-500 to-blue-400 h-full rounded-full" style={{ width: `${callsPct}%` }} />
+                          </div>
+                        </div>
+                        <div>
+                          <div className="flex justify-between text-xs mb-2">
+                            <span className="text-[#888]">Minutes Used</span>
+                            <span className="text-[#aaa] font-medium">{formatNumber(Math.round(Number(subscription!.minutes_used)))} / {formatNumber(subscription!.max_minutes_per_month)}</span>
+                          </div>
+                          <div className="w-full bg-white/[0.06] h-1.5 rounded-full overflow-hidden">
+                            <div className="bg-gradient-to-r from-blue-500 to-purple-500 h-full rounded-full" style={{ width: `${minsPct}%` }} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <h3 className="font-semibold text-white text-sm">No Active Plan</h3>
+                      <p className="text-[#555] text-xs mt-2">Contact admin to activate your subscription.</p>
+                    </div>
+                  )}
+                  <button className="w-full mt-5 py-2.5 rounded-lg bg-blue-500 text-white hover:bg-blue-600 text-xs font-semibold tracking-wide transition-all shadow-md shadow-blue-500/20">
+                    Upgrade Plan
+                  </button>
+                </div>
+
+                {/* Volume Chart */}
+                <div className="lg:col-span-8 bg-white/[0.03] border border-white/[0.04] rounded-xl p-5 flex flex-col justify-between">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-white text-sm">Call Volume — Last 7 Days</h3>
+                    <div className="flex items-center gap-5 text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-blue-500" />
+                        <span className="text-[#666] text-[11px]">Completed</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-red-400/60" />
+                        <span className="text-[#666] text-[11px]">Failed</span>
+                      </div>
                     </div>
                   </div>
+                  <div className="grid grid-cols-7 gap-4 items-end h-40 pt-6">
+                    {last7.length > 0 ? last7.map((d) => (
+                      <div key={d.date} className="flex flex-col items-center gap-2 h-full justify-end">
+                        <div className="flex items-end gap-1 w-full justify-center">
+                          <div className={`w-7 rounded-md bg-gradient-to-t from-blue-600/80 to-blue-400/80 ${getBarHeight(d.completed, maxCompleted)}`} />
+                          <div className={`w-3 rounded-sm bg-red-400/40 ${getBarHeight(d.total - d.completed, maxFailed)}`} />
+                        </div>
+                        <span className="text-[11px] text-[#555] font-medium">{dayLabel(d.date)}</span>
+                      </div>
+                    )) : (
+                      <div className="col-span-7 flex items-center justify-center h-full text-[#555] text-xs">No data yet</div>
+                    )}
+                  </div>
                 </div>
-              </>
-            )}
-          </div>
-        </main>
-      </div>
+              </div>
 
-      {/* ── Mobile Bottom Nav ── */}
-      <nav className="dash-mobile-bottom-nav lg:hidden">
-        <button
-          onClick={() => setActiveTab("dashboard")}
-          className={`dash-bottom-nav-item ${activeTab === "dashboard" ? "active" : ""}`}
-        >
-          <svg width="20" height="20" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z" />
-          </svg>
-          <span>Home</span>
-        </button>
-        <button
-          onClick={() => setActiveTab("calls")}
-          className={`dash-bottom-nav-item ${activeTab === "calls" ? "active" : ""}`}
-        >
-          <svg width="20" height="20" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
-          </svg>
-          <span>Calls</span>
-        </button>
-        <button
-          onClick={() => setActiveTab("transcripts")}
-          className={`dash-bottom-nav-item ${activeTab === "transcripts" ? "active" : ""}`}
-        >
-          <svg width="20" height="20" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
-          </svg>
-          <span>Chats</span>
-        </button>
-        <button
-          onClick={() => setActiveTab("settings")}
-          className={`dash-bottom-nav-item ${activeTab === "settings" ? "active" : ""}`}
-        >
-          <svg width="20" height="20" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 0 1 1.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.559.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.894.149c-.424.07-.764.383-.929.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 0 1-1.449.12l-.738-.527c-.35-.25-.806-.272-1.204-.107-.397.165-.71.505-.78.929l-.15.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 0 1-.12-1.45l.527-.737c.25-.35.272-.806.108-1.204-.165-.397-.506-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.108-1.204l-.526-.738a1.125 1.125 0 0 1 .12-1.45l.773-.773a1.125 1.125 0 0 1 1.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894Z" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-          </svg>
-          <span>Settings</span>
-        </button>
-        <button
-          onClick={async () => {
-            await supabase.auth.signOut();
-            router.push("/login");
-            router.refresh();
-          }}
-          className="dash-bottom-nav-item"
-        >
-          <svg width="20" height="20" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
-          </svg>
-          <span>Logout</span>
-        </button>
-      </nav>
+              {/* Recent Activity */}
+              <div className="bg-white/[0.03] border border-white/[0.04] rounded-xl p-5">
+                <div className="flex items-center justify-between pb-3">
+                  <h3 className="font-semibold text-white text-sm">Recent Activity</h3>
+                  <button onClick={() => setActiveNav('calls')} className="text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors">
+                    View all calls →
+                  </button>
+                </div>
+                <div className="overflow-x-auto mt-1">
+                  {recentCalls.length > 0 ? (
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-white/[0.04] text-[10px] font-semibold uppercase text-[#555] tracking-wider">
+                          <th className="py-3.5 px-3 font-semibold">Phone Number</th>
+                          <th className="py-3.5 px-3 font-semibold">Time</th>
+                          <th className="py-3.5 px-3 font-semibold">Duration</th>
+                          <th className="py-3.5 px-3 font-semibold">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-[13px]">
+                        {recentCalls.map((call) => (
+                          <tr key={call.id} className="hover:bg-white/[0.02] transition-colors">
+                            <td className="py-4 px-3 font-medium text-white">{call.phone_number}</td>
+                            <td className="py-4 px-3 text-[#888]">{timeAgo(call.created_at)}</td>
+                            <td className="py-4 px-3 text-[#888]">{formatDuration(call.duration_seconds)}</td>
+                            <td className="py-4 px-3">
+                              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium ${getStatusBadge(call.status)}`}>
+                                {statusLabel(call.status)}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <p className="text-[#555] text-xs py-6 text-center">No calls yet. Dispatch a call to see activity here.</p>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </main>
     </div>
   );
 }
