@@ -393,6 +393,45 @@ body {
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
   line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ── Global Scrollbar ────────────────────────── */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(15, 17, 23, 0.5);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #3b82f6, #8b5cf6);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #60a5fa, #a78bfa);
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #6366f1 rgba(15,17,23,0.5);
+}
+
+[data-theme="light"] ::-webkit-scrollbar-track {
+  background: #eef0f4;
+}
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #3b82f6, #8b5cf6);
+  border-radius: 10px;
+}
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #2563eb, #7c3aed);
+}
+[data-theme="light"] * {
+  scrollbar-color: #6366f1 #eef0f4;
 }
 
 /* ── Landing Page ────────────────────────────── */
@@ -401,6 +440,17 @@ body {
   background: #050505;
   overflow-x: hidden;
   position: relative;
+  width: 100%;
+}
+.landing-page .container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px;
+  width: 100%;
+}
+.landing-page .row {
+  margin-left: 0;
+  margin-right: 0;
 }
 
 .landing-glow {
@@ -5159,45 +5209,7 @@ select option {
   overflow-y: auto;
 }
 
-/* Custom Scrollbar */
-[data-dashboard] ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-[data-dashboard] ::-webkit-scrollbar-track {
-  background: rgba(15, 17, 23, 0.5);
-  border-radius: 10px;
-}
-[data-dashboard] ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #3b82f6, #8b5cf6);
-  border-radius: 10px;
-}
-[data-dashboard] ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #60a5fa, #a78bfa);
-}
-[data-dashboard] ::-webkit-scrollbar-corner {
-  background: transparent;
-}
-.dash-content {
-  scrollbar-width: thin;
-  scrollbar-color: #6366f1 rgba(15,17,23,0.5);
-}
-
-/* Light mode scrollbar */
-[data-theme="light"] [data-dashboard] ::-webkit-scrollbar-track {
-  background: #eef0f4;
-  border-radius: 10px;
-}
-[data-theme="light"] [data-dashboard] ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #3b82f6, #8b5cf6);
-  border-radius: 10px;
-}
-[data-theme="light"] [data-dashboard] ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #2563eb, #7c3aed);
-}
-[data-theme="light"] .dash-content {
-  scrollbar-color: #6366f1 #eef0f4;
-}
+/* Custom Scrollbar — uses global styles */
 
 /* Loading */
 .dash-loading {
