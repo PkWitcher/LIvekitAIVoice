@@ -178,12 +178,16 @@ export default function CallHistory() {
                   {formatTime(call.created_at)}
                 </td>
                 <td className="px-5 py-3">
-                  {call.room_name && call.status === "completed" ? (
+                  {call.room_name && (call.status === "completed" || call.status === "connected" || call.status === "ringing") ? (
                     <button
                       onClick={() => { setTranscriptRoom(call.room_name); setShowTranscript(true); }}
-                      className="text-[10px] px-2 py-1 rounded-md bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 transition-colors"
+                      className={`text-[10px] px-2 py-1 rounded-md border transition-colors ${
+                        call.status === 'connected' || call.status === 'ringing'
+                          ? 'bg-green-500/10 text-green-400 border-green-500/20 hover:bg-green-500/20 animate-pulse'
+                          : 'bg-purple-500/10 text-purple-400 border-purple-500/20 hover:bg-purple-500/20'
+                      }`}
                     >
-                      View
+                      {call.status === 'connected' || call.status === 'ringing' ? 'Live' : 'View'}
                     </button>
                   ) : (
                     <span className="text-[var(--color-text-muted)] text-xs">—</span>
@@ -218,12 +222,16 @@ export default function CallHistory() {
                   Download
                 </a>
               )}
-              {call.room_name && call.status === "completed" && (
+              {call.room_name && (call.status === "completed" || call.status === "connected" || call.status === "ringing") && (
                 <button
                   onClick={() => { setTranscriptRoom(call.room_name); setShowTranscript(true); }}
-                  className="text-purple-400 hover:text-purple-300 transition-colors"
+                  className={`transition-colors ${
+                    call.status === 'connected' || call.status === 'ringing'
+                      ? 'text-green-400 hover:text-green-300'
+                      : 'text-purple-400 hover:text-purple-300'
+                  }`}
                 >
-                  Transcript
+                  {call.status === 'connected' || call.status === 'ringing' ? '● Live' : 'Transcript'}
                 </button>
               )}
               <span className="ml-auto">{formatTime(call.created_at)}</span>

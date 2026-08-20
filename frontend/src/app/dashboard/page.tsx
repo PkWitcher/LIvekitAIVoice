@@ -3,6 +3,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import CallHistory from '@/components/CallHistory';
+import CallDispatcher from '@/components/CallDispatcher';
+import BulkDialer from '@/components/BulkDialer';
+import TranscriptHistory from '@/components/TranscriptHistory';
+import UpgradePlan from '@/components/UpgradePlan';
 import {
   Phone,
   CheckCircle2,
@@ -18,6 +24,9 @@ import {
   Moon,
   ChevronDown,
   LogOut,
+  Sparkles,
+  Zap,
+  ArrowUpRight,
 } from 'lucide-react';
 
 // --- Types ---
@@ -71,6 +80,7 @@ export default function DashboardPage() {
   const [userName, setUserName] = useState('');
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [profileOpen, setProfileOpen] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -230,28 +240,30 @@ export default function DashboardPage() {
   };
 
   return (
-    <div data-dashboard className="flex min-h-screen bg-[#050505] text-[#e5e5e5] font-[Inter,system-ui,sans-serif] antialiased">
+    <div data-dashboard className="dash-root">
+      {/* Background Effects */}
+      <div className="dash-bg-effects">
+        <div className="dash-glow dash-glow-1" />
+        <div className="dash-glow dash-glow-2" />
+      </div>
+
       {/* Sidebar */}
-      <aside className="w-60 border-r border-white/[0.04] bg-[#0a0a0a] flex flex-col justify-between px-4 py-5">
+      <aside className="dash-sidebar">
         <div>
-          <div className="flex items-center gap-3 px-2 py-2 mb-8">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
+          <Link href="/" className="dash-brand">
+            <div className="dash-brand-icon">
               <Phone className="w-[18px] h-[18px]" />
             </div>
             <div>
-              <h1 className="font-semibold text-white text-sm leading-tight">Nova AI</h1>
-              <span className="text-[10px] text-[#666] font-medium">Voice Platform</span>
+              <h1 className="dash-brand-title">Nova AI</h1>
+              <span className="dash-brand-sub">Voice Platform</span>
             </div>
-          </div>
+          </Link>
 
-          <nav className="space-y-1">
+          <nav className="dash-nav">
             <button
               onClick={() => setActiveNav('dashboard')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all ${
-                activeNav === 'dashboard'
-                  ? 'bg-white/[0.06] text-blue-400'
-                  : 'text-[#888] hover:text-[#ccc] hover:bg-white/[0.03]'
-              }`}
+              className={`dash-nav-item ${activeNav === 'dashboard' ? 'active' : ''}`}
             >
               <LayoutDashboard className="w-4 h-4" />
               <span>Dashboard</span>
@@ -259,30 +271,18 @@ export default function DashboardPage() {
 
             <button
               onClick={() => setActiveNav('calls')}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all ${
-                activeNav === 'calls'
-                  ? 'bg-white/[0.06] text-blue-400'
-                  : 'text-[#888] hover:text-[#ccc] hover:bg-white/[0.03]'
-              }`}
+              className={`dash-nav-item ${activeNav === 'calls' ? 'active' : ''}`}
             >
-              <div className="flex items-center gap-3">
-                <Phone className="w-4 h-4" />
-                <span>Calls</span>
-              </div>
+              <Phone className="w-4 h-4" />
+              <span>Calls</span>
               {activeCalls > 0 && (
-                <span className="bg-blue-500/15 text-blue-400 text-[10px] px-2 py-0.5 rounded-full font-semibold">
-                  {activeCalls}
-                </span>
+                <span className="dash-nav-badge">{activeCalls}</span>
               )}
             </button>
 
             <button
               onClick={() => setActiveNav('transcripts')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all ${
-                activeNav === 'transcripts'
-                  ? 'bg-white/[0.06] text-blue-400'
-                  : 'text-[#888] hover:text-[#ccc] hover:bg-white/[0.03]'
-              }`}
+              className={`dash-nav-item ${activeNav === 'transcripts' ? 'active' : ''}`}
             >
               <FileText className="w-4 h-4" />
               <span>Transcripts</span>
@@ -290,11 +290,7 @@ export default function DashboardPage() {
 
             <button
               onClick={() => setActiveNav('settings')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all ${
-                activeNav === 'settings'
-                  ? 'bg-white/[0.06] text-blue-400'
-                  : 'text-[#888] hover:text-[#ccc] hover:bg-white/[0.03]'
-              }`}
+              className={`dash-nav-item ${activeNav === 'settings' ? 'active' : ''}`}
             >
               <Settings className="w-4 h-4" />
               <span>Settings</span>
@@ -302,204 +298,251 @@ export default function DashboardPage() {
           </nav>
         </div>
 
-        <div className="space-y-3 pt-4 border-t border-white/[0.04]">
-          <div className="flex items-center gap-3 px-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 text-white font-medium flex items-center justify-center text-xs shadow-md shadow-blue-500/20">
-              {userInitial}
-            </div>
-            <div className="overflow-hidden">
-              <p className="text-xs font-semibold text-white truncate">{displayName}</p>
-              <p className="text-[10px] text-[#666]">{hasSub ? `${subscription!.plan.charAt(0).toUpperCase() + subscription!.plan.slice(1)} Plan` : 'No Plan'}</p>
-            </div>
-          </div>
-          <button onClick={handleLogout} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-red-400/80 hover:bg-red-500/[0.06] transition-colors">
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Logout</span>
-          </button>
+        <div className="dash-sidebar-footer">
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-        <header className="flex items-center justify-between px-8 py-4 border-b border-white/[0.04]">
+      <main className="dash-main">
+        {/* Header */}
+        <header className="dash-header">
           <div>
-            <h2 className="text-lg font-semibold text-white tracking-tight">Dashboard</h2>
-            <p className="text-xs text-[#666] mt-0.5">Welcome back, {displayName}!</p>
+            <h2 className="dash-header-title">{activeNav.charAt(0).toUpperCase() + activeNav.slice(1)}</h2>
+            <p className="dash-header-sub">{activeNav === 'dashboard' ? `Welcome back, ${displayName}!` : activeNav === 'calls' ? 'Manage and dispatch calls' : activeNav === 'transcripts' ? 'View call transcripts' : 'Account settings'}</p>
           </div>
-          <div className="flex items-center gap-2.5">
-            <button onClick={toggleTheme} className="p-2 rounded-lg text-[#666] hover:text-[#aaa] hover:bg-white/[0.04] transition-colors" title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+          <div className="dash-header-actions">
+            <button onClick={toggleTheme} className="dash-icon-btn" title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
               {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
-            <button className="relative p-2 rounded-lg text-[#666] hover:text-[#aaa] hover:bg-white/[0.04] transition-colors">
+            <button className="dash-icon-btn dash-notif-btn">
               <Bell className="w-4 h-4" />
               {activeCalls > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
-                  {activeCalls}
-                </span>
+                <span className="dash-notif-dot">{activeCalls}</span>
               )}
             </button>
-            <div className="flex items-center gap-2 pl-3 ml-1 cursor-pointer">
-              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 text-white flex items-center justify-center text-[11px] font-medium">
-                {userInitial}
-              </div>
-              <span className="text-xs font-medium text-[#aaa]">{displayName}</span>
-              <ChevronDown className="w-3 h-3 text-[#555]" />
+            <div className="dash-profile-wrapper">
+              <button onClick={() => setProfileOpen(!profileOpen)} className="dash-header-user">
+                <div className="dash-avatar-sm">
+                  {userInitial}
+                </div>
+                <span className="dash-header-username">{displayName}</span>
+                <ChevronDown className={`w-3 h-3 text-[#555] transition-transform ${profileOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {profileOpen && (
+                <div className="dash-profile-dropdown">
+                  <div className="dash-profile-info">
+                    <div className="dash-avatar">
+                      {userInitial}
+                    </div>
+                    <div>
+                      <p className="dash-user-name">{displayName}</p>
+                      <p className="dash-user-plan">{hasSub ? `${subscription!.plan.charAt(0).toUpperCase() + subscription!.plan.slice(1)} Plan` : 'No Plan'}</p>
+                    </div>
+                  </div>
+                  <div className="dash-profile-divider" />
+                  <button onClick={handleLogout} className="dash-logout-btn">
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Logout</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </header>
 
-        <div className="px-8 py-6 space-y-7 max-w-7xl">
-          {/* Metrics */}
-          {loading ? (
-            <div className="text-center py-12 text-[#555] text-sm">Loading dashboard…</div>
-          ) : (
+        <div className="dash-content">
+          {activeNav === 'dashboard' && (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-6">
-                {[
-                  { title: 'TOTAL CALLS', value: formatNumber(stats?.total ?? 0), change: calcChange(stats?.total ?? 0, previousPeriod.total), isPos: (stats?.total ?? 0) >= previousPeriod.total, sub: 'This month', icon: Phone },
-                  { title: 'COMPLETED', value: formatNumber(stats?.completed ?? 0), change: calcChange(stats?.completed ?? 0, previousPeriod.completed), isPos: (stats?.completed ?? 0) >= previousPeriod.completed, sub: stats && stats.total > 0 ? `${((stats.completed / stats.total) * 100).toFixed(1)}% rate` : '0% rate', icon: CheckCircle2 },
-                  { title: 'FAILED', value: formatNumber(Math.max(failed, 0)), change: '—', isPos: true, sub: stats && stats.total > 0 ? `${((Math.max(failed, 0) / stats.total) * 100).toFixed(1)}% rate` : '0% rate', icon: XCircle },
-                  { title: 'NO ANSWER', value: formatNumber(stats?.noAnswer ?? 0), change: '—', isPos: true, sub: stats && stats.total > 0 ? `${((stats.noAnswer / stats.total) * 100).toFixed(1)}% rate` : '0% rate', icon: PhoneOff },
-                  { title: 'TOTAL MINUTES', value: formatNumber(totalMinutes), change: '—', isPos: true, sub: stats && stats.total > 0 ? `~${(stats.avgDuration / 60).toFixed(1)}/call` : '—', icon: Clock },
-                  { title: 'SUCCESS RATE', value: `${successRate}%`, change: stats ? `${previousPeriod.pickupRate > 0 ? (Number(successRate) > previousPeriod.pickupRate ? '+' : '') + (Number(successRate) - previousPeriod.pickupRate).toFixed(1) + '%' : '—'}` : '—', isPos: Number(successRate) >= previousPeriod.pickupRate, sub: previousPeriod.pickupRate > 0 ? `vs ${previousPeriod.pickupRate}% last mo` : 'This month', icon: TrendingUp },
-                ].map((m, i) => {
-                  const Icon = m.icon;
-                  return (
-                    <div key={i} className="bg-white/[0.03] border border-white/[0.04] p-4 rounded-xl flex flex-col justify-between transition-all hover:bg-white/[0.05]">
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-[10px] font-semibold tracking-wider text-[#666] uppercase">{m.title}</span>
-                        <div className="w-7 h-7 rounded-lg bg-white/[0.04] flex items-center justify-center text-[#555]">
-                          <Icon className="w-3.5 h-3.5" />
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-2xl font-bold text-white tracking-tight">{m.value}</span>
-                          {m.change !== '—' && (
-                            <span className={`text-[11px] font-medium ${m.isPos ? 'text-emerald-400' : 'text-red-400'}`}>{m.change}</span>
-                          )}
-                        </div>
-                        <span className="text-[11px] text-[#555] mt-1 block">{m.sub}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Middle Row */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-7">
-                {/* Subscription Card */}
-                <div className="lg:col-span-4 bg-white/[0.03] border border-white/[0.04] rounded-xl p-5 flex flex-col justify-between">
-                  {hasSub ? (
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-semibold text-white text-sm">Subscription</h3>
-                        <span className="bg-blue-500/10 text-blue-400 text-[11px] px-2.5 py-0.5 rounded-full font-medium capitalize">
-                          {subscription!.plan} Plan
-                        </span>
-                      </div>
-                      <div className="space-y-4 mt-5">
-                        <div>
-                          <div className="flex justify-between text-xs mb-2">
-                            <span className="text-[#888]">Calls Used</span>
-                            <span className="text-[#aaa] font-medium">{formatNumber(subscription!.calls_used)} / {formatNumber(subscription!.max_calls_per_month)}</span>
-                          </div>
-                          <div className="w-full bg-white/[0.06] h-1.5 rounded-full overflow-hidden">
-                            <div className="bg-gradient-to-r from-blue-500 to-blue-400 h-full rounded-full" style={{ width: `${callsPct}%` }} />
-                          </div>
-                        </div>
-                        <div>
-                          <div className="flex justify-between text-xs mb-2">
-                            <span className="text-[#888]">Minutes Used</span>
-                            <span className="text-[#aaa] font-medium">{formatNumber(Math.round(Number(subscription!.minutes_used)))} / {formatNumber(subscription!.max_minutes_per_month)}</span>
-                          </div>
-                          <div className="w-full bg-white/[0.06] h-1.5 rounded-full overflow-hidden">
-                            <div className="bg-gradient-to-r from-blue-500 to-purple-500 h-full rounded-full" style={{ width: `${minsPct}%` }} />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      <h3 className="font-semibold text-white text-sm">No Active Plan</h3>
-                      <p className="text-[#555] text-xs mt-2">Contact admin to activate your subscription.</p>
-                    </div>
-                  )}
-                  <button className="w-full mt-5 py-2.5 rounded-lg bg-blue-500 text-white hover:bg-blue-600 text-xs font-semibold tracking-wide transition-all shadow-md shadow-blue-500/20">
-                    Upgrade Plan
-                  </button>
+              {loading ? (
+                <div className="dash-loading">
+                  <div className="dash-loading-spinner" />
+                  <span>Loading dashboard…</span>
                 </div>
-
-                {/* Volume Chart */}
-                <div className="lg:col-span-8 bg-white/[0.03] border border-white/[0.04] rounded-xl p-5 flex flex-col justify-between">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-white text-sm">Call Volume — Last 7 Days</h3>
-                    <div className="flex items-center gap-5 text-xs">
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-blue-500" />
-                        <span className="text-[#666] text-[11px]">Completed</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-red-400/60" />
-                        <span className="text-[#666] text-[11px]">Failed</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-7 gap-4 items-end h-40 pt-6">
-                    {last7.length > 0 ? last7.map((d) => (
-                      <div key={d.date} className="flex flex-col items-center gap-2 h-full justify-end">
-                        <div className="flex items-end gap-1 w-full justify-center">
-                          <div className={`w-7 rounded-md bg-gradient-to-t from-blue-600/80 to-blue-400/80 ${getBarHeight(d.completed, maxCompleted)}`} />
-                          <div className={`w-3 rounded-sm bg-red-400/40 ${getBarHeight(d.total - d.completed, maxFailed)}`} />
-                        </div>
-                        <span className="text-[11px] text-[#555] font-medium">{dayLabel(d.date)}</span>
-                      </div>
-                    )) : (
-                      <div className="col-span-7 flex items-center justify-center h-full text-[#555] text-xs">No data yet</div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Recent Activity */}
-              <div className="bg-white/[0.03] border border-white/[0.04] rounded-xl p-5">
-                <div className="flex items-center justify-between pb-3">
-                  <h3 className="font-semibold text-white text-sm">Recent Activity</h3>
-                  <button onClick={() => setActiveNav('calls')} className="text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors">
-                    View all calls →
-                  </button>
-                </div>
-                <div className="overflow-x-auto mt-1">
-                  {recentCalls.length > 0 ? (
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="border-b border-white/[0.04] text-[10px] font-semibold uppercase text-[#555] tracking-wider">
-                          <th className="py-3.5 px-3 font-semibold">Phone Number</th>
-                          <th className="py-3.5 px-3 font-semibold">Time</th>
-                          <th className="py-3.5 px-3 font-semibold">Duration</th>
-                          <th className="py-3.5 px-3 font-semibold">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="text-[13px]">
-                        {recentCalls.map((call) => (
-                          <tr key={call.id} className="hover:bg-white/[0.02] transition-colors">
-                            <td className="py-4 px-3 font-medium text-white">{call.phone_number}</td>
-                            <td className="py-4 px-3 text-[#888]">{timeAgo(call.created_at)}</td>
-                            <td className="py-4 px-3 text-[#888]">{formatDuration(call.duration_seconds)}</td>
-                            <td className="py-4 px-3">
-                              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium ${getStatusBadge(call.status)}`}>
-                                {statusLabel(call.status)}
+              ) : (
+                <>
+                  {/* Stats Grid */}
+                  <div className="dash-stats-grid">
+                    {[
+                      { title: 'Total Calls', value: formatNumber(stats?.total ?? 0), change: calcChange(stats?.total ?? 0, previousPeriod.total), isPos: (stats?.total ?? 0) >= previousPeriod.total, sub: 'This month', icon: Phone, color: 'blue' },
+                      { title: 'Completed', value: formatNumber(stats?.completed ?? 0), change: calcChange(stats?.completed ?? 0, previousPeriod.completed), isPos: (stats?.completed ?? 0) >= previousPeriod.completed, sub: stats && stats.total > 0 ? `${((stats.completed / stats.total) * 100).toFixed(1)}% rate` : '0% rate', icon: CheckCircle2, color: 'emerald' },
+                      { title: 'Failed', value: formatNumber(Math.max(failed, 0)), change: '—', isPos: true, sub: stats && stats.total > 0 ? `${((Math.max(failed, 0) / stats.total) * 100).toFixed(1)}% rate` : '0% rate', icon: XCircle, color: 'red' },
+                      { title: 'No Answer', value: formatNumber(stats?.noAnswer ?? 0), change: '—', isPos: true, sub: stats && stats.total > 0 ? `${((stats.noAnswer / stats.total) * 100).toFixed(1)}% rate` : '0% rate', icon: PhoneOff, color: 'amber' },
+                      { title: 'Total Minutes', value: formatNumber(totalMinutes), change: '—', isPos: true, sub: stats && stats.total > 0 ? `~${(stats.avgDuration / 60).toFixed(1)}/call` : '—', icon: Clock, color: 'purple' },
+                      { title: 'Success Rate', value: `${successRate}%`, change: stats ? `${previousPeriod.pickupRate > 0 ? (Number(successRate) > previousPeriod.pickupRate ? '+' : '') + (Number(successRate) - previousPeriod.pickupRate).toFixed(1) + '%' : '—'}` : '—', isPos: Number(successRate) >= previousPeriod.pickupRate, sub: previousPeriod.pickupRate > 0 ? `vs ${previousPeriod.pickupRate}% last mo` : 'This month', icon: TrendingUp, color: 'cyan' },
+                    ].map((m, i) => {
+                      const Icon = m.icon;
+                      return (
+                        <div key={i} className={`dash-stat-card dash-stat-${m.color}`}>
+                          <div className="dash-stat-card-glow" />
+                          <div className="dash-stat-header">
+                            <span className="dash-stat-title">{m.title}</span>
+                            <div className={`dash-stat-icon dash-stat-icon-${m.color}`}>
+                              <Icon className="w-4 h-4" />
+                            </div>
+                          </div>
+                          <div className="dash-stat-body">
+                            <span className="dash-stat-value">{m.value}</span>
+                            {m.change !== '—' && (
+                              <span className={`dash-stat-change ${m.isPos ? 'positive' : 'negative'}`}>
+                                {m.isPos ? <ArrowUpRight className="w-3 h-3" /> : null}
+                                {m.change}
                               </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  ) : (
-                    <p className="text-[#555] text-xs py-6 text-center">No calls yet. Dispatch a call to see activity here.</p>
-                  )}
-                </div>
-              </div>
+                            )}
+                          </div>
+                          <span className="dash-stat-sub">{m.sub}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Middle Row */}
+                  <div className="dash-middle-row">
+                    {/* Subscription Card */}
+                    <div className="dash-card dash-subscription-card">
+                      <div className="dash-card-shine" />
+                      {hasSub ? (
+                        <div>
+                          <div className="dash-card-header">
+                            <div className="dash-card-header-left">
+                              <Sparkles className="w-4 h-4 text-blue-400" />
+                              <h3 className="dash-card-title">Subscription</h3>
+                            </div>
+                            <span className="dash-plan-badge">
+                              {subscription!.plan} Plan
+                            </span>
+                          </div>
+                          <div className="dash-usage-section">
+                            <div className="dash-usage-item">
+                              <div className="dash-usage-row">
+                                <span className="dash-usage-label">Calls Used</span>
+                                <span className="dash-usage-value">{formatNumber(subscription!.calls_used)} / {formatNumber(subscription!.max_calls_per_month)}</span>
+                              </div>
+                              <div className="dash-progress-track">
+                                <div className="dash-progress-bar dash-progress-blue" style={{ width: `${callsPct}%` }} />
+                              </div>
+                            </div>
+                            <div className="dash-usage-item">
+                              <div className="dash-usage-row">
+                                <span className="dash-usage-label">Minutes Used</span>
+                                <span className="dash-usage-value">{formatNumber(Math.round(Number(subscription!.minutes_used)))} / {formatNumber(subscription!.max_minutes_per_month)}</span>
+                              </div>
+                              <div className="dash-progress-track">
+                                <div className="dash-progress-bar dash-progress-purple" style={{ width: `${minsPct}%` }} />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="dash-card-header">
+                            <div className="dash-card-header-left">
+                              <Sparkles className="w-4 h-4 text-blue-400" />
+                              <h3 className="dash-card-title">No Active Plan</h3>
+                            </div>
+                          </div>
+                          <p className="dash-no-plan-text">Contact admin to activate your subscription.</p>
+                        </div>
+                      )}
+                      <button className="dash-upgrade-btn">
+                        <Zap className="w-3.5 h-3.5" />
+                        Upgrade Plan
+                      </button>
+                    </div>
+
+                    {/* Volume Chart */}
+                    <div className="dash-card dash-chart-card">
+                      <div className="dash-card-header">
+                        <h3 className="dash-card-title">Call Volume — Last 7 Days</h3>
+                        <div className="dash-chart-legend">
+                          <div className="dash-legend-item">
+                            <span className="dash-legend-dot bg-blue-500" />
+                            <span>Completed</span>
+                          </div>
+                          <div className="dash-legend-item">
+                            <span className="dash-legend-dot bg-red-400/60" />
+                            <span>Failed</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="dash-chart-grid">
+                        {last7.length > 0 ? last7.map((d) => (
+                          <div key={d.date} className="dash-chart-col">
+                            <div className="dash-chart-bars">
+                              <div className="dash-bar dash-bar-completed" style={{ height: `${Math.round((d.completed / (maxCompleted || 1)) * 100)}%` }} />
+                              <div className="dash-bar dash-bar-failed" style={{ height: `${Math.round(((d.total - d.completed) / (maxFailed || 1)) * 100)}%` }} />
+                            </div>
+                            <span className="dash-chart-day">{dayLabel(d.date)}</span>
+                          </div>
+                        )) : (
+                          <div className="dash-chart-empty">No data yet</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Recent Activity */}
+                  <div className="dash-card dash-activity-card">
+                    <div className="dash-card-header">
+                      <h3 className="dash-card-title">Recent Activity</h3>
+                      <button onClick={() => setActiveNav('calls')} className="dash-view-all-btn">
+                        View all calls
+                        <ArrowUpRight className="w-3 h-3" />
+                      </button>
+                    </div>
+                    <div className="dash-table-wrap">
+                      {recentCalls.length > 0 ? (
+                        <table className="dash-table">
+                          <thead>
+                            <tr>
+                              <th>Phone Number</th>
+                              <th>Time</th>
+                              <th>Duration</th>
+                              <th>Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {recentCalls.map((call) => (
+                              <tr key={call.id}>
+                                <td className="dash-table-phone">{call.phone_number}</td>
+                                <td className="dash-table-muted">{timeAgo(call.created_at)}</td>
+                                <td className="dash-table-muted">{formatDuration(call.duration_seconds)}</td>
+                                <td>
+                                  <span className={`dash-status-badge ${getStatusBadge(call.status)}`}>
+                                    {statusLabel(call.status)}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      ) : (
+                        <p className="dash-empty-state">No calls yet. Dispatch a call to see activity here.</p>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
             </>
+          )}
+
+          {activeNav === 'calls' && (
+            <div className="dash-section">
+              <CallDispatcher />
+              <BulkDialer />
+              <CallHistory />
+            </div>
+          )}
+
+          {activeNav === 'transcripts' && (
+            <div className="dash-section">
+              <TranscriptHistory />
+            </div>
+          )}
+
+          {activeNav === 'settings' && (
+            <div className="dash-section">
+              <UpgradePlan />
+            </div>
           )}
         </div>
       </main>
