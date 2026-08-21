@@ -2209,9 +2209,11 @@ select option {
 /* ── Admin Layout (Sidebar + Main) ── */
 .admin-layout {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
   position: relative;
   z-index: 1;
+  background: #0f1117;
+  overflow: hidden;
 }
 
 /* ── Sidebar ── */
@@ -2219,14 +2221,14 @@ select option {
   width: 260px;
   display: flex;
   flex-direction: column;
-  background: rgba(10, 10, 14, 0.9);
-  border-right: 1px solid rgba(255,255,255,0.04);
+  background: rgba(17, 19, 27, 0.95);
+  border-right: 1px solid rgba(255,255,255,0.06);
   backdrop-filter: blur(20px);
-  position: fixed;
+  position: sticky;
   top: 0;
-  left: 0;
-  bottom: 0;
+  height: 100vh;
   z-index: 40;
+  flex-shrink: 0;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -2368,10 +2370,11 @@ select option {
 /* ── Main Content ── */
 .admin-main {
   flex: 1;
-  margin-left: 260px;
-  min-height: 100vh;
+  min-width: 0;
+  height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 /* ── Top Bar ── */
@@ -2380,12 +2383,13 @@ select option {
   align-items: center;
   justify-content: space-between;
   padding: 1.25rem 2rem;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
   backdrop-filter: blur(12px);
-  background: rgba(5, 5, 8, 0.6);
+  background: rgba(15, 17, 23, 0.7);
   position: sticky;
   top: 0;
   z-index: 30;
+  flex-shrink: 0;
 }
 .admin-topbar-left {}
 .admin-page-title {
@@ -2429,6 +2433,7 @@ select option {
 .admin-content {
   flex: 1;
   padding: 1.5rem 2rem 2rem;
+  overflow-y: auto;
 }
 
 /* ── Stats Grid ── */
@@ -2443,13 +2448,13 @@ select option {
   position: relative;
   padding: 1.5rem;
   border-radius: 16px;
-  background: rgba(12, 12, 16, 0.8);
-  border: 1px solid rgba(255,255,255,0.04);
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
   backdrop-filter: blur(8px);
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s ease;
   overflow: hidden;
 }
 .admin-stat-card::before {
@@ -2473,9 +2478,9 @@ select option {
   transition: opacity 0.4s ease;
 }
 .admin-stat-card:hover {
-  transform: translateY(-3px);
-  border-color: rgba(255,255,255,0.08);
-  box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+  transform: translateY(-2px);
+  border-color: rgba(255,255,255,0.1);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
 }
 .admin-stat-card:hover::after {
   opacity: 1;
@@ -2550,18 +2555,22 @@ select option {
 
 /* ── Admin Card ── */
 .admin-card {
-  background: rgba(12, 12, 16, 0.8);
-  border: 1px solid rgba(255,255,255,0.04);
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
   border-radius: 16px;
   backdrop-filter: blur(8px);
   overflow: hidden;
+  transition: all 0.3s ease;
+}
+.admin-card:hover {
+  border-color: rgba(255,255,255,0.1);
 }
 .admin-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
 }
 .admin-card-title {
   font-size: 1rem;
@@ -3201,7 +3210,6 @@ select option {
     display: flex;
   }
   .admin-main {
-    margin-left: 0;
     padding-bottom: 5rem;
   }
   .admin-stats-grid {
@@ -3323,6 +3331,9 @@ select option {
 }
 
 /* ── Light Mode Admin Overrides ── */
+[data-theme="light"] .admin-layout {
+  background: #f7f8fc;
+}
 [data-theme="light"] .admin-shell {
   background: #f8f9fa;
 }
