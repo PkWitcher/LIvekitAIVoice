@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
           phone_number: phone,
           prompt: body.prompt ?? "",
           model_provider: body.model_provider ?? "openai",
-          voice_id: body.voice_id ?? "priya",
+          voice_id: body.voice_id ?? "anushka",
         });
 
         await roomService.createRoom({
@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
           status: "initiated",
           room_name: roomName,
           model_provider: body.model_provider ?? "groq",
-          voice_id: body.voice_id ?? "priya",
+          voice_id: body.voice_id ?? "anushka",
           prompt: body.prompt || null,
         }).then();
       } catch (error) {
