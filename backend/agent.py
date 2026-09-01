@@ -9,6 +9,7 @@ import logging
 import re
 import ssl
 import asyncio
+import urllib.parse
 import urllib.request
 import os
 from typing import Optional
@@ -79,9 +80,39 @@ async def save_transcript(room_name: str, speaker: str, text: str):
         await asyncio.get_event_loop().run_in_executor(
             None, lambda: urllib.request.urlopen(req, context=ssl_ctx)
         )
+        if speaker == "user":
+            await mark_call_connected(room_name)
         logger.info(f"[TRANSCRIPT] {speaker}: {text.strip()[:60]}")
     except Exception as e:
         logger.warning(f"Transcript save failed: {e}")
+
+
+async def mark_call_connected(room_name: str):
+    """Record the first transcribed customer speech as a confirmed answered call."""
+    try:
+        room_filter = urllib.parse.quote(room_name, safe="")
+        url = f"{SUPABASE_URL}/rest/v1/phone_logs?room_name=eq.{room_filter}&status=eq.ringing"
+        payload = json.dumps({
+            "status": "connected",
+            "connected_at": datetime.now(timezone.utc).isoformat(),
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=payload,
+            method="PATCH",
+            headers={
+                "Content-Type": "application/json",
+                "apikey": SUPABASE_SERVICE_KEY,
+                "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+                "Prefer": "return=minimal",
+            },
+        )
+        await asyncio.get_event_loop().run_in_executor(
+            None, lambda: urllib.request.urlopen(req, context=ssl_ctx)
+        )
+        logger.info(f"Call marked connected after customer speech: {room_name}")
+    except Exception as e:
+        logger.warning(f"Call connection status update failed: {e}")
 
 
 # ──────────────────────────────────────────────
