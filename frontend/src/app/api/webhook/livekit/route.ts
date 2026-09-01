@@ -80,8 +80,9 @@ export async function POST(request: NextRequest) {
   const eventType = event.event;
   const roomName = event.room?.name;
   const participantId = event.participant?.identity ?? "";
+  const sipCallStatus = event.participant?.attributes?.["sip.callStatus"];
 
-  console.log(`[WEBHOOK] event=${eventType} room=${roomName} participant=${participantId} numParticipants=${event.room?.numParticipants}`);
+  console.log(`[WEBHOOK] event=${eventType} room=${roomName} participant=${participantId} sipStatus=${sipCallStatus ?? ""} numParticipants=${event.room?.numParticipants}`);
 
   if (!roomName || !supabase) {
     return NextResponse.json({ ok: true });
@@ -92,9 +93,10 @@ export async function POST(request: NextRequest) {
   const isAgent = !isPhoneParticipant;
 
   try {
-    // ── ANY non-agent participant joined = CALL ANSWERED ──
-    if (eventType === "participant_joined" && !isAgent) {
-      console.log(`[WEBHOOK] Phone participant joined: "${participantId}" in room ${roomName} — marking connected`);
+    // A SIP participant is created while the phone is still dialing. Only an active
+    // SIP status confirms that the person has answered.
+    if (eventType === "participant_updated" && !isAgent && sipCallStatus === "active") {
+      console.log(`[WEBHOOK] Phone call is active: "${participantId}" in room ${roomName} — marking connected`);
 
       const { data, error } = await supabase
         .from("phone_logs")
@@ -171,7 +173,7 @@ export async function POST(request: NextRequest) {
       if (record) {
         const now = new Date().toISOString();
 
-        if (record.status === "connected" || record.status === "ringing") {
+        if (record.status === "connected") {
           // Calculate duration from connected_at, or fallback to created_at
           const startTime = record.connected_at || record.created_at;
           const durationSeconds = startTime
@@ -203,6 +205,14 @@ export async function POST(request: NextRequest) {
               callDuration: durationSeconds,
             }).catch(() => {});
           }
+        } else if (record.status === "ringing") {
+          await supabase
+            .from("phone_logs")
+            .update({
+              status: "no-answer",
+              ended_at: now,
+            })
+            .eq("room_name", roomName);
         }
       }
     }
