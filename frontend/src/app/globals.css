@@ -5742,6 +5742,14 @@ select option {
 [data-theme="light"] .analytics-assistant-content { color: #4b5563; }
 [data-theme="light"] .analytics-assistant-message.assistant { background: #f3f4f6; }
 [data-theme="light"] .analytics-assistant-form input { border-color: #d7dbe2; background: #fff; color: #1f2937; }
+[data-theme="light"] .analytics-assistant-suggestions button {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1e3a8a;
+}
+[data-theme="light"] .analytics-assistant-suggestions button:hover {
+  background: #dbeafe;
+}
 @media (max-width: 640px) {
   .analytics-assistant { right: 1rem; bottom: 5rem; }
   .analytics-assistant-panel { height: min(410px, calc(100vh - 7rem)); }

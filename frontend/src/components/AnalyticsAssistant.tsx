@@ -28,7 +28,7 @@ export default function AnalyticsAssistant() {
       const response = await fetch("/api/analytics-assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: trimmed }),
+        body: JSON.stringify({ question: trimmed, history: messages }),
       });
       const data = await response.json();
       setMessages((current) => [...current, { role: "assistant", text: data.answer ?? "I could not retrieve your call analytics." }]);
