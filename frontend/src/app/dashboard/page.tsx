@@ -211,9 +211,17 @@ export default function DashboardPage() {
   const totalMinutes = stats ? Math.round((stats.avgDuration * stats.total) / 60) : 0;
   const successRate = stats && stats.total > 0 ? ((stats.completed / stats.total) * 100).toFixed(1) : '0';
 
-  const chartDays = daily;
-  const maxCompleted = Math.max(...chartDays.map(d => d.completed), 1);
-  const maxFailed = Math.max(...chartDays.map(d => d.total - d.completed), 1);
+  const chartData = chartPeriod === "6m" || chartPeriod === "1y"
+    ? Object.values(daily.reduce<Record<string, DailyData>>((months, day) => {
+      const month = day.date.slice(0, 7);
+      if (!months[month]) months[month] = { date: month, total: 0, completed: 0 };
+      months[month].total += day.total;
+      months[month].completed += day.completed;
+      return months;
+    }, {}))
+    : daily;
+  const maxCompleted = Math.max(...chartData.map(d => d.completed), 1);
+  const maxFailed = Math.max(...chartData.map(d => d.total - d.completed), 1);
 
   const getBarHeight = (value: number, max: number) => {
     const pct = Math.round((value / max) * 100);
@@ -230,8 +238,21 @@ export default function DashboardPage() {
     return 'h-32';
   };
 
-  const dayLabel = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-IN', { weekday: 'short' });
+  const chartLabel = (dateStr: string) => {
+    const date = new Date(`${dateStr}T00:00:00Z`);
+    if (chartPeriod === "6m" || chartPeriod === "1y") {
+      return date.toLocaleDateString('en-IN', { month: 'short' });
+    }
+    return chartPeriod === "7d"
+      ? date.toLocaleDateString('en-IN', { weekday: 'short' })
+      : String(date.getUTCDate());
+  };
+
+  const chartTooltipLabel = (dateStr: string) => {
+    const date = new Date(`${dateStr}T00:00:00Z`);
+    return (chartPeriod === "6m" || chartPeriod === "1y")
+      ? date.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
+      : date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
   // Subscription
@@ -485,13 +506,19 @@ export default function DashboardPage() {
                         </div>
                       </div>
                       <div className="dash-chart-grid">
-                        {chartDays.length > 0 ? chartDays.map((d) => (
-                          <div key={d.date} className="dash-chart-col">
+                        {chartData.length > 0 ? chartData.map((d) => (
+                          <div key={d.date} className="dash-chart-col" tabIndex={0}>
+                            <div className="dash-chart-tooltip" role="tooltip">
+                              <strong>{chartTooltipLabel(d.date)}</strong>
+                              <span>Completed: {d.completed}</span>
+                              <span>Failed: {d.total - d.completed}</span>
+                              <span>Total: {d.total}</span>
+                            </div>
                             <div className="dash-chart-bars">
                               <div className="dash-bar dash-bar-completed" style={{ height: `${Math.round((d.completed / (maxCompleted || 1)) * 100)}%` }} />
                               <div className="dash-bar dash-bar-failed" style={{ height: `${Math.round(((d.total - d.completed) / (maxFailed || 1)) * 100)}%` }} />
                             </div>
-                            <span className="dash-chart-day">{dayLabel(d.date)}</span>
+                            <span className="dash-chart-day">{chartLabel(d.date)}</span>
                           </div>
                         )) : (
                           <div className="dash-chart-empty">No data yet</div>
