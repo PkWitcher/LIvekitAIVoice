@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
     if (!supabase) return NextResponse.json({ success: false, error: "Database unavailable" }, { status: 500 });
 
     let activeThreadId = typeof threadId === "string" ? threadId : "";
+    let persistenceAvailable = true;
     if (activeThreadId) {
       const { data: thread } = await supabase
         .from("analytics_chat_threads")
@@ -52,18 +53,26 @@ export async function POST(request: NextRequest) {
         .eq("id", activeThreadId)
         .eq("user_id", user.id)
         .single();
-      if (!thread) return NextResponse.json({ success: false, error: "Chat not found" }, { status: 404 });
+      if (!thread) {
+        activeThreadId = "";
+        persistenceAvailable = false;
+      }
     } else {
       const { data: thread, error: threadError } = await supabase
         .from("analytics_chat_threads")
         .insert({ user_id: user.id, title: question.trim().slice(0, 60) })
         .select("id")
         .single();
-      if (threadError || !thread) return NextResponse.json({ success: false, error: "Could not create chat" }, { status: 500 });
-      activeThreadId = thread.id;
+      if (threadError || !thread) {
+        persistenceAvailable = false;
+      } else {
+        activeThreadId = thread.id;
+      }
     }
 
-    await supabase.from("analytics_chat_messages").insert({ thread_id: activeThreadId, role: "user", text: question.trim() });
+    if (persistenceAvailable) {
+      await supabase.from("analytics_chat_messages").insert({ thread_id: activeThreadId, role: "user", text: question.trim() });
+    }
 
     const { data, error } = await supabase
       .from("phone_logs")
@@ -103,10 +112,12 @@ export async function POST(request: NextRequest) {
       answer = `Your dashboard has ${calls.length} total calls, ${completed.length} completed calls, ${noAnswer.length} no-answer calls, and ${formatDuration(durationSeconds)} of completed-call time. Ask about your most-called number, longest call, minutes used, or pickup rate.`;
     }
 
-    await supabase.from("analytics_chat_messages").insert({ thread_id: activeThreadId, role: "assistant", text: answer });
-    await supabase.from("analytics_chat_threads").update({ updated_at: new Date().toISOString() }).eq("id", activeThreadId);
+    if (persistenceAvailable) {
+      await supabase.from("analytics_chat_messages").insert({ thread_id: activeThreadId, role: "assistant", text: answer });
+      await supabase.from("analytics_chat_threads").update({ updated_at: new Date().toISOString() }).eq("id", activeThreadId);
+    }
 
-    return NextResponse.json({ success: true, answer, threadId: activeThreadId });
+    return NextResponse.json({ success: true, answer, threadId: activeThreadId || undefined, persistenceAvailable });
   } catch {
     return NextResponse.json({ success: false, error: "Unable to answer this question" }, { status: 500 });
   }
