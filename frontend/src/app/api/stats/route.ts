@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     if (!supabase) {
       return NextResponse.json({
         success: true,
-        stats: { total: 0, completed: 0, noAnswer: 0, ringing: 0, avgDuration: 0 },
+        stats: { total: 0, completed: 0, noAnswer: 0, ringing: 0, avgDuration: 0, minutesUsed: 0 },
         daily: [],
         previousPeriod: { total: 0, completed: 0 },
       });
@@ -34,6 +34,29 @@ export async function GET(request: NextRequest) {
     const now = new Date();
     const periodStart = new Date(now.getTime() - periodDays * 24 * 60 * 60 * 1000);
     const previousPeriodStart = new Date(periodStart.getTime() - periodDays * 24 * 60 * 60 * 1000);
+
+    const { data: subscription } = await supabase
+      .from("user_subscriptions")
+      .select("started_at")
+      .eq("user_id", user.id)
+      .single();
+
+    const usageStart = subscription?.started_at ?? new Date(0).toISOString();
+    const { data: usageCalls, error: usageError } = await supabase
+      .from("phone_logs")
+      .select("duration_seconds")
+      .eq("user_id", user.id)
+      .eq("status", "completed")
+      .gte("created_at", usageStart);
+
+    if (usageError) {
+      return NextResponse.json({ success: false, error: usageError.message }, { status: 500 });
+    }
+
+    const minutesUsed = (usageCalls ?? []).reduce(
+      (total, call) => total + (Number(call.duration_seconds) || 0) / 60,
+      0
+    );
 
     // Fetch current period data
     const { data, error } = await supabase
@@ -105,7 +128,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      stats: { total, completed, noAnswer, ringing, avgDuration, outbound, inbound, pickupRate },
+      stats: { total, completed, noAnswer, ringing, avgDuration, outbound, inbound, pickupRate, minutesUsed },
       daily,
       previousPeriod: { total: prevTotal, completed: prevCompleted, pickupRate: prevPickupRate },
     });

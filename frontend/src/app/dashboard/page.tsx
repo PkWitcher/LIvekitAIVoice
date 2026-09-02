@@ -39,6 +39,7 @@ interface Stats {
   outbound: number;
   inbound: number;
   pickupRate: number;
+  minutesUsed: number;
 }
 
 interface DailyData {
@@ -260,7 +261,8 @@ export default function DashboardPage() {
   // Subscription
   const hasSub = subscription && (subscription.status === 'active' || subscription.status === 'trial');
   const callsPct = subscription ? Math.min((subscription.calls_used / subscription.max_calls_per_month) * 100, 100) : 0;
-  const minsPct = subscription ? Math.min((Math.round(Number(subscription.minutes_used)) / subscription.max_minutes_per_month) * 100, 100) : 0;
+  const minutesUsed = stats?.minutesUsed ?? 0;
+  const minsPct = subscription ? Math.min((minutesUsed / subscription.max_minutes_per_month) * 100, 100) : 0;
 
   const recentCalls = calls.slice(0, 5);
   const activeCalls = calls.filter(c => c.status === 'ringing' || c.status === 'connected').length;
@@ -456,7 +458,7 @@ export default function DashboardPage() {
                             <div className="dash-usage-item">
                               <div className="dash-usage-row">
                                 <span className="dash-usage-label">Minutes Used</span>
-                                <span className="dash-usage-value">{formatNumber(Math.round(Number(subscription!.minutes_used)))} / {formatNumber(subscription!.max_minutes_per_month)}</span>
+                                <span className="dash-usage-value">{formatNumber(Math.round(minutesUsed))} / {formatNumber(subscription!.max_minutes_per_month)}</span>
                               </div>
                               <div className="dash-progress-track">
                                 <div className="dash-progress-bar dash-progress-purple" style={{ width: `${minsPct}%` }} />
