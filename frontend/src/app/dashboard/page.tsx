@@ -84,6 +84,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [daily, setDaily] = useState<DailyData[]>([]);
   const [chartPeriod, setChartPeriod] = useState<ChartPeriod>("7d");
+  const [chartLoading, setChartLoading] = useState(false);
   const [previousPeriod, setPreviousPeriod] = useState<PreviousPeriod>({ total: 0, completed: 0, pickupRate: 0 });
   const [calls, setCalls] = useState<CallLog[]>([]);
   const [subscription, setSubscription] = useState<UserSubscription | null>(null);
@@ -150,6 +151,7 @@ export default function DashboardPage() {
       // silently fail
     } finally {
       setLoading(false);
+      setChartLoading(false);
     }
   }, [chartPeriod]);
 
@@ -218,7 +220,7 @@ export default function DashboardPage() {
       months[month].total += day.total;
       months[month].completed += day.completed;
       return months;
-    }, {}))
+    }, {})).slice(chartPeriod === "6m" ? -6 : -12)
     : daily;
   const maxCompleted = Math.max(...chartData.map(d => d.completed), 1);
   const maxFailed = Math.max(...chartData.map(d => d.total - d.completed), 1);
@@ -485,7 +487,10 @@ export default function DashboardPage() {
                         <h3 className="dash-card-title">Call Volume — {chartPeriodLabels[chartPeriod]}</h3>
                         <select
                           value={chartPeriod}
-                          onChange={(event) => setChartPeriod(event.target.value as ChartPeriod)}
+                          onChange={(event) => {
+                            setChartLoading(true);
+                            setChartPeriod(event.target.value as ChartPeriod);
+                          }}
                           className="dash-chart-period"
                           aria-label="Call volume date range"
                         >
@@ -505,7 +510,12 @@ export default function DashboardPage() {
                           </div>
                         </div>
                       </div>
-                      <div className="dash-chart-grid">
+                      <div
+                        className="dash-chart-grid"
+                        style={{ gridTemplateColumns: `repeat(${chartData.length || 7}, minmax(0, 1fr))` }}
+                        aria-busy={chartLoading}
+                      >
+                        {chartLoading && <div className="dash-chart-loading"><span className="spinner" /></div>}
                         {chartData.length > 0 ? chartData.map((d) => (
                           <div key={d.date} className="dash-chart-col" tabIndex={0}>
                             <div className="dash-chart-tooltip" role="tooltip">
