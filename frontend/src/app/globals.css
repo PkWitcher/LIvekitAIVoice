@@ -4385,6 +4385,27 @@ select option {
   color: #fff;
   background: rgba(255,255,255,0.06);
 }
+.live-transcript-export {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.live-transcript-export:hover:not(:disabled) {
+  color: #fff;
+  background: rgba(255,255,255,0.06);
+}
+.live-transcript-export:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
 .live-transcript-messages {
   flex: 1;
   overflow-y: auto;

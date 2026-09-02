@@ -16,8 +16,7 @@ export default function TranscriptHistory() {
   const [calls, setCalls] = useState<TranscriptCall[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
-  const [showTranscript, setShowTranscript] = useState(false);
+  const [selectedCall, setSelectedCall] = useState<TranscriptCall | null>(null);
 
   const fetchCalls = useCallback(async () => {
     try {
@@ -190,7 +189,7 @@ export default function TranscriptHistory() {
                           </div>
                         </div>
                         <button
-                          onClick={() => { setSelectedRoom(call.room_name); setShowTranscript(true); }}
+                          onClick={() => setSelectedCall(call)}
                           className="transcript-view-btn"
                         >
                           <svg width="14" height="14" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -211,9 +210,12 @@ export default function TranscriptHistory() {
 
       {/* Transcript Sidebar */}
       <LiveTranscript
-        roomName={selectedRoom}
-        isOpen={showTranscript}
-        onClose={() => setShowTranscript(false)}
+        roomName={selectedCall?.room_name ?? null}
+        phoneNumber={selectedCall?.phone_number}
+        callStartedAt={selectedCall?.created_at}
+        durationSeconds={selectedCall?.duration_seconds}
+        isOpen={selectedCall !== null}
+        onClose={() => setSelectedCall(null)}
       />
     </>
   );

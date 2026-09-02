@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { Download } from "lucide-react";
 import { createClient } from "@/lib/supabase-browser";
 
 interface TranscriptMessage {
@@ -12,11 +13,21 @@ interface TranscriptMessage {
 
 interface LiveTranscriptProps {
   roomName: string | null;
+  phoneNumber?: string;
+  callStartedAt?: string;
+  durationSeconds?: number | null;
   isOpen: boolean;
   onClose: () => void;
 }
 
-export default function LiveTranscript({ roomName, isOpen, onClose }: LiveTranscriptProps) {
+export default function LiveTranscript({
+  roomName,
+  phoneNumber,
+  callStartedAt,
+  durationSeconds,
+  isOpen,
+  onClose,
+}: LiveTranscriptProps) {
   const [messages, setMessages] = useState<TranscriptMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -81,6 +92,40 @@ export default function LiveTranscript({ roomName, isOpen, onClose }: LiveTransc
     });
   };
 
+  const formatDuration = (seconds: number | null | undefined) => {
+    if (!seconds) return "0s";
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return minutes > 0 ? `${minutes}m ${remainingSeconds}s` : `${remainingSeconds}s`;
+  };
+
+  const exportTranscript = () => {
+    if (!roomName || messages.length === 0) return;
+
+    const callDate = callStartedAt ? new Date(callStartedAt).toLocaleString() : "Unknown";
+    const content = [
+      "CALL TRANSCRIPT",
+      "=".repeat(48),
+      `Phone: ${phoneNumber ?? "Unknown"}`,
+      `Date: ${callDate}`,
+      `Duration: ${formatDuration(durationSeconds)}`,
+      `Reference: ${roomName}`,
+      "",
+      "CONVERSATION",
+      "-".repeat(48),
+      ...messages.map((message) => `[${formatTime(message.created_at)}] ${message.speaker === "ai" ? "AI" : "Customer"}: ${message.text}`),
+      "",
+      "Exported from Voice Agent",
+    ].join("\n");
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `call-transcript-${phoneNumber?.replace(/[^\d]/g, "") ?? roomName}.txt`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -93,6 +138,15 @@ export default function LiveTranscript({ roomName, isOpen, onClose }: LiveTransc
             <h3 className="text-sm font-semibold text-white">Live Transcript</h3>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={exportTranscript}
+              className="live-transcript-export"
+              title="Download transcript"
+              aria-label="Download transcript"
+              disabled={messages.length === 0}
+            >
+              <Download size={15} />
+            </button>
             {roomName && (
               <span className="text-[10px] font-mono text-[var(--color-text-muted)]">
                 {roomName.substring(0, 20)}...
