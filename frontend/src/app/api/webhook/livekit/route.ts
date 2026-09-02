@@ -93,6 +93,12 @@ export async function POST(request: NextRequest) {
   const isAgent = !isPhoneParticipant;
 
   try {
+    // LiveKit adds the SIP participant before it emits audio. Starting egress here
+    // captures the call even when the provider does not send sip.callStatus=active.
+    if (eventType === "participant_joined" && !isAgent) {
+      await startRecording(roomName);
+    }
+
     // A SIP participant is created while the phone is still dialing. Only an active
     // SIP status confirms that the person has answered.
     if (eventType === "participant_updated" && !isAgent && sipCallStatus === "active") {
@@ -114,45 +120,6 @@ export async function POST(request: NextRequest) {
 
       console.log(`[WEBHOOK] Connected update result: ${JSON.stringify(data)}`);
 
-      // Start recording only on first transition to connected
-      if (data && data.length > 0) {
-        try {
-          const wsUrl = LIVEKIT_URL.startsWith("https://") 
-            ? LIVEKIT_URL.replace("https://", "wss://") 
-            : LIVEKIT_URL.startsWith("http://") 
-              ? LIVEKIT_URL.replace("http://", "ws://") 
-              : LIVEKIT_URL;
-          const egressClient = new EgressClient(
-            wsUrl,
-            LIVEKIT_API_KEY,
-            LIVEKIT_API_SECRET
-          );
-          
-          const s3 = getS3Upload(`${roomName}.ogg`);
-          const output = new EncodedFileOutput({
-            fileType: 2, // OGG
-            filepath: `${roomName}.ogg`,
-            output: s3 ? { case: "s3", value: s3 } : undefined,
-          });
-          
-          const egressInfo = await egressClient.startRoomCompositeEgress(
-            roomName,
-            output,
-            undefined,
-            undefined,
-            true // audioOnly
-          );
-          // Store egress ID so we can stop it later
-          if (egressInfo?.egressId) {
-            activeEgress.set(roomName, egressInfo.egressId);
-            console.log(`[WEBHOOK] Recording started for ${roomName}, egressId=${egressInfo.egressId}`);
-          } else {
-            console.log(`[WEBHOOK] Recording started for ${roomName} (no egressId returned)`);
-          }
-        } catch (recErr) {
-          console.warn("[WEBHOOK] Recording start failed:", recErr);
-        }
-      }
     }
 
     // ── Non-agent participant left ──
@@ -277,6 +244,39 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({ ok: true });
+}
+
+async function startRecording(roomName: string): Promise<void> {
+  if (activeEgress.has(roomName)) return;
+
+  try {
+    const wsUrl = LIVEKIT_URL.startsWith("https://")
+      ? LIVEKIT_URL.replace("https://", "wss://")
+      : LIVEKIT_URL.startsWith("http://")
+        ? LIVEKIT_URL.replace("http://", "ws://")
+        : LIVEKIT_URL;
+    const egressClient = new EgressClient(wsUrl, LIVEKIT_API_KEY, LIVEKIT_API_SECRET);
+    const s3 = getS3Upload(`${roomName}.ogg`);
+    const output = new EncodedFileOutput({
+      fileType: 2,
+      filepath: `${roomName}.ogg`,
+      output: s3 ? { case: "s3", value: s3 } : undefined,
+    });
+    const egressInfo = await egressClient.startRoomCompositeEgress(
+      roomName,
+      output,
+      undefined,
+      undefined,
+      true
+    );
+
+    if (egressInfo?.egressId) {
+      activeEgress.set(roomName, egressInfo.egressId);
+      console.log(`[WEBHOOK] Recording started for ${roomName}, egressId=${egressInfo.egressId}`);
+    }
+  } catch (error) {
+    console.warn("[WEBHOOK] Recording start failed:", error);
+  }
 }
 
 /**
