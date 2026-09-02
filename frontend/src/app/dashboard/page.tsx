@@ -9,6 +9,7 @@ import CallDispatcher from '@/components/CallDispatcher';
 import BulkDialer from '@/components/BulkDialer';
 import TranscriptHistory from '@/components/TranscriptHistory';
 import UpgradePlan from '@/components/UpgradePlan';
+import AnalyticsAssistant from '@/components/AnalyticsAssistant';
 import {
   Phone,
   CheckCircle2,
@@ -605,6 +606,7 @@ export default function DashboardPage() {
           )}
         </div>
       </main>
+      <AnalyticsAssistant />
     </div>
   );
 }
