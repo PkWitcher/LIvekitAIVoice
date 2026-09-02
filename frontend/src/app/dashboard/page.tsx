@@ -53,6 +53,15 @@ interface PreviousPeriod {
   pickupRate: number;
 }
 
+type ChartPeriod = "7d" | "1m" | "6m" | "1y";
+
+const chartPeriodLabels: Record<ChartPeriod, string> = {
+  "7d": "Last 7 Days",
+  "1m": "Last Month",
+  "6m": "Last 6 Months",
+  "1y": "Last Year",
+};
+
 interface CallLog {
   id: string;
   phone_number: string;
@@ -74,6 +83,7 @@ export default function DashboardPage() {
   const [activeNav, setActiveNav] = useState<string>('dashboard');
   const [stats, setStats] = useState<Stats | null>(null);
   const [daily, setDaily] = useState<DailyData[]>([]);
+  const [chartPeriod, setChartPeriod] = useState<ChartPeriod>("7d");
   const [previousPeriod, setPreviousPeriod] = useState<PreviousPeriod>({ total: 0, completed: 0, pickupRate: 0 });
   const [calls, setCalls] = useState<CallLog[]>([]);
   const [subscription, setSubscription] = useState<UserSubscription | null>(null);
@@ -122,7 +132,7 @@ export default function DashboardPage() {
   const fetchData = useCallback(async () => {
     try {
       const [statsRes, callsRes] = await Promise.all([
-        fetch('/api/stats'),
+        fetch(`/api/stats?period=${chartPeriod}`),
         fetch('/api/calls'),
       ]);
       const statsData = await statsRes.json();
@@ -141,7 +151,7 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [chartPeriod]);
 
   useEffect(() => {
     fetchData();
@@ -201,10 +211,9 @@ export default function DashboardPage() {
   const totalMinutes = stats ? Math.round((stats.avgDuration * stats.total) / 60) : 0;
   const successRate = stats && stats.total > 0 ? ((stats.completed / stats.total) * 100).toFixed(1) : '0';
 
-  // Build last 7 days chart data
-  const last7 = daily.slice(-7);
-  const maxCompleted = Math.max(...last7.map(d => d.completed), 1);
-  const maxFailed = Math.max(...last7.map(d => d.total - d.completed), 1);
+  const chartDays = daily;
+  const maxCompleted = Math.max(...chartDays.map(d => d.completed), 1);
+  const maxFailed = Math.max(...chartDays.map(d => d.total - d.completed), 1);
 
   const getBarHeight = (value: number, max: number) => {
     const pct = Math.round((value / max) * 100);
@@ -452,7 +461,18 @@ export default function DashboardPage() {
                     {/* Volume Chart */}
                     <div className="dash-card dash-chart-card">
                       <div className="dash-card-header">
-                        <h3 className="dash-card-title">Call Volume — Last 7 Days</h3>
+                        <h3 className="dash-card-title">Call Volume — {chartPeriodLabels[chartPeriod]}</h3>
+                        <select
+                          value={chartPeriod}
+                          onChange={(event) => setChartPeriod(event.target.value as ChartPeriod)}
+                          className="dash-chart-period"
+                          aria-label="Call volume date range"
+                        >
+                          <option value="7d">Last 7 days</option>
+                          <option value="1m">Last month</option>
+                          <option value="6m">Last 6 months</option>
+                          <option value="1y">Last year</option>
+                        </select>
                         <div className="dash-chart-legend">
                           <div className="dash-legend-item">
                             <span className="dash-legend-dot bg-blue-500" />
@@ -465,7 +485,7 @@ export default function DashboardPage() {
                         </div>
                       </div>
                       <div className="dash-chart-grid">
-                        {last7.length > 0 ? last7.map((d) => (
+                        {chartDays.length > 0 ? chartDays.map((d) => (
                           <div key={d.date} className="dash-chart-col">
                             <div className="dash-chart-bars">
                               <div className="dash-bar dash-bar-completed" style={{ height: `${Math.round((d.completed / (maxCompleted || 1)) * 100)}%` }} />

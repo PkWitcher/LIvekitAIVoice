@@ -4471,6 +4471,22 @@ select option {
   text-align: center;
 }
 
+.dash-chart-period {
+  min-width: 104px;
+  height: 28px;
+  padding: 0 0.5rem;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 6px;
+  background: rgba(255,255,255,0.05);
+  color: var(--color-text-primary);
+  font-size: 0.6875rem;
+  cursor: pointer;
+}
+[data-theme="light"] .dash-chart-period {
+  border-color: #d7dbe2;
+  background: #fff;
+}
+
 /* Light mode */
 [data-theme="light"] .live-transcript-overlay { background: rgba(0,0,0,0.2); }
 [data-theme="light"] .live-transcript-panel {

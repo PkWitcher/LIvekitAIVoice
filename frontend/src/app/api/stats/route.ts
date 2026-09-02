@@ -1,8 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getSupabase } from "@/lib/supabase";
 import { createServerSupabase } from "@/lib/supabase-server";
 
-export async function GET() {
+const PERIOD_DAYS: Record<string, number> = {
+  "7d": 7,
+  "1m": 30,
+  "6m": 180,
+  "1y": 365,
+};
+
+export async function GET(request: NextRequest) {
   try {
     const supabaseAuth = await createServerSupabase();
     const { data: { user } } = await supabaseAuth.auth.getUser();
@@ -20,17 +27,20 @@ export async function GET() {
       });
     }
 
-    // Current period: last 30 days
+    const period = request.nextUrl.searchParams.get("period") ?? "7d";
+    const periodDays = PERIOD_DAYS[period] ?? PERIOD_DAYS["7d"];
+
+    // Current period: selected chart range
     const now = new Date();
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+    const periodStart = new Date(now.getTime() - periodDays * 24 * 60 * 60 * 1000);
+    const previousPeriodStart = new Date(periodStart.getTime() - periodDays * 24 * 60 * 60 * 1000);
 
     // Fetch current period data
     const { data, error } = await supabase
       .from("phone_logs")
       .select("status, duration_seconds, direction, created_at")
       .eq("user_id", user.id)
-      .gte("created_at", thirtyDaysAgo.toISOString());
+      .gte("created_at", periodStart.toISOString());
 
     if (error) {
       return NextResponse.json(
@@ -44,8 +54,8 @@ export async function GET() {
       .from("phone_logs")
       .select("status, duration_seconds, direction, created_at")
       .eq("user_id", user.id)
-      .gte("created_at", sixtyDaysAgo.toISOString())
-      .lt("created_at", thirtyDaysAgo.toISOString());
+      .gte("created_at", previousPeriodStart.toISOString())
+      .lt("created_at", periodStart.toISOString());
 
     const total = data.length;
     const completed = data.filter((r) => r.status === "completed").length;
@@ -86,7 +96,12 @@ export async function GET() {
       if (row.direction === "inbound") dailyMap[date].inbound++;
     }
 
-    const daily = Object.values(dailyMap).sort((a, b) => a.date.localeCompare(b.date));
+    const daily = Array.from({ length: periodDays }, (_, index) => {
+      const date = new Date(now);
+      date.setUTCDate(date.getUTCDate() - (periodDays - 1 - index));
+      const dateKey = date.toISOString().split("T")[0];
+      return dailyMap[dateKey] ?? { date: dateKey, total: 0, completed: 0, outbound: 0, inbound: 0 };
+    });
 
     return NextResponse.json({
       success: true,
