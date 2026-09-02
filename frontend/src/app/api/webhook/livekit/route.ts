@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
 
       const { data: record } = await supabase
         .from("phone_logs")
-        .select("status, connected_at, created_at")
+        .select("user_id, status, connected_at, created_at")
         .eq("room_name", roomName)
         .single();
 
@@ -158,6 +158,8 @@ export async function POST(request: NextRequest) {
               recording_url: recordingUrl,
             })
             .eq("room_name", roomName);
+
+          await addSubscriptionMinutes(record.user_id, durationSeconds);
 
           // Send WhatsApp message — call completed
           const { data: completedLog } = await supabase
@@ -276,6 +278,35 @@ async function startRecording(roomName: string): Promise<void> {
     }
   } catch (error) {
     console.warn("[WEBHOOK] Recording start failed:", error);
+  }
+}
+
+async function addSubscriptionMinutes(userId: string | null, durationSeconds: number): Promise<void> {
+  if (!userId || durationSeconds <= 0) return;
+
+  const supabase = getSupabase();
+  if (!supabase) return;
+
+  const { data: subscription, error } = await supabase
+    .from("user_subscriptions")
+    .select("minutes_used")
+    .eq("user_id", userId)
+    .single();
+
+  if (error || !subscription) {
+    console.warn("[WEBHOOK] Could not load subscription minutes:", error);
+    return;
+  }
+
+  const minutesUsed = Number(subscription.minutes_used) || 0;
+  const callMinutes = durationSeconds / 60;
+  const { error: updateError } = await supabase
+    .from("user_subscriptions")
+    .update({ minutes_used: minutesUsed + callMinutes })
+    .eq("user_id", userId);
+
+  if (updateError) {
+    console.warn("[WEBHOOK] Could not update subscription minutes:", updateError);
   }
 }
 
