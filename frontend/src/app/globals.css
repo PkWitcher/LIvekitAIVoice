@@ -5698,6 +5698,38 @@ select option {
   cursor: pointer;
 }
 .analytics-assistant-header button { color: #8b95a7; background: transparent; }
+.analytics-assistant-body { display: flex; min-height: 0; flex: 1; }
+.analytics-assistant-history {
+  width: 112px;
+  flex: 0 0 112px;
+  overflow-y: auto;
+  padding: 0.625rem 0.5rem;
+  border-right: 1px solid rgba(255,255,255,0.08);
+}
+.analytics-assistant-new, .analytics-assistant-history > button {
+  width: 100%;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #9da7b7;
+  cursor: pointer;
+  font-size: 0.625rem;
+  text-align: left;
+}
+.analytics-assistant-new {
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+  border: 1px solid rgba(96,165,250,0.28);
+  color: #bfdbfe;
+}
+.analytics-assistant-history-title { display: flex; align-items: center; gap: 0.25rem; margin-bottom: 0.35rem; color: #748094; font-size: 0.625rem; }
+.analytics-assistant-history > button:not(.analytics-assistant-new) { padding: 0.45rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.analytics-assistant-history > button:hover, .analytics-assistant-history > button.active { background: rgba(96,165,250,0.12); color: #e0edff; }
+.analytics-assistant-history > p { margin: 0.5rem 0.25rem; color: #687386; font-size: 0.625rem; }
 .analytics-assistant-content {
   flex: 1;
   overflow-y: auto;
@@ -5738,6 +5770,9 @@ select option {
 .analytics-assistant-form button:disabled { cursor: not-allowed; opacity: 0.45; }
 [data-theme="light"] .analytics-assistant-panel { border-color: #d7dbe2; background: #fff; }
 [data-theme="light"] .analytics-assistant-header, [data-theme="light"] .analytics-assistant-form { border-color: #e5e7eb; }
+[data-theme="light"] .analytics-assistant-history { border-color: #e5e7eb; }
+[data-theme="light"] .analytics-assistant-new { border-color: #bfdbfe; color: #1d4ed8; }
+[data-theme="light"] .analytics-assistant-history > button:hover, [data-theme="light"] .analytics-assistant-history > button.active { background: #eff6ff; color: #1e3a8a; }
 [data-theme="light"] .analytics-assistant-header strong, [data-theme="light"] .analytics-assistant-message.assistant { color: #1f2937; }
 [data-theme="light"] .analytics-assistant-content { color: #4b5563; }
 [data-theme="light"] .analytics-assistant-message.assistant { background: #f3f4f6; }
