@@ -619,6 +619,8 @@ if __name__ == "__main__":
         WorkerOptions(
             entrypoint_fnc=entrypoint,
             prewarm_fnc=prewarm,
-            num_idle_processes=1,
+            # 0 avoids a background idle-process prewarm (torch/silero import) competing
+            # for CPU with an active call on single-core Render instances.
+            num_idle_processes=0,
         ),
     )
