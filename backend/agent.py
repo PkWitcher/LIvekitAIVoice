@@ -400,13 +400,16 @@ def extract_greeting_from_prompt(prompt: str) -> Optional[str]:
 # ──────────────────────────────────────────────
 # Outbound Dialing
 # ──────────────────────────────────────────────
-async def dial_outbound(ctx: JobContext, phone_number: str, metadata: dict) -> None:
-    """Create a SIP participant to dial out via the configured SIP trunk."""
+async def dial_outbound(ctx: JobContext, phone_number: str, metadata: dict) -> bool:
+    """Create a SIP participant to dial out via the configured SIP trunk.
+
+    Returns True once the callee has actually answered, False on dial failure.
+    """
     logger.info(f"Dialing outbound to {phone_number} via trunk {config.SIP_TRUNK_ID}")
 
     if not config.SIP_TRUNK_ID:
         logger.error("SIP_TRUNK_ID not configured — cannot dial outbound")
-        return
+        return False
 
     lk_api = api.LiveKitAPI(
         url=config.LIVEKIT_URL,
@@ -422,11 +425,21 @@ async def dial_outbound(ctx: JobContext, phone_number: str, metadata: dict) -> N
                 room_name=ctx.room.name,
                 participant_identity=f"phone-{phone_number}",
                 participant_name=f"Caller {phone_number}",
+                # Block until the callee actually answers so dial failures
+                # (busy, no answer, trunk rejection) surface as errors here
+                # instead of silently proceeding as if the call connected.
+                wait_until_answered=True,
             )
         )
-        logger.info(f"SIP participant created for {phone_number}")
+        logger.info(f"Call answered by {phone_number}")
+        return True
+    except api.SipCallError as e:
+        # 486 = Busy Here, 603 = Decline, 408/480 = no answer, 5xx = trunk failure
+        logger.error(f"Call to {phone_number} not answered: {e.sip_status_code} {e.sip_status}")
+        return False
     except Exception as e:
         logger.error(f"Failed to dial {phone_number}: {e}")
+        return False
     finally:
         await lk_api.aclose()
 
@@ -566,7 +579,11 @@ IMPORTANT RULES:
     # Dial outbound ONLY if it's an outbound call AND participant isn't already here
     if is_outbound and not participant_already_here:
         logger.info(f"Dialing outbound to {phone_number}")
-        await dial_outbound(ctx, phone_number, metadata)
+        answered = await dial_outbound(ctx, phone_number, metadata)
+        if not answered:
+            logger.info("Outbound call was not answered — shutting down job")
+            ctx.shutdown()
+            return
 
     # Wait for participant FIRST — then start the session so RoomIO links to them
     participant = await ctx.wait_for_participant()
