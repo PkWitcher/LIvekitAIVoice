@@ -19,17 +19,14 @@ import certifi
 from dotenv import load_dotenv
 from livekit import api, rtc
 from livekit.agents import (
-    Agent,
-    AgentSession,
     AutoSubscribe,
     JobContext,
     JobProcess,
-    RunContext,
     WorkerOptions,
     cli,
-    function_tool,
+    llm,
 )
-from livekit.agents.llm import ChatMessage
+from livekit.agents.pipeline import VoicePipelineAgent
 from livekit.plugins import cartesia, deepgram, elevenlabs, openai, silero
 
 import config
@@ -122,71 +119,74 @@ async def mark_call_connected(room_name: str):
 # ──────────────────────────────────────────────
 # Function Tools
 # ──────────────────────────────────────────────
-@function_tool()
-async def lookup_user(context: RunContext, phone: str) -> str:
-    """Look up a user by their phone number. Returns user info if found."""
-    logger.info(f"Looking up user with phone: {phone}")
-    mock_db = {
-        "+919876543210": {
-            "name": "Prashant Kishore",
-            "account_id": "ACC-1001",
-            "plan": "Premium",
-            "language": "en",
-        },
-        "+919123456789": {
-            "name": "Ananya Sharma",
-            "account_id": "ACC-1002",
-            "plan": "Basic",
-            "language": "hi",
-        },
-        "+918765432100": {
-            "name": "Rajesh Kumar",
-            "account_id": "ACC-1003",
-            "plan": "Enterprise",
-            "language": "en",
-        },
-    }
-    user = mock_db.get(phone)
-    if user:
-        return json.dumps(user)
-    return json.dumps({"error": "User not found", "phone": phone})
+class CallFunctions(llm.FunctionContext):
+    """Callable tools exposed to the LLM during conversation."""
 
+    @llm.ai_callable(
+        description="Look up a user by their phone number. Returns user info if found."
+    )
+    async def lookup_user(self, phone: str) -> str:
+        """Mock user lookup by phone number."""
+        logger.info(f"Looking up user with phone: {phone}")
+        mock_db = {
+            "+919876543210": {
+                "name": "Prashant Kishore",
+                "account_id": "ACC-1001",
+                "plan": "Premium",
+                "language": "en",
+            },
+            "+919123456789": {
+                "name": "Ananya Sharma",
+                "account_id": "ACC-1002",
+                "plan": "Basic",
+                "language": "hi",
+            },
+            "+918765432100": {
+                "name": "Rajesh Kumar",
+                "account_id": "ACC-1003",
+                "plan": "Enterprise",
+                "language": "en",
+            },
+        }
+        user = mock_db.get(phone)
+        if user:
+            return json.dumps(user)
+        return json.dumps({"error": "User not found", "phone": phone})
 
-@function_tool()
-async def transfer_call(context: RunContext, destination: str) -> str:
-    """Transfer the current call to another phone number or a human agent.
-    Use this when the caller asks to speak with a human or be transferred.
-    """
-    logger.info(f"Transferring call to: {destination}")
+    @llm.ai_callable(
+        description=(
+            "Transfer the current call to another phone number or a human agent. "
+            "Use this when the caller asks to speak with a human or be transferred."
+        )
+    )
+    async def transfer_call(
+        self,
+        destination: str,
+    ) -> str:
+        """Transfer current call via SIP REFER."""
+        logger.info(f"Transferring call to: {destination}")
 
-    if not destination:
-        destination = config.DEFAULT_TRANSFER_NUMBER
+        if not destination:
+            destination = config.DEFAULT_TRANSFER_NUMBER
 
-    # Build SIP URI
-    if destination.startswith("sip:"):
-        sip_uri = destination
-    elif destination.startswith("tel:"):
-        number = destination.replace("tel:", "")
-        sip_uri = f"sip:{number}@{config.SIP_DOMAIN}"
-    elif destination.startswith("+") or destination.isdigit():
-        sip_uri = f"sip:{destination}@{config.SIP_DOMAIN}"
-    else:
-        sip_uri = f"sip:{destination}@{config.SIP_DOMAIN}"
+        # Build SIP URI
+        if destination.startswith("sip:"):
+            sip_uri = destination
+        elif destination.startswith("tel:"):
+            number = destination.replace("tel:", "")
+            sip_uri = f"sip:{number}@{config.SIP_DOMAIN}"
+        elif destination.startswith("+") or destination.isdigit():
+            sip_uri = f"sip:{destination}@{config.SIP_DOMAIN}"
+        else:
+            sip_uri = f"sip:{destination}@{config.SIP_DOMAIN}"
 
-    logger.info(f"SIP REFER URI: {sip_uri}")
+        logger.info(f"SIP REFER URI: {sip_uri}")
 
-    return json.dumps({
-        "status": "transfer_initiated",
-        "destination": sip_uri,
-        "message": f"Call is being transferred to {destination}. Please hold.",
-    })
-
-
-class VoiceAssistant(Agent):
-    """Agent persona wrapping instructions and available tools for the session."""
-
-    def __init__(self, instructions: str, tools: list):
-        super().__init__(instructions=instructions, tools=tools)
+        return json.dumps({
+            "status": "transfer_initiated",
+            "destination": sip_uri,
+            "message": f"Call is being transferred to {destination}. Please hold.",
+        })
 
 
 # ──────────────────────────────────────────────
@@ -294,9 +294,21 @@ def create_tts(provider: str = None, voice_id: str = None, language: str = None)
         voice = voice_id or config.TTS_PROVIDERS["elevenlabs"]["default_voice"]
         model_id = config.TTS_PROVIDERS["elevenlabs"].get("model", "eleven_multilingual_v2")
         logger.info(f"Creating ElevenLabs TTS: voice={voice}, model={model_id}")
+        # The plugin requires a Voice object with an 'id' attribute
+        try:
+            voice_obj = elevenlabs.Voice(id=voice)
+        except (AttributeError, TypeError):
+            # Fallback: create a simple object with .id attribute
+            class _Voice:
+                def __init__(self, vid):
+                    self.id = vid
+                    self.name = ""
+                    self.category = ""
+                    self.settings = None
+            voice_obj = _Voice(voice)
         try:
             return elevenlabs.TTS(
-                voice_id=voice,
+                voice=voice_obj,
                 model=model_id,
                 api_key=eleven_key,
             )
@@ -529,7 +541,7 @@ IMPORTANT RULES:
         system_prompt += "\n\nCRITICAL LANGUAGE RULE: Detect the caller's language from their FIRST sentence. Then speak ONLY in that language for the entire call. NEVER switch mid-call."
 
     # Create pipeline components
-    tools = [] if custom_prompt else [lookup_user, transfer_call]
+    fnc_ctx = CallFunctions() if not custom_prompt else None
     stt = deepgram.STT(
         model=config.STT_MODEL,
         language=stt_language,
@@ -538,44 +550,62 @@ IMPORTANT RULES:
     tts = create_tts(tts_provider, voice_id, stt_language)
     logger.info(f"TTS provider resolved: {type(tts).__module__}.{type(tts).__name__}")
 
-    # Build the agent session (STT -> LLM -> TTS pipeline orchestrator)
-    session = AgentSession(
+    initial_ctx = llm.ChatContext()
+    initial_ctx.append(role="system", text=system_prompt)
+
+    # Build the voice pipeline agent
+    agent = VoicePipelineAgent(
         vad=ctx.proc.userdata["vad"],
         stt=stt,
         llm=llm_plugin,
         tts=tts,
+        fnc_ctx=fnc_ctx,
+        chat_ctx=initial_ctx,
+        allow_interruptions=True,
     )
-    agent_impl = VoiceAssistant(instructions=system_prompt, tools=tools)
-
-    # ── Live Transcript: forward committed chat messages to Supabase ──
-    room_name_for_transcript = ctx.room.name
-
-    @session.on("conversation_item_added")
-    def _on_conversation_item_added(ev):
-        item = ev.item
-        if not isinstance(item, ChatMessage):
-            return
-        content = (item.text_content or "").strip()
-        if not content:
-            return
-        if item.role == "assistant":
-            asyncio.create_task(save_transcript(room_name_for_transcript, "ai", content))
-        elif item.role == "user":
-            asyncio.create_task(save_transcript(room_name_for_transcript, "user", content))
 
     # Dial outbound ONLY if it's an outbound call AND participant isn't already here
     if is_outbound and not participant_already_here:
         logger.info(f"Dialing outbound to {phone_number}")
         await dial_outbound(ctx, phone_number, metadata)
 
-    # Wait for participant FIRST — then start the session so RoomIO links to them
+    # ── Live Transcript: poll chat context for new messages ──
+    # NOTE: Do NOT use agent.on() — it can replace internal handlers and break the pipeline
+    room_name_for_transcript = ctx.room.name
+    last_msg_count = 0
+
+    async def poll_transcript():
+        nonlocal last_msg_count
+        while not shutdown_event.is_set():
+            try:
+                msgs = agent.chat_ctx.messages if hasattr(agent, 'chat_ctx') else []
+                current_count = len(msgs)
+                if current_count > last_msg_count:
+                    for msg in msgs[last_msg_count:]:
+                        role = msg.role if hasattr(msg, 'role') else ''
+                        content = msg.content if hasattr(msg, 'content') else ''
+                        if role == 'assistant' and content and content.strip():
+                            await save_transcript(room_name_for_transcript, "ai", content.strip())
+                        elif role == 'user' and content and content.strip():
+                            await save_transcript(room_name_for_transcript, "user", content.strip())
+                    last_msg_count = current_count
+            except Exception:
+                pass
+            await asyncio.sleep(1.5)
+
+    # Wait for participant FIRST — then start agent with that participant
     participant = await ctx.wait_for_participant()
     logger.info(f"Participant connected: {participant.identity}")
 
-    await session.start(room=ctx.room, agent=agent_impl)
-    logger.info(f"Agent session started, listening to {participant.identity}")
+    # Start the agent IMMEDIATELY so it registers its internal track listeners.
+    # The agent MUST be running when the audio track gets subscribed (via AutoSubscribe)
+    # otherwise it misses the subscription event and never receives audio.
+    agent.start(ctx.room, participant=participant)
+    logger.info(f"Agent pipeline started, listening to {participant.identity}")
 
     # Wait for audio track to actually be subscribed before speaking greeting.
+    # The agent is already running and will capture the track when it arrives.
+    # We just delay the greeting so the user's mic is ready when AI finishes speaking.
     async def wait_for_track_ready(p, timeout: float = 10.0) -> bool:
         """Poll until participant has a subscribed audio track."""
         deadline = asyncio.get_event_loop().time() + timeout
@@ -597,11 +627,15 @@ IMPORTANT RULES:
 
     # NOW speak the greeting — audio pipeline is fully ready
     logger.info(f"Speaking greeting: {greeting[:60]}")
-    await session.say(greeting, allow_interruptions=True)
+    await agent.say(greeting, allow_interruptions=True)
     logger.info("Greeting dispatched, agent is now listening")
 
-    # Keep the agent alive until the room disconnects
+    # Keep the agent alive — without this the function exits and the agent stops
     shutdown_event = asyncio.Event()
+
+    # Start transcript polling (runs in background, doesn't touch agent internals)
+    asyncio.create_task(poll_transcript())
+    logger.info("Transcript polling started")
 
     @ctx.room.on("disconnected")
     def on_disconnect():
