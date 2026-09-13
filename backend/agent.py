@@ -400,12 +400,21 @@ def extract_greeting_from_prompt(prompt: str) -> Optional[str]:
 # ──────────────────────────────────────────────
 # Outbound Dialing
 # ──────────────────────────────────────────────
+def _to_vobiz_dial_format(phone_number: str) -> str:
+    """Strip the +91 country code — the Vobiz trunk routes on bare 10-digit numbers."""
+    digits = re.sub(r"\D", "", phone_number)
+    if digits.startswith("91") and len(digits) == 12:
+        digits = digits[2:]
+    return digits
+
+
 async def dial_outbound(ctx: JobContext, phone_number: str, metadata: dict) -> bool:
     """Create a SIP participant to dial out via the configured SIP trunk.
 
     Returns True once the callee has actually answered, False on dial failure.
     """
-    logger.info(f"Dialing outbound to {phone_number} via trunk {config.SIP_TRUNK_ID}")
+    dial_to = _to_vobiz_dial_format(phone_number)
+    logger.info(f"Dialing outbound to {phone_number} (as {dial_to}) via trunk {config.SIP_TRUNK_ID}")
 
     if not config.SIP_TRUNK_ID:
         logger.error("SIP_TRUNK_ID not configured — cannot dial outbound")
@@ -421,7 +430,7 @@ async def dial_outbound(ctx: JobContext, phone_number: str, metadata: dict) -> b
         await lk_api.sip.create_sip_participant(
             api.CreateSIPParticipantRequest(
                 sip_trunk_id=config.SIP_TRUNK_ID,
-                sip_call_to=phone_number,
+                sip_call_to=dial_to,
                 room_name=ctx.room.name,
                 participant_identity=f"phone-{phone_number}",
                 participant_name=f"Caller {phone_number}",
