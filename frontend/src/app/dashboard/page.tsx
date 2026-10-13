@@ -12,6 +12,8 @@ import UpgradePlan from '@/components/UpgradePlan';
 import AnalyticsAssistant from '@/components/AnalyticsAssistant';
 import AgentBuilder from '@/components/AgentBuilder';
 import AnalyticsBreakdown from '@/components/AnalyticsBreakdown';
+import ApiKeysManager from '@/components/ApiKeysManager';
+import WebhooksManager from '@/components/WebhooksManager';
 import {
   Phone,
   CheckCircle2,
@@ -31,6 +33,7 @@ import {
   Zap,
   ArrowUpRight,
   Bot,
+  Webhook,
 } from 'lucide-react';
 
 // --- Types ---
@@ -359,6 +362,14 @@ export default function DashboardPage() {
             </button>
 
             <button
+              onClick={() => setActiveNav('integrations')}
+              className={`dash-nav-item ${activeNav === 'integrations' ? 'active' : ''}`}
+            >
+              <Webhook className="w-4 h-4" />
+              <span>Integrations</span>
+            </button>
+
+            <button
               onClick={() => setActiveNav('transcripts')}
               className={`dash-nav-item ${activeNav === 'transcripts' ? 'active' : ''}`}
             >
@@ -385,7 +396,7 @@ export default function DashboardPage() {
         <header className="dash-header">
           <div>
             <h2 className="dash-header-title">{activeNav.charAt(0).toUpperCase() + activeNav.slice(1)}</h2>
-            <p className="dash-header-sub">{activeNav === 'dashboard' ? `Welcome back, ${displayName}!` : activeNav === 'calls' ? 'Manage and dispatch calls' : activeNav === 'agents' ? 'Build and manage your AI call agents' : activeNav === 'transcripts' ? 'View call transcripts' : 'Account settings'}</p>
+            <p className="dash-header-sub">{activeNav === 'dashboard' ? `Welcome back, ${displayName}!` : activeNav === 'calls' ? 'Manage and dispatch calls' : activeNav === 'agents' ? 'Build and manage your AI call agents' : activeNav === 'integrations' ? 'API keys and outbound webhooks' : activeNav === 'transcripts' ? 'View call transcripts' : 'Account settings'}</p>
           </div>
           <div className="dash-header-actions">
             <button onClick={toggleTheme} className="dash-icon-btn" title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
@@ -647,6 +658,13 @@ export default function DashboardPage() {
           {activeNav === 'agents' && (
             <div className="dash-section">
               <AgentBuilder />
+            </div>
+          )}
+
+          {activeNav === 'integrations' && (
+            <div className="dash-section">
+              <ApiKeysManager />
+              <WebhooksManager />
             </div>
           )}
 

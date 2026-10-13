@@ -8,6 +8,7 @@ import {
 import { getSupabase } from "@/lib/supabase";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { classifyDisposition } from "@/lib/callDisposition";
+import { deliverWebhooks } from "@/lib/webhookDelivery";
 
 const LIVEKIT_URL = process.env.LIVEKIT_URL ?? "http://localhost:7880";
 const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY ?? "";
@@ -165,6 +166,9 @@ export async function POST(request: NextRequest) {
           // Classify disposition/summary from the stored transcript (no extra manual tagging needed)
           await classifyAndStoreDisposition(roomName);
 
+          // Deliver the customer's post-call webhook (n8n/Make/Zapier/CRM, etc.)
+          await notifyCallWebhooks(roomName, record.user_id, "call.completed");
+
           // Send WhatsApp message — call completed
           const { data: completedLog } = await supabase
             .from("phone_logs")
@@ -187,6 +191,8 @@ export async function POST(request: NextRequest) {
               disposition: "No Answer",
             })
             .eq("room_name", roomName);
+
+          await notifyCallWebhooks(roomName, record.user_id, "call.no_answer");
         }
       }
     }
@@ -198,7 +204,7 @@ export async function POST(request: NextRequest) {
 
       const { data: record } = await supabase
         .from("phone_logs")
-        .select("status, connected_at, created_at")
+        .select("user_id, status, connected_at, created_at")
         .eq("room_name", roomName)
         .single();
 
@@ -224,6 +230,7 @@ export async function POST(request: NextRequest) {
             .eq("room_name", roomName);
 
           await classifyAndStoreDisposition(roomName);
+          await notifyCallWebhooks(roomName, record.user_id, "call.completed");
         } else if (record.status === "ringing") {
           await supabase
             .from("phone_logs")
@@ -233,6 +240,8 @@ export async function POST(request: NextRequest) {
               disposition: "No Answer",
             })
             .eq("room_name", roomName);
+
+          await notifyCallWebhooks(roomName, record.user_id, "call.no_answer");
 
           // Send WhatsApp message — no answer / rejected
           const { data: missedLog } = await supabase
@@ -283,6 +292,30 @@ async function classifyAndStoreDisposition(roomName: string): Promise<void> {
     }
   } catch (err) {
     console.warn("[WEBHOOK] Disposition classification failed:", err);
+  }
+}
+
+async function notifyCallWebhooks(roomName: string, userId: string | null, event: string): Promise<void> {
+  if (!userId) return;
+  const supabase = getSupabase();
+  if (!supabase) return;
+  try {
+    const { data: call } = await supabase
+      .from("phone_logs")
+      .select("id, phone_number, direction, status, duration_seconds, disposition, ai_summary, agent_id, campaign_id, recording_url, created_at, connected_at, ended_at")
+      .eq("room_name", roomName)
+      .single();
+    if (!call) return;
+
+    const { data: transcriptRows } = await supabase
+      .from("call_transcripts")
+      .select("speaker, text, created_at")
+      .eq("room_name", roomName)
+      .order("created_at", { ascending: true });
+
+    await deliverWebhooks(userId, event, { call, transcript: transcriptRows ?? [] });
+  } catch (err) {
+    console.warn("[WEBHOOK] notifyCallWebhooks failed:", err);
   }
 }
 
