@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Nova AI Voice Platform — User Guide</title>
+<style>
+  @page { size: A4; margin: 20mm 16mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    color: #1c2430;
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  .cover {
+    height: 257mm;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    background: linear-gradient(160deg, #0b1220 0%, #14213d 55%, #1d3a8f 100%);
+    color: #fff;
+    page-break-after: always;
+    border-radius: 6px;
+  }
+  .cover .logo-badge {
+    width: 64px; height: 64px; border-radius: 16px;
+    background: linear-gradient(135deg,#3b82f6,#8b5cf6);
+    display:flex; align-items:center; justify-content:center;
+    margin-bottom: 22px;
+    font-size: 28px;
+  }
+  .cover h1 { font-size: 34px; margin: 0 0 8px; letter-spacing: 0.3px; }
+  .cover h2 { font-size: 16px; font-weight: 400; color: #9db4e8; margin: 0 0 40px; }
+  .cover .tagline {
+    font-size: 12.5px; color: #cfd8f0; max-width: 420px; line-height: 1.7;
+  }
+  .cover .footer-note {
+    position: absolute; bottom: 26mm; font-size: 11px; color: #7d8db3;
+  }
+  h1.section-title {
+    font-size: 20px;
+    color: #14213d;
+    border-bottom: 3px solid #3b82f6;
+    padding-bottom: 8px;
+    margin: 0 0 16px;
+    page-break-before: always;
+  }
+  h1.section-title.first { page-break-before: avoid; }
+  h2.sub {
+    font-size: 15px;
+    color: #1d3a8f;
+    margin: 24px 0 10px;
+    display:flex; align-items:center; gap:8px;
+  }
+  h2.sub .num {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:22px; height:22px; border-radius:50%;
+    background:#3b82f6; color:#fff; font-size:11px; font-weight:700;
+  }
+  p { margin: 6px 0 10px; }
+  .toc {
+    page-break-after: always;
+  }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin: 8px 0; font-size: 13.5px; }
+  .toc li b { color:#14213d; }
+  .callout {
+    background: #eef4ff;
+    border-left: 4px solid #3b82f6;
+    padding: 10px 14px;
+    border-radius: 4px;
+    margin: 12px 0;
+    font-size: 12.5px;
+  }
+  .callout.tip { background:#eafbf1; border-color:#22c55e; }
+  .callout.warn { background:#fff7e8; border-color:#f59e0b; }
+  .steps {
+    margin: 10px 0 16px;
+    padding-left: 0;
+    list-style: none;
+    counter-reset: step;
+  }
+  .steps li {
+    counter-increment: step;
+    position: relative;
+    padding: 6px 0 6px 34px;
+    margin-bottom: 4px;
+    font-size: 12.8px;
+  }
+  .steps li::before {
+    content: counter(step);
+    position: absolute; left: 0; top: 5px;
+    width: 22px; height: 22px; border-radius: 6px;
+    background: #14213d; color: #fff;
+    font-size: 11px; font-weight: 700;
+    display:flex; align-items:center; justify-content:center;
+  }
+  /* Mockup frames representing screens */
+  .mock {
+    border: 1px solid #d7deec;
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 14px 0 20px;
+    box-shadow: 0 2px 10px rgba(20,33,61,0.08);
+  }
+  .mock-bar {
+    background: #14213d;
+    padding: 7px 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .mock-bar .dot { width:8px; height:8px; border-radius:50%; }
+  .mock-bar .r { background:#ef4444; } .mock-bar .y { background:#f59e0b; } .mock-bar .g { background:#22c55e; }
+  .mock-bar .url {
+    margin-left: 10px; background:#1d2b4d; color:#9db4e8; font-size:10px;
+    padding: 3px 10px; border-radius: 10px;
+  }
+  .mock-body { display: flex; background:#f7f9fc; min-height: 120px; }
+  .mock-side {
+    width: 90px; background:#0f1830; color:#c9d5f0; font-size:9.5px; padding:10px 8px;
+  }
+  .mock-side .item { padding:6px 6px; border-radius:5px; margin-bottom:4px; }
+  .mock-side .item.active { background:#3b82f6; color:#fff; }
+  .mock-main { flex:1; padding: 12px; }
+  .mock-cards { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+  .mock-card {
+    flex:1; min-width: 70px; background:#fff; border:1px solid #e3e8f2; border-radius:7px;
+    padding:8px; font-size:9.5px; color:#54617a;
+  }
+  .mock-card b { display:block; font-size:13px; color:#14213d; margin-top:3px; }
+  .mock-table { background:#fff; border:1px solid #e3e8f2; border-radius:7px; padding:8px; font-size:9.5px; }
+  .mock-row { display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid #f0f2f7; color:#54617a; }
+  .mock-row:last-child{ border-bottom:none; }
+  .badge { padding:1px 7px; border-radius:8px; font-size:8.5px; font-weight:600; }
+  .badge.ok { background:#dcfce7; color:#16a34a; }
+  .badge.warn { background:#fef3c7; color:#b45309; }
+  .badge.na { background:#fee2e2; color:#dc2626; }
+  table.ref {
+    width: 100%; border-collapse: collapse; margin: 10px 0 18px; font-size: 12px;
+  }
+  table.ref th {
+    background: #14213d; color:#fff; text-align:left; padding:7px 10px;
+  }
+  table.ref td { padding: 7px 10px; border-bottom: 1px solid #e3e8f2; vertical-align: top; }
+  table.ref tr:nth-child(even) td { background: #f7f9fc; }
+  .icon-chip {
+    display:inline-block; background:#eef4ff; color:#1d3a8f; font-size:10.5px;
+    padding:2px 8px; border-radius:10px; margin-right:4px; font-weight:600;
+  }
+  footer.pagefoot {
+    font-size: 10px; color:#8b95a8; text-align:center; margin-top: 24px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ===================== COVER PAGE ===================== -->
+<div class="cover">
+  <div class="logo-badge">📞</div>
+  <h1>Nova AI Voice Platform</h1>
+  <h2>Customer User Guide</h2>
+  <p class="tagline">
+    A complete walkthrough of every screen in your Nova AI portal — from signing in,
+    to dispatching AI voice calls, tracking results, and managing your subscription.
+  </p>
+  <div class="footer-note">Prepared for customer onboarding · 2026</div>
+</div>
+
+<!-- ===================== TABLE OF CONTENTS ===================== -->
+<div class="toc">
+  <h1 class="section-title first">Table of Contents</h1>
+  <ol>
+    <li><b>Getting Started</b> — Landing Page, Creating an Account &amp; Signing In</li>
+    <li><b>Dashboard Overview</b> — Stats, Call Volume Chart &amp; Recent Activity</li>
+    <li><b>Making a Single Call</b> — The Call Dispatcher</li>
+    <li><b>Bulk Calling Campaigns</b> — The Bulk Dialer</li>
+    <li><b>Call History</b> — Tracking Every Call</li>
+    <li><b>Transcripts</b> — Reading Full Conversations</li>
+    <li><b>Settings &amp; Subscription</b> — Plans &amp; Billing</li>
+    <li><b>AI Analytics Assistant</b> — Ask Questions About Your Calls</li>
+    <li><b>Quick Reference &amp; Support</b></li>
+  </ol>
+</div>
+
+<!-- ===================== 1. GETTING STARTED ===================== -->
+<h1 class="section-title first">1. Getting Started</h1>
+
+<h2 class="sub"><span class="num">1.1</span>Landing Page</h2>
+<p>
+  Visit your Nova AI web address to reach the public landing page. This page introduces the
+  platform and gives you a single entry point — the <b>Get Started</b> button — to reach the
+  sign-in screen.
+</p>
+
+<div class="mock">
+  <div class="mock-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="url">nova-ai.app</span></div>
+  <div class="mock-body" style="flex-direction:column; align-items:center; justify-content:center; padding:20px;">
+    <div style="font-size:13px; font-weight:700; color:#14213d;">Automate phone calls with AI that speaks naturally</div>
+    <div style="font-size:9.5px; color:#697490; margin-top:6px;">Deploy intelligent voice agents for outreach, reminders and follow-ups</div>
+    <div style="margin-top:12px; display:flex; gap:8px;">
+      <span style="background:#3b82f6; color:#fff; font-size:10px; padding:6px 16px; border-radius:20px;">Get Started</span>
+      <span style="border:1px solid #c7d2fe; color:#3b5bdb; font-size:10px; padding:6px 16px; border-radius:20px;">Learn More</span>
+    </div>
+  </div>
+</div>
+
+<h2 class="sub"><span class="num">1.2</span>Creating an Account</h2>
+<p>Click <b>Get Started</b> to open the login screen, then switch to the sign-up form.</p>
+<ol class="steps">
+  <li>Click <b>Get Started</b> on the landing page (or go directly to the Login screen).</li>
+  <li>Select <b>Create your account</b>.</li>
+  <li>Enter your <b>Full Name</b>, <b>Phone Number</b>, <b>Email Address</b> and a <b>Password</b>.</li>
+  <li>Submit the form. A confirmation email is sent to your inbox.</li>
+  <li>Click the confirmation link in the email, then return to the Login screen to sign in.</li>
+</ol>
+
+<h2 class="sub"><span class="num">1.3</span>Signing In</h2>
+<div class="mock">
+  <div class="mock-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="url">nova-ai.app/login</span></div>
+  <div class="mock-body" style="padding:16px;">
+    <div style="flex:1; font-size:9.5px; color:#697490;">
+      <b style="color:#14213d; font-size:12px;">Welcome back</b><br/>
+      Sign in to access your dashboard
+      <div style="margin-top:8px; background:#fff; border:1px solid #e3e8f2; border-radius:6px; padding:6px; width:70%;">Email Address</div>
+      <div style="margin-top:6px; background:#fff; border:1px solid #e3e8f2; border-radius:6px; padding:6px; width:70%;">Password</div>
+      <div style="margin-top:8px; background:#3b82f6; color:#fff; border-radius:6px; padding:6px; width:35%; text-align:center;">Sign In</div>
+    </div>
+  </div>
+</div>
+<p>Enter your registered <b>email</b> and <b>password</b>, then click <b>Sign In</b>. You'll be taken straight to your Dashboard.</p>
+<div class="callout tip">
+  <b>Tip:</b> Use the sun/moon icon (top-right of the login screen and dashboard) to switch between dark and light themes at any time.
+</div>
+
+<!-- ===================== 2. DASHBOARD OVERVIEW ===================== -->
+<h1 class="section-title">2. Dashboard Overview</h1>
+<p>
+  After signing in you land on the <b>Dashboard</b> tab — your home screen. A left-hand sidebar lets you move
+  between the four main areas of the portal: <span class="icon-chip">Dashboard</span> <span class="icon-chip">Calls</span>
+  <span class="icon-chip">Transcripts</span> <span class="icon-chip">Settings</span>.
+</p>
+
+<div class="mock">
+  <div class="mock-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="url">nova-ai.app/dashboard</span></div>
+  <div class="mock-body">
+    <div class="mock-side">
+      <div class="item active">▤ Dashboard</div>
+      <div class="item">☎ Calls</div>
+      <div class="item">▤ Transcripts</div>
+      <div class="item">⚙ Settings</div>
+    </div>
+    <div class="mock-main">
+      <div class="mock-cards">
+        <div class="mock-card">Total Calls<b>1,247</b></div>
+        <div class="mock-card">Completed<b>1,089</b></div>
+        <div class="mock-card">Failed<b>42</b></div>
+        <div class="mock-card">No Answer<b>116</b></div>
+        <div class="mock-card">Success Rate<b>87.3%</b></div>
+      </div>
+      <div class="mock-table">
+        <div class="mock-row"><span>+91 98765 43210</span><span class="badge ok">Completed</span></div>
+        <div class="mock-row"><span>+91 87654 32109</span><span class="badge warn">Ringing</span></div>
+        <div class="mock-row"><span>+91 76543 21098</span><span class="badge na">No Answer</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2 class="sub"><span class="num">2.1</span>Stat Cards</h2>
+<p>Six cards summarize your account activity for the current period:</p>
+<table class="ref">
+  <tr><th>Card</th><th>What it shows</th></tr>
+  <tr><td>Total Calls</td><td>All calls dispatched this month, with % change vs. the previous period.</td></tr>
+  <tr><td>Completed</td><td>Calls that connected and finished successfully, plus completion rate.</td></tr>
+  <tr><td>Failed</td><td>Calls that could not be completed (technical/carrier failure).</td></tr>
+  <tr><td>No Answer</td><td>Calls where the recipient did not pick up.</td></tr>
+  <tr><td>Total Minutes</td><td>Total call minutes consumed and the average minutes per call.</td></tr>
+  <tr><td>Success Rate</td><td>Percentage of calls completed successfully, compared to last month.</td></tr>
+</table>
+
+<h2 class="sub"><span class="num">2.2</span>Subscription Card</h2>
+<p>
+  Shows your current plan and live usage bars for <b>Calls Used</b> and <b>Minutes Used</b> against your
+  monthly quota. An <b>Upgrade Plan</b> button jumps straight to the Settings screen.
+</p>
+
+<h2 class="sub"><span class="num">2.3</span>Call Volume Chart</h2>
+<p>
+  A bar chart comparing completed vs. failed calls over time. Use the dropdown to switch the range between
+  <b>Last 7 days</b>, <b>Last month</b>, <b>Last 6 months</b>, and <b>Last year</b>. Hover any bar for exact numbers.
+</p>
+
+<h2 class="sub"><span class="num">2.4</span>Recent Activity</h2>
+<p>
+  A live table of your most recent calls (phone number, time, duration, status). Click
+  <b>View all calls</b> to open the full Calls screen.
+</p>
+
+<!-- ===================== 3. SINGLE CALL DISPATCHER ===================== -->
+<h1 class="section-title">3. Making a Single Call</h1>
+<p>Open the <b>Calls</b> tab in the sidebar to reach the <b>Call Dispatcher</b> — used to place one AI-powered call at a time.</p>
+
+<ol class="steps">
+  <li>Enter the recipient's <b>phone number</b> (with country code, e.g. +91 98765 43210).</li>
+  <li>Write what the AI agent should say/discuss in the <b>prompt</b> box — or describe your goal in the
+      <b>brief</b> field and click <b>Generate</b> to have AI write the call script for you.</li>
+  <li>Choose a <b>voice</b> and <b>language</b> for the agent.</li>
+  <li>Optionally click the <b>star</b> icon to save a prompt for reuse, or open <b>Saved Prompts</b> to load one you saved earlier.</li>
+  <li>Click <b>Dispatch Call</b> to place the call immediately.</li>
+  <li>Once connected, click <b>View Live Transcript</b> to watch the conversation unfold in real time.</li>
+</ol>
+
+<div class="callout">
+  <b>AI Prompt Generator:</b> Don't want to write a script from scratch? Type a short brief
+  (e.g. "Remind the customer about their appointment tomorrow at 5 PM") and Nova AI drafts a
+  ready-to-use conversation prompt for you.
+</div>
+
+<!-- ===================== 4. BULK DIALER ===================== -->
+<h1 class="section-title">4. Bulk Calling Campaigns</h1>
+<p>
+  Below the single Call Dispatcher on the <b>Calls</b> screen is the <b>Bulk Dialer</b> — for running the
+  same script across many contacts in one go.
+</p>
+<ol class="steps">
+  <li>Paste a list of phone numbers, one per line (or comma-separated) into the numbers box.</li>
+  <li>Write or AI-generate the shared call <b>context/prompt</b> that every call will use.</li>
+  <li>Review the automatically detected contact count.</li>
+  <li>Click <b>Launch Campaign</b> to dispatch calls to every number in the list.</li>
+  <li>Each number's dispatch result (dispatched / failed) appears in a results list below.</li>
+</ol>
+<div class="callout warn">
+  <b>Note:</b> Bulk campaigns consume your plan's call and minute quota just like single calls —
+  check your Subscription card before launching a large batch.
+</div>
+
+<!-- ===================== 5. CALL HISTORY ===================== -->
+<h1 class="section-title">5. Call History</h1>
+<p>
+  Also on the <b>Calls</b> screen, <b>Call History</b> lists every call your account has made — phone number,
+  date/time, duration, direction (inbound/outbound) and final status (Completed, No Answer, Failed, Ringing).
+  Use it to audit past campaigns or follow up on unanswered calls.
+</p>
+
+<!-- ===================== 6. TRANSCRIPTS ===================== -->
+<h1 class="section-title">6. Transcripts</h1>
+<p>
+  Open the <b>Transcripts</b> tab in the sidebar to review the full text of past conversations between
+  the AI agent and your customers. Select any call to read the turn-by-turn dialogue, useful for quality
+  review or verifying what was promised on a call.
+</p>
+
+<!-- ===================== 7. SETTINGS & SUBSCRIPTION ===================== -->
+<h1 class="section-title">7. Settings &amp; Subscription</h1>
+<p>Open the <b>Settings</b> tab to manage your plan.</p>
+
+<table class="ref">
+  <tr><th>Plan</th><th>Price</th><th>Calls / month</th><th>Minutes / month</th></tr>
+  <tr><td>Basic</td><td>₹999</td><td>200</td><td>500</td></tr>
+  <tr><td>Pro (Popular)</td><td>₹2,999</td><td>1,000</td><td>2,000</td></tr>
+  <tr><td>Enterprise</td><td>₹9,999</td><td>10,000</td><td>20,000</td></tr>
+</table>
+
+<ol class="steps">
+  <li>Choose a plan and click <b>Upgrade</b>.</li>
+  <li>Complete payment securely through the Razorpay checkout window (card, UPI, netbanking supported).</li>
+  <li>Your new quota is applied immediately and reflected on the Dashboard's Subscription card.</li>
+</ol>
+
+<!-- ===================== 8. ANALYTICS ASSISTANT ===================== -->
+<h1 class="section-title">8. AI Analytics Assistant</h1>
+<p>
+  A floating chat assistant is available on every dashboard screen (bottom-right corner). Click it to
+  ask plain-English questions about your call data — for example:
+</p>
+<div class="callout">
+  "How many calls did I complete last week?" · "What's my pickup rate this month?" ·
+  "Which numbers haven't answered yet?"
+</div>
+<p>The assistant reads your account's live call data and answers instantly, without needing to build a report manually.</p>
+
+<!-- ===================== 9. QUICK REFERENCE ===================== -->
+<h1 class="section-title">9. Quick Reference &amp; Support</h1>
+<table class="ref">
+  <tr><th>Screen</th><th>Purpose</th></tr>
+  <tr><td>Dashboard</td><td>At-a-glance stats, usage, and recent call activity.</td></tr>
+  <tr><td>Calls</td><td>Dispatch single calls, launch bulk campaigns, browse call history.</td></tr>
+  <tr><td>Transcripts</td><td>Read full text of past AI conversations.</td></tr>
+  <tr><td>Settings</td><td>View/upgrade your subscription plan and billing.</td></tr>
+  <tr><td>Analytics Assistant</td><td>Chat-based Q&amp;A about your call data (all screens).</td></tr>
+</table>
+
+<div class="callout tip">
+  <b>Need help?</b> Contact your Nova AI account representative or reach out to support with your
+  registered account email for any onboarding questions.
+</div>
+
+<footer class="pagefoot">Nova AI Voice Platform — Customer User Guide</footer>
+
+</body>
+</html>

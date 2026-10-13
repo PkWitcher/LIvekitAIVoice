@@ -200,8 +200,9 @@ def create_stt() -> deepgram.STT:
     )
 
 
-def create_llm_plugin(provider: str = None) -> openai.LLM:
-    """Create LLM instance based on provider name."""
+def create_llm_plugin(provider: str = None, temperature: Optional[float] = None) -> openai.LLM:
+    """Create LLM instance based on provider name. `temperature`, if given (e.g. from a
+    saved Agent's settings), overrides the provider's hardcoded default."""
     provider = provider or config.DEFAULT_LLM_PROVIDER
     provider_cfg = config.LLM_PROVIDERS.get(provider, config.LLM_PROVIDERS[config.DEFAULT_LLM_PROVIDER])
 
@@ -214,11 +215,13 @@ def create_llm_plugin(provider: str = None) -> openai.LLM:
         provider_cfg = config.LLM_PROVIDERS["openai"]
         api_key = os.getenv(provider_cfg["api_key_env"], "")
 
+    resolved_temperature = temperature if temperature is not None else provider_cfg.get("temperature", 0.7)
+
     return openai.LLM(
         model=provider_cfg["model"],
         api_key=api_key,
         base_url=provider_cfg["base_url"],
-        temperature=provider_cfg.get("temperature", 0.7),
+        temperature=resolved_temperature,
     )
 
 
@@ -481,10 +484,16 @@ async def entrypoint(ctx: JobContext) -> None:
     tts_provider = metadata.get("tts_provider", config.DEFAULT_TTS_PROVIDER)
     custom_prompt = metadata.get("prompt", "")
     stt_language = metadata.get("language", config.STT_LANGUAGE)
+    first_message = metadata.get("first_message", "")
+    temperature = metadata.get("temperature")
+    try:
+        temperature = float(temperature) if temperature is not None else None
+    except (TypeError, ValueError):
+        temperature = None
 
     logger.info(
         f"Config — LLM: {model_provider}, TTS: {tts_provider}, "
-        f"Voice: {voice_id}, Lang: {stt_language}, Phone: {phone_number}"
+        f"Voice: {voice_id}, Lang: {stt_language}, Phone: {phone_number}, Temp: {temperature}"
     )
 
     # Build system prompt
@@ -518,8 +527,11 @@ IMPORTANT RULES:
         is_outbound = False
         logger.info("Inbound call detected — user already in room")
 
-    # Determine greeting
-    if not is_outbound:
+    # Determine greeting — an explicit first_message (Agent Builder) always wins
+    if first_message:
+        greeting = first_message
+        logger.info(f"Agent first_message greeting: {greeting[:50]}")
+    elif not is_outbound:
         greeting = config.INBOUND_GREETING
     elif custom_prompt:
         extracted = extract_greeting_from_prompt(custom_prompt)
@@ -546,7 +558,7 @@ IMPORTANT RULES:
         model=config.STT_MODEL,
         language=stt_language,
     )
-    llm_plugin = create_llm_plugin(model_provider)
+    llm_plugin = create_llm_plugin(model_provider, temperature)
     tts = create_tts(tts_provider, voice_id, stt_language)
     logger.info(f"TTS provider resolved: {type(tts).__module__}.{type(tts).__name__}")
 

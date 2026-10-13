@@ -1542,6 +1542,24 @@ html {
   }
 }
 
+/* ── Small icon+label action button (Agent Builder cards, etc.) ── */
+.icon-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 0.5rem;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: rgba(255, 255, 255, 0.04);
+  transition: all 0.15s ease;
+}
+.icon-action-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
 /* ── Premium page background ─────────────────── */
 .page-bg {
   min-height: 100vh;
