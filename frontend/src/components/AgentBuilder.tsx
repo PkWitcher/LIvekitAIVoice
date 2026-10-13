@@ -11,10 +11,12 @@ import {
   PhoneCall,
   X,
   Pencil,
+  BookOpen,
 } from "lucide-react";
 import { AGENT_TEMPLATES, getTemplate } from "@/lib/agentTemplates";
 import { extractVariableNames, mergeVariables, type PromptVariable } from "@/lib/promptVariables";
 import AgentTestWidget from "@/components/AgentTestWidget";
+import KnowledgeBaseManager from "@/components/KnowledgeBaseManager";
 
 interface Agent {
   id: string;
@@ -111,10 +113,12 @@ export default function AgentBuilder() {
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<{ name?: boolean; system_prompt?: boolean }>({});
   const [versionsFor, setVersionsFor] = useState<Agent | null>(null);
   const [versions, setVersions] = useState<Agent[]>([]);
   const [testTarget, setTestTarget] = useState<Agent | null>(null);
   const [testVariableValues, setTestVariableValues] = useState<Record<string, string>>({});
+  const [kbTarget, setKbTarget] = useState<Agent | null>(null);
 
   const fetchAgents = useCallback(async () => {
     try {
@@ -132,9 +136,15 @@ export default function AgentBuilder() {
     fetchAgents();
   }, [fetchAgents]);
 
-  const openCreate = () => setEditor(blankEditor());
+  const openCreate = () => {
+    setFieldErrors({});
+    setSaveError("");
+    setEditor(blankEditor());
+  };
 
   const openEdit = (agent: Agent) => {
+    setFieldErrors({});
+    setSaveError("");
     setEditor({
       id: agent.id,
       name: agent.name,
@@ -180,10 +190,17 @@ export default function AgentBuilder() {
   };
 
   const handleSave = async () => {
-    if (!editor || !editor.name.trim() || !editor.system_prompt.trim()) {
-      setSaveError("Name and system prompt are required");
+    if (!editor) return;
+    const errors = {
+      name: !editor.name.trim(),
+      system_prompt: !editor.system_prompt.trim(),
+    };
+    if (errors.name || errors.system_prompt) {
+      setFieldErrors(errors);
+      setSaveError("Fill in the highlighted required field(s) below");
       return;
     }
+    setFieldErrors({});
     setSaving(true);
     setSaveError("");
     try {
@@ -325,6 +342,9 @@ export default function AgentBuilder() {
                 <button onClick={() => openTest(agent)} className="icon-action-btn" title="Test in browser">
                   <PhoneCall className="w-3.5 h-3.5" /> Test
                 </button>
+                <button onClick={() => setKbTarget(agent)} className="icon-action-btn" title="Knowledge base">
+                  <BookOpen className="w-3.5 h-3.5" /> Knowledge
+                </button>
                 <button onClick={() => openEdit(agent)} className="icon-action-btn" title="Edit (creates new version)">
                   <Pencil className="w-3.5 h-3.5" /> Edit
                 </button>
@@ -390,8 +410,13 @@ export default function AgentBuilder() {
                 type="text"
                 placeholder="e.g. Appointment Reminder Bot"
                 value={editor.name}
-                onChange={(e) => setEditor({ ...editor, name: e.target.value })}
+                onChange={(e) => {
+                  setEditor({ ...editor, name: e.target.value });
+                  if (fieldErrors.name) setFieldErrors({ ...fieldErrors, name: false });
+                }}
+                className={fieldErrors.name ? "!border-red-500" : ""}
               />
+              {fieldErrors.name && <p className="text-[11px] text-red-400 mt-1">Agent name is required</p>}
             </div>
 
             <div>
@@ -411,8 +436,13 @@ export default function AgentBuilder() {
                 id="agent-prompt"
                 rows={8}
                 value={editor.system_prompt}
-                onChange={(e) => updatePromptField("system_prompt", e.target.value)}
+                onChange={(e) => {
+                  updatePromptField("system_prompt", e.target.value);
+                  if (fieldErrors.system_prompt) setFieldErrors({ ...fieldErrors, system_prompt: false });
+                }}
+                className={fieldErrors.system_prompt ? "!border-red-500" : ""}
               />
+              {fieldErrors.system_prompt && <p className="text-[11px] text-red-400 mt-1">System prompt is required</p>}
               <p className="text-[11px] text-[var(--color-text-muted)] mt-1.5">
                 Use <code>{"{{variable_name}}"}</code> tokens for values filled in per call.
               </p>
@@ -574,6 +604,15 @@ export default function AgentBuilder() {
           agentName={testTarget.name}
           variableValues={testVariableValues}
           onClose={() => setTestTarget(null)}
+        />
+      )}
+
+      {/* Knowledge base manager */}
+      {kbTarget && (
+        <KnowledgeBaseManager
+          agentId={kbTarget.group_id}
+          agentName={kbTarget.name}
+          onClose={() => setKbTarget(null)}
         />
       )}
     </div>

@@ -20,6 +20,7 @@ interface SavedPrompt {
 
 interface Agent {
   id: string;
+  group_id: string;
   name: string;
   language: string;
   voice_provider: string;
@@ -160,7 +161,7 @@ export default function CallDispatcher() {
           model_provider: modelProvider,
           voice_id: voice,
           language,
-          agent_id: selectedAgent?.id,
+          agent_id: selectedAgent?.group_id,
           tts_provider: selectedAgent?.voice_provider,
           temperature,
           first_message: finalFirstMessage.trim(),

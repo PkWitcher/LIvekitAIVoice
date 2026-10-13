@@ -48,11 +48,75 @@ ssl_ctx = ssl.create_default_context(cafile=certifi.where())
 # ──────────────────────────────────────────────
 SUPABASE_URL = os.getenv("SUPABASE_URL", os.getenv("NEXT_PUBLIC_SUPABASE_URL", ""))
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
 if SUPABASE_URL and SUPABASE_SERVICE_KEY:
     logger.info(f"Transcript saving enabled (URL: {SUPABASE_URL[:30]}...)")
 else:
     logger.warning("Transcript saving DISABLED — SUPABASE_URL or SUPABASE_SERVICE_KEY not set")
+
+
+async def embed_text(text: str) -> Optional[list]:
+    """Embed a string via OpenAI's embeddings API (text-embedding-3-small, 1536-dim — must
+    match the `vector(1536)` column in knowledge_base_chunks)."""
+    if not OPENAI_API_KEY:
+        return None
+    try:
+        payload = json.dumps({"model": "text-embedding-3-small", "input": text}).encode("utf-8")
+        req = urllib.request.Request(
+            "https://api.openai.com/v1/embeddings",
+            data=payload,
+            method="POST",
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {OPENAI_API_KEY}",
+            },
+        )
+
+        def _call():
+            with urllib.request.urlopen(req, context=ssl_ctx) as resp:
+                return json.loads(resp.read())
+
+        data = await asyncio.get_event_loop().run_in_executor(None, _call)
+        return data["data"][0]["embedding"]
+    except Exception as e:
+        logger.warning(f"Embedding request failed: {e}")
+        return None
+
+
+async def search_knowledge_base_chunks(agent_id: str, query: str, match_count: int = 3) -> list:
+    """Query the Supabase match_knowledge_chunks RPC for this agent's most relevant KB chunks."""
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        return []
+    embedding = await embed_text(query)
+    if not embedding:
+        return []
+    try:
+        url = f"{SUPABASE_URL}/rest/v1/rpc/match_knowledge_chunks"
+        payload = json.dumps({
+            "query_embedding": embedding,
+            "p_agent_id": agent_id,
+            "match_count": match_count,
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=payload,
+            method="POST",
+            headers={
+                "Content-Type": "application/json",
+                "apikey": SUPABASE_SERVICE_KEY,
+                "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+            },
+        )
+
+        def _call():
+            with urllib.request.urlopen(req, context=ssl_ctx) as resp:
+                return json.loads(resp.read())
+
+        return await asyncio.get_event_loop().run_in_executor(None, _call)
+    except Exception as e:
+        logger.warning(f"Knowledge base search failed: {e}")
+        return []
 
 
 async def save_transcript(room_name: str, speaker: str, text: str):
@@ -122,6 +186,10 @@ async def mark_call_connected(room_name: str):
 class CallFunctions(llm.FunctionContext):
     """Callable tools exposed to the LLM during conversation."""
 
+    def __init__(self, agent_id: Optional[str] = None):
+        super().__init__()
+        self.agent_id = agent_id
+
     @llm.ai_callable(
         description="Look up a user by their phone number. Returns user info if found."
     )
@@ -187,6 +255,24 @@ class CallFunctions(llm.FunctionContext):
             "destination": sip_uri,
             "message": f"Call is being transferred to {destination}. Please hold.",
         })
+
+    @llm.ai_callable(
+        description=(
+            "Search this agent's knowledge base (uploaded documents) for facts needed to answer "
+            "the caller's question — e.g. pricing, policies, or product details. Call this BEFORE "
+            "guessing or making up an answer that isn't in your script."
+        )
+    )
+    async def search_knowledge_base(self, query: str) -> str:
+        """Retrieve the most relevant knowledge base chunks for this agent."""
+        if not self.agent_id:
+            return json.dumps({"result": "No knowledge base is attached to this agent."})
+        logger.info(f"Searching knowledge base for agent {self.agent_id}: {query[:60]}")
+        matches = await search_knowledge_base_chunks(self.agent_id, query)
+        if not matches:
+            return json.dumps({"result": "No relevant information found in the knowledge base."})
+        content = "\n\n".join(m["content"] for m in matches if m.get("content"))
+        return json.dumps({"result": content})
 
 
 # ──────────────────────────────────────────────
@@ -485,6 +571,7 @@ async def entrypoint(ctx: JobContext) -> None:
     custom_prompt = metadata.get("prompt", "")
     stt_language = metadata.get("language", config.STT_LANGUAGE)
     first_message = metadata.get("first_message", "")
+    agent_id = metadata.get("agent_id")
     temperature = metadata.get("temperature")
     try:
         temperature = float(temperature) if temperature is not None else None
@@ -505,7 +592,8 @@ IMPORTANT RULES:
 - Follow the call flow steps in order.
 - Wait for customer to respond before asking next question.
 - If customer asks something not in your script, say you will check and get back.
-- Never make up information. Never be pushy."""
+- Never make up information. Never be pushy.
+- If you need a specific fact (pricing, policy, product detail) that isn't in this script, call the search_knowledge_base tool before answering. If it returns nothing useful, say you'll check and follow up — never guess."""
     else:
         system_prompt = config.SYSTEM_PROMPT
 
@@ -552,8 +640,9 @@ IMPORTANT RULES:
     else:
         system_prompt += "\n\nCRITICAL LANGUAGE RULE: Detect the caller's language from their FIRST sentence. Then speak ONLY in that language for the entire call. NEVER switch mid-call."
 
-    # Create pipeline components
-    fnc_ctx = CallFunctions() if not custom_prompt else None
+    # Create pipeline components — fnc_ctx is always available so saved Agents keep
+    # access to tools (transfer_call, search_knowledge_base) even with a custom prompt.
+    fnc_ctx = CallFunctions(agent_id=agent_id)
     stt = deepgram.STT(
         model=config.STT_MODEL,
         language=stt_language,

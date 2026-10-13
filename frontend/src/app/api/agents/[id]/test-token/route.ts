@@ -42,7 +42,7 @@ export async function POST(
 
     const { data: agent, error } = await supabase
       .from("agents")
-      .select("id, name, language, voice_provider, voice_id, llm_provider, temperature, first_message, system_prompt")
+      .select("id, group_id, name, language, voice_provider, voice_id, llm_provider, temperature, first_message, system_prompt")
       .eq("id", id)
       .eq("user_id", user.id)
       .single();
@@ -64,6 +64,7 @@ export async function POST(
       voice_id: agent.voice_id,
       language: agent.language,
       temperature: agent.temperature,
+      agent_id: agent.group_id,
     });
 
     const wsUrl = getLivekitWsUrl(LIVEKIT_URL);

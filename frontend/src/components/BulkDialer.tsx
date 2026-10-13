@@ -2,6 +2,13 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { substituteVariables, type PromptVariable } from "@/lib/promptVariables";
+import {
+  parseContactWorkbook,
+  detectPhoneColumnIndex,
+  extractPhoneNumbers,
+  normalizePhoneNumber,
+  type ExtractResult,
+} from "@/lib/phoneListParser";
 
 interface DialResult {
   phone: string;
@@ -20,6 +27,7 @@ interface SavedPrompt {
 
 interface Agent {
   id: string;
+  group_id: string;
   name: string;
   language: string;
   voice_provider: string;
@@ -50,6 +58,12 @@ export default function BulkDialer() {
   const [firstMessage, setFirstMessage] = useState("");
   const [temperature, setTemperature] = useState<number | undefined>(undefined);
   const [variableValues, setVariableValues] = useState<Record<string, string>>({});
+  const [fileName, setFileName] = useState("");
+  const [fileHeaders, setFileHeaders] = useState<string[]>([]);
+  const [fileRows, setFileRows] = useState<string[][]>([]);
+  const [showColumnPicker, setShowColumnPicker] = useState(false);
+  const [fileError, setFileError] = useState("");
+  const [parsedPreview, setParsedPreview] = useState<ExtractResult | null>(null);
 
   const selectedAgent = agents.find((a) => a.id === selectedAgentId) ?? null;
 
@@ -136,6 +150,70 @@ export default function BulkDialer() {
     .map((n) => n.trim())
     .filter(Boolean).length;
 
+  const existingNumbersNormalized = () =>
+    numbers
+      .split(/[\n,]+/)
+      .map((n) => n.trim())
+      .filter(Boolean)
+      .map((n) => normalizePhoneNumber(n) ?? n);
+
+  const applyColumn = (columnIndex: number, rows: string[][] = fileRows) => {
+    setShowColumnPicker(false);
+    setParsedPreview(extractPhoneNumbers(rows, columnIndex, existingNumbersNormalized()));
+  };
+
+  const resetFileState = () => {
+    setFileName("");
+    setFileHeaders([]);
+    setFileRows([]);
+    setShowColumnPicker(false);
+    setParsedPreview(null);
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setFileError("");
+    resetFileState();
+
+    const ext = file.name.toLowerCase().split(".").pop();
+    if (!["csv", "xlsx", "xls"].includes(ext ?? "")) {
+      setFileError("Unsupported file type — upload a .csv, .xlsx, or .xls file");
+      return;
+    }
+
+    try {
+      const buffer = await file.arrayBuffer();
+      const { headers, rows } = parseContactWorkbook(buffer);
+      if (rows.length === 0) {
+        setFileError("This file has no data rows");
+        return;
+      }
+
+      setFileName(file.name);
+      setFileHeaders(headers);
+      setFileRows(rows);
+
+      const detected = detectPhoneColumnIndex(headers);
+      if (detected !== null) {
+        applyColumn(detected, rows);
+      } else {
+        setShowColumnPicker(true);
+      }
+    } catch {
+      setFileError("Could not read this file — make sure it's a valid CSV/Excel file");
+    }
+  };
+
+  const handleAddParsedNumbers = () => {
+    if (!parsedPreview || parsedPreview.valid.length === 0) return;
+    const existingList = numbers.split(/[\n,]+/).map((n) => n.trim()).filter(Boolean);
+    setNumbers([...existingList, ...parsedPreview.valid].join("\n"));
+    resetFileState();
+  };
+
   const handleLaunch = async () => {
     const parsed = numbers
       .split(/[\n,]+/)
@@ -156,7 +234,7 @@ export default function BulkDialer() {
         body: JSON.stringify({
           phone_numbers: parsed,
           prompt: finalContext.trim(),
-          agent_id: selectedAgent?.id,
+          agent_id: selectedAgent?.group_id,
           tts_provider: selectedAgent?.voice_provider,
           voice_id: selectedAgent?.voice_id,
           model_provider: selectedAgent?.llm_provider,
@@ -224,6 +302,79 @@ export default function BulkDialer() {
           )}
         </div>
       )}
+
+      {/* Upload Contact File */}
+      <div>
+        <div className="flex items-center justify-between">
+          <label htmlFor="bulk-file" className="mb-0">Upload Contacts (optional)</label>
+          {fileName && (
+            <button
+              onClick={resetFileState}
+              className="text-[10px] text-[var(--color-text-muted)] hover:text-white transition-colors"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+        <input
+          id="bulk-file"
+          type="file"
+          accept=".csv,.xlsx,.xls"
+          onChange={handleFileSelect}
+          className="!p-2 !text-xs"
+        />
+        <p className="text-[11px] text-[var(--color-text-muted)] mt-1.5">
+          CSV or Excel file with a phone number column — auto-detected from headers like &quot;Phone&quot; or &quot;Mobile&quot;
+        </p>
+
+        {fileError && <p className="text-[11px] text-red-400 mt-1.5">{fileError}</p>}
+
+        {showColumnPicker && fileHeaders.length > 0 && (
+          <div className="mt-2">
+            <label htmlFor="bulk-column-picker">Which column has phone numbers?</label>
+            <select
+              id="bulk-column-picker"
+              defaultValue=""
+              onChange={(e) => applyColumn(parseInt(e.target.value, 10))}
+              className="!py-1.5 !text-xs w-full"
+            >
+              <option value="" disabled>Select a column...</option>
+              {fileHeaders.map((h, i) => (
+                <option key={i} value={i}>{h || `Column ${i + 1}`}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {parsedPreview && (
+          <div className="mt-2 space-y-2 px-3 py-2.5 rounded-lg bg-white/[0.04] text-xs">
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-green-400">{parsedPreview.valid.length} valid</span>
+              {parsedPreview.duplicateCount > 0 && (
+                <span className="text-amber-400">{parsedPreview.duplicateCount} duplicate{parsedPreview.duplicateCount !== 1 ? "s" : ""} skipped</span>
+              )}
+              {parsedPreview.invalid.length > 0 && (
+                <span className="text-red-400">{parsedPreview.invalid.length} invalid</span>
+              )}
+              <button
+                onClick={handleAddParsedNumbers}
+                disabled={parsedPreview.valid.length === 0}
+                className="ml-auto px-3 py-1 rounded-lg text-[10px] font-semibold text-white bg-green-600 hover:bg-green-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Add {parsedPreview.valid.length} to Campaign
+              </button>
+            </div>
+            {parsedPreview.invalid.length > 0 && (
+              <details>
+                <summary className="text-red-400 cursor-pointer text-[11px]">Show invalid entries</summary>
+                <p className="text-[11px] text-[var(--color-text-muted)] font-mono mt-1 break-all">
+                  {parsedPreview.invalid.join(", ")}
+                </p>
+              </details>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Numbers */}
       <div>

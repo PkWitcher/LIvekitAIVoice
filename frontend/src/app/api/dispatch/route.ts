@@ -99,6 +99,7 @@ export async function POST(request: NextRequest) {
       tts_provider: body.tts_provider,
       temperature: body.temperature,
       first_message: body.first_message ?? "",
+      agent_id: body.agent_id,
     });
 
     console.log("[DISPATCH] Creating room:", roomName, "metadata:", metadata);
