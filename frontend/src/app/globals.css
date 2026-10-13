@@ -158,6 +158,11 @@
   color: #1a1a2e;
 }
 
+[data-theme="light"] input[type="range"]::-webkit-slider-runnable-track,
+[data-theme="light"] input[type="range"]::-moz-range-track {
+  background: #d9dce2 !important;
+}
+
 [data-theme="light"] .premium-table th {
   color: #8892a4;
 }
@@ -2108,6 +2113,44 @@ textarea::placeholder {
 select option {
   background: #161616;
   color: var(--color-text-primary);
+}
+
+/* ── Range sliders (e.g. Agent temperature) ──── */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  height: 1.25rem;
+  padding: 0;
+  accent-color: #8b5cf6;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: #8b5cf6;
+  cursor: pointer;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.25);
+}
+input[type="range"]::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 50%;
+  background: #8b5cf6;
+  cursor: pointer;
 }
 
 /* ── Spinner ─────────────────────────────────── */

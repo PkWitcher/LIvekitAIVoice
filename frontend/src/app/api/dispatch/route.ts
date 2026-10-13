@@ -20,6 +20,10 @@ interface DispatchBody {
   model_provider?: string;
   voice_id?: string;
   language?: string;
+  agent_id?: string;
+  tts_provider?: string;
+  temperature?: number;
+  first_message?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -92,6 +96,9 @@ export async function POST(request: NextRequest) {
       model_provider: body.model_provider ?? "openai",
       voice_id: body.voice_id ?? "aura-asteria-en",
       language: body.language ?? "multi",
+      tts_provider: body.tts_provider,
+      temperature: body.temperature,
+      first_message: body.first_message ?? "",
     });
 
     console.log("[DISPATCH] Creating room:", roomName, "metadata:", metadata);
@@ -128,6 +135,7 @@ export async function POST(request: NextRequest) {
       model_provider: body.model_provider ?? "openai",
       voice_id: body.voice_id ?? "aura-asteria-en",
       prompt: body.prompt || null,
+      agent_id: body.agent_id || null,
     });
 
     // Auto-save prompt to user's saved_prompts if not already saved

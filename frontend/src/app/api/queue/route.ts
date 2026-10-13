@@ -20,6 +20,11 @@ interface QueueBody {
   prompt?: string;
   model_provider?: string;
   voice_id?: string;
+  language?: string;
+  agent_id?: string;
+  tts_provider?: string;
+  temperature?: number;
+  first_message?: string;
 }
 
 interface DialResult {
@@ -133,6 +138,10 @@ export async function POST(request: NextRequest) {
           prompt: body.prompt ?? "",
           model_provider: body.model_provider ?? "openai",
           voice_id: body.voice_id ?? "aura-asteria-en",
+          language: body.language ?? "multi",
+          tts_provider: body.tts_provider,
+          temperature: body.temperature,
+          first_message: body.first_message ?? "",
         });
 
         await roomService.createRoom({
@@ -166,6 +175,7 @@ export async function POST(request: NextRequest) {
           model_provider: body.model_provider ?? "groq",
           voice_id: body.voice_id ?? "aura-asteria-en",
           prompt: body.prompt || null,
+          agent_id: body.agent_id || null,
         }).then();
       } catch (error) {
         const message =

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { substituteVariables, type PromptVariable } from "@/lib/promptVariables";
 
 interface DialResult {
   phone: string;
@@ -17,6 +18,19 @@ interface SavedPrompt {
   created_at: string;
 }
 
+interface Agent {
+  id: string;
+  name: string;
+  language: string;
+  voice_provider: string;
+  voice_id: string;
+  llm_provider: string;
+  temperature: number;
+  first_message: string;
+  system_prompt: string;
+  variables: PromptVariable[];
+}
+
 export default function BulkDialer() {
   const [numbers, setNumbers] = useState("");
   const [context, setContext] = useState("");
@@ -31,6 +45,41 @@ export default function BulkDialer() {
   const [saveTitle, setSaveTitle] = useState("");
   const [showSaveInput, setShowSaveInput] = useState(false);
   const [showSavedList, setShowSavedList] = useState(false);
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [selectedAgentId, setSelectedAgentId] = useState("");
+  const [firstMessage, setFirstMessage] = useState("");
+  const [temperature, setTemperature] = useState<number | undefined>(undefined);
+  const [variableValues, setVariableValues] = useState<Record<string, string>>({});
+
+  const selectedAgent = agents.find((a) => a.id === selectedAgentId) ?? null;
+
+  const fetchAgents = useCallback(async () => {
+    try {
+      const res = await fetch("/api/agents");
+      const data = await res.json();
+      if (data.success) setAgents(data.agents ?? []);
+    } catch { /* silent */ }
+  }, []);
+
+  useEffect(() => { fetchAgents(); }, [fetchAgents]);
+
+  const handleSelectAgent = (agentId: string) => {
+    setSelectedAgentId(agentId);
+    if (!agentId) {
+      setFirstMessage("");
+      setTemperature(undefined);
+      return;
+    }
+    const agent = agents.find((a) => a.id === agentId);
+    if (!agent) return;
+    setContext(agent.system_prompt);
+    setFirstMessage(agent.first_message);
+    setTemperature(agent.temperature);
+    const defaults: Record<string, string> = {};
+    (agent.variables ?? []).forEach((v) => (defaults[v.name] = v.default_value || ""));
+    setVariableValues(defaults);
+    setGenerated(false);
+  };
 
   const fetchSavedPrompts = useCallback(async () => {
     try {
@@ -97,13 +146,23 @@ export default function BulkDialer() {
     setLoading(true);
     setResults([]);
 
+    const finalContext = selectedAgent ? substituteVariables(context, variableValues) : context;
+    const finalFirstMessage = selectedAgent ? substituteVariables(firstMessage, variableValues) : firstMessage;
+
     try {
       const res = await fetch("/api/queue", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           phone_numbers: parsed,
-          prompt: context.trim(),
+          prompt: finalContext.trim(),
+          agent_id: selectedAgent?.id,
+          tts_provider: selectedAgent?.voice_provider,
+          voice_id: selectedAgent?.voice_id,
+          model_provider: selectedAgent?.llm_provider,
+          language: selectedAgent?.language,
+          temperature,
+          first_message: finalFirstMessage.trim(),
         }),
       });
 
@@ -130,6 +189,41 @@ export default function BulkDialer() {
           Batch
         </span>
       </div>
+
+      {/* Saved Agent */}
+      {agents.length > 0 && (
+        <div>
+          <label htmlFor="bulk-agent-select">Use a Saved Agent (optional)</label>
+          <select
+            id="bulk-agent-select"
+            value={selectedAgentId}
+            onChange={(e) => handleSelectAgent(e.target.value)}
+          >
+            <option value="">— Manual Script —</option>
+            {agents.map((a) => (
+              <option key={a.id} value={a.id}>{a.name}</option>
+            ))}
+          </select>
+          {selectedAgent && selectedAgent.variables.length > 0 && (
+            <div className="mt-2 space-y-2">
+              {selectedAgent.variables.map((v) => (
+                <div key={v.name} className="flex items-center gap-2">
+                  <span className="text-[11px] font-mono px-2 py-1.5 rounded-lg bg-white/[0.04] text-purple-300 whitespace-nowrap">
+                    {"{{" + v.name + "}}"}
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Value for this campaign"
+                    value={variableValues[v.name] ?? ""}
+                    onChange={(e) => setVariableValues((prev) => ({ ...prev, [v.name]: e.target.value }))}
+                    className="!py-1.5 !text-xs flex-1"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Numbers */}
       <div>
