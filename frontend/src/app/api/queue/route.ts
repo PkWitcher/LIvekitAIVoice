@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import { RoomServiceClient, SipClient } from "livekit-server-sdk";
 import { getSupabase } from "@/lib/supabase";
 import { createServerSupabase } from "@/lib/supabase-server";
@@ -109,6 +110,7 @@ export async function POST(request: NextRequest) {
     const trunks = await sipClient.listSipOutboundTrunk();
     const trunkId = trunks.length > 0 ? trunks[0].sipTrunkId : null;
 
+    const campaignId = randomUUID();
     const results: DialResult[] = [];
 
     for (const raw of body.phone_numbers) {
@@ -177,6 +179,7 @@ export async function POST(request: NextRequest) {
           voice_id: body.voice_id ?? "aura-asteria-en",
           prompt: body.prompt || null,
           agent_id: body.agent_id || null,
+          campaign_id: campaignId,
         }).then();
       } catch (error) {
         const message =
@@ -223,6 +226,7 @@ export async function POST(request: NextRequest) {
       dispatched,
       failed: results.filter((r) => r.status === "failed").length,
       results,
+      campaign_id: campaignId,
     });
   } catch (error) {
     const message =

@@ -7,6 +7,7 @@ import {
 } from "livekit-server-sdk";
 import { getSupabase } from "@/lib/supabase";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
+import { classifyDisposition } from "@/lib/callDisposition";
 
 const LIVEKIT_URL = process.env.LIVEKIT_URL ?? "http://localhost:7880";
 const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY ?? "";
@@ -161,6 +162,9 @@ export async function POST(request: NextRequest) {
 
           await addSubscriptionMinutes(record.user_id, durationSeconds);
 
+          // Classify disposition/summary from the stored transcript (no extra manual tagging needed)
+          await classifyAndStoreDisposition(roomName);
+
           // Send WhatsApp message — call completed
           const { data: completedLog } = await supabase
             .from("phone_logs")
@@ -180,6 +184,7 @@ export async function POST(request: NextRequest) {
             .update({
               status: "no-answer",
               ended_at: now,
+              disposition: "No Answer",
             })
             .eq("room_name", roomName);
         }
@@ -217,12 +222,15 @@ export async function POST(request: NextRequest) {
               recording_url: recordingUrl,
             })
             .eq("room_name", roomName);
+
+          await classifyAndStoreDisposition(roomName);
         } else if (record.status === "ringing") {
           await supabase
             .from("phone_logs")
             .update({
               status: "no-answer",
               ended_at: now,
+              disposition: "No Answer",
             })
             .eq("room_name", roomName);
 
@@ -246,6 +254,36 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({ ok: true });
+}
+
+async function classifyAndStoreDisposition(roomName: string): Promise<void> {
+  const supabase = getSupabase();
+  if (!supabase) return;
+  try {
+    const { data: transcriptRows } = await supabase
+      .from("call_transcripts")
+      .select("speaker, text")
+      .eq("room_name", roomName)
+      .order("created_at", { ascending: true });
+
+    if (!transcriptRows || transcriptRows.length === 0) {
+      await supabase.from("phone_logs").update({ disposition: "No Response" }).eq("room_name", roomName);
+      return;
+    }
+
+    const transcript = transcriptRows
+      .map((r) => `${r.speaker === "ai" ? "Agent" : "Caller"}: ${r.text}`)
+      .join("\n");
+    const result = await classifyDisposition(transcript);
+    if (result) {
+      await supabase
+        .from("phone_logs")
+        .update({ disposition: result.disposition, ai_summary: result.summary })
+        .eq("room_name", roomName);
+    }
+  } catch (err) {
+    console.warn("[WEBHOOK] Disposition classification failed:", err);
+  }
 }
 
 async function startRecording(roomName: string): Promise<void> {

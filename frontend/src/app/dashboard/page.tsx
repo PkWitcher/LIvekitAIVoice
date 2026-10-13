@@ -11,6 +11,7 @@ import TranscriptHistory from '@/components/TranscriptHistory';
 import UpgradePlan from '@/components/UpgradePlan';
 import AnalyticsAssistant from '@/components/AnalyticsAssistant';
 import AgentBuilder from '@/components/AgentBuilder';
+import AnalyticsBreakdown from '@/components/AnalyticsBreakdown';
 import {
   Phone,
   CheckCircle2,
@@ -43,6 +44,30 @@ interface Stats {
   inbound: number;
   pickupRate: number;
   minutesUsed: number;
+  conversionRate: number;
+}
+
+interface AgentBreakdownRow {
+  agent_id: string;
+  agent_name: string;
+  total: number;
+  completed: number;
+  pickupRate: number;
+  avgDuration: number;
+}
+
+interface CampaignBreakdownRow {
+  campaign_id: string;
+  started_at: string;
+  total: number;
+  completed: number;
+  pickupRate: number;
+}
+
+interface CostAnalytics {
+  ratePerMinute: number;
+  totalCost: number;
+  byAgent: { agent_id: string; agent_name: string; cost: number }[];
 }
 
 interface DailyData {
@@ -91,6 +116,10 @@ export default function DashboardPage() {
   const [chartLoading, setChartLoading] = useState(false);
   const [previousPeriod, setPreviousPeriod] = useState<PreviousPeriod>({ total: 0, completed: 0, pickupRate: 0 });
   const [calls, setCalls] = useState<CallLog[]>([]);
+  const [dispositionBreakdown, setDispositionBreakdown] = useState<Record<string, number>>({});
+  const [agentBreakdown, setAgentBreakdown] = useState<AgentBreakdownRow[]>([]);
+  const [campaignBreakdown, setCampaignBreakdown] = useState<CampaignBreakdownRow[]>([]);
+  const [costAnalytics, setCostAnalytics] = useState<CostAnalytics>({ ratePerMinute: 0, totalCost: 0, byAgent: [] });
   const [subscription, setSubscription] = useState<UserSubscription | null>(null);
   const [userName, setUserName] = useState('');
   const [loading, setLoading] = useState(true);
@@ -147,6 +176,10 @@ export default function DashboardPage() {
         setStats(statsData.stats);
         setDaily(statsData.daily || []);
         setPreviousPeriod(statsData.previousPeriod || { total: 0, completed: 0, pickupRate: 0 });
+        setDispositionBreakdown(statsData.dispositionBreakdown || {});
+        setAgentBreakdown(statsData.agentBreakdown || []);
+        setCampaignBreakdown(statsData.campaignBreakdown || []);
+        setCostAnalytics(statsData.costAnalytics || { ratePerMinute: 0, totalCost: 0, byAgent: [] });
       }
       if (callsData.success) {
         setCalls(callsData.calls || []);
@@ -590,6 +623,14 @@ export default function DashboardPage() {
                       )}
                     </div>
                   </div>
+
+                  <AnalyticsBreakdown
+                    conversionRate={stats?.conversionRate ?? 0}
+                    dispositionBreakdown={dispositionBreakdown}
+                    agentBreakdown={agentBreakdown}
+                    campaignBreakdown={campaignBreakdown}
+                    costAnalytics={costAnalytics}
+                  />
                 </>
               )}
             </>

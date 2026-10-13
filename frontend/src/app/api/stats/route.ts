@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabase } from "@/lib/supabase";
 import { createServerSupabase } from "@/lib/supabase-server";
+import { POSITIVE_DISPOSITIONS } from "@/lib/callDisposition";
 
 const PERIOD_DAYS: Record<string, number> = {
   "7d": 7,
@@ -8,6 +9,8 @@ const PERIOD_DAYS: Record<string, number> = {
   "6m": 180,
   "1y": 365,
 };
+
+const COST_PER_MINUTE = Number(process.env.CALL_COST_PER_MINUTE ?? "1.5");
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,9 +24,13 @@ export async function GET(request: NextRequest) {
     if (!supabase) {
       return NextResponse.json({
         success: true,
-        stats: { total: 0, completed: 0, noAnswer: 0, ringing: 0, avgDuration: 0, minutesUsed: 0 },
+        stats: { total: 0, completed: 0, noAnswer: 0, ringing: 0, avgDuration: 0, minutesUsed: 0, conversionRate: 0 },
         daily: [],
         previousPeriod: { total: 0, completed: 0 },
+        dispositionBreakdown: {},
+        agentBreakdown: [],
+        campaignBreakdown: [],
+        costAnalytics: { ratePerMinute: COST_PER_MINUTE, totalCost: 0, byAgent: [] },
       });
     }
 
@@ -61,7 +68,7 @@ export async function GET(request: NextRequest) {
     // Fetch current period data
     const { data, error } = await supabase
       .from("phone_logs")
-      .select("status, duration_seconds, direction, created_at")
+      .select("status, duration_seconds, direction, created_at, disposition, agent_id, campaign_id")
       .eq("user_id", user.id)
       .gte("created_at", periodStart.toISOString());
 
@@ -126,11 +133,86 @@ export async function GET(request: NextRequest) {
       return dailyMap[dateKey] ?? { date: dateKey, total: 0, completed: 0, outbound: 0, inbound: 0 };
     });
 
+    // ── Disposition breakdown + conversion rate (derived from AI-classified transcripts) ──
+    const dispositionBreakdown: Record<string, number> = {};
+    let convertedCount = 0;
+    for (const row of data) {
+      if (!row.disposition) continue;
+      dispositionBreakdown[row.disposition] = (dispositionBreakdown[row.disposition] ?? 0) + 1;
+      if (POSITIVE_DISPOSITIONS.includes(row.disposition)) convertedCount++;
+    }
+    const conversionRate = total > 0 ? Math.round((convertedCount / total) * 100) : 0;
+
+    // ── Agent-wise breakdown ──
+    const agentIds = Array.from(new Set(data.map((r) => r.agent_id).filter(Boolean))) as string[];
+    let agentNames: Record<string, string> = {};
+    if (agentIds.length > 0) {
+      const { data: agentRows } = await supabase.from("agents").select("id, name").in("id", agentIds);
+      agentNames = Object.fromEntries((agentRows ?? []).map((a) => [a.id, a.name]));
+    }
+    const agentStatsMap: Record<string, { total: number; completed: number; durationSum: number }> = {};
+    for (const row of data) {
+      if (!row.agent_id) continue;
+      const bucket = agentStatsMap[row.agent_id] ?? { total: 0, completed: 0, durationSum: 0 };
+      bucket.total++;
+      if (row.status === "completed") {
+        bucket.completed++;
+        bucket.durationSum += Number(row.duration_seconds) || 0;
+      }
+      agentStatsMap[row.agent_id] = bucket;
+    }
+    const agentBreakdown = Object.entries(agentStatsMap)
+      .map(([agentId, s]) => ({
+        agent_id: agentId,
+        agent_name: agentNames[agentId] ?? "Unknown Agent",
+        total: s.total,
+        completed: s.completed,
+        pickupRate: s.total > 0 ? Math.round((s.completed / s.total) * 100) : 0,
+        avgDuration: s.completed > 0 ? Math.round(s.durationSum / s.completed) : 0,
+      }))
+      .sort((a, b) => b.total - a.total);
+
+    // ── Campaign-wise breakdown (one campaign_id per /api/queue bulk batch) ──
+    const campaignStatsMap: Record<string, { total: number; completed: number; firstSeen: string }> = {};
+    for (const row of data) {
+      if (!row.campaign_id) continue;
+      const bucket = campaignStatsMap[row.campaign_id] ?? { total: 0, completed: 0, firstSeen: row.created_at };
+      bucket.total++;
+      if (row.status === "completed") bucket.completed++;
+      if (row.created_at < bucket.firstSeen) bucket.firstSeen = row.created_at;
+      campaignStatsMap[row.campaign_id] = bucket;
+    }
+    const campaignBreakdown = Object.entries(campaignStatsMap)
+      .map(([campaignId, s]) => ({
+        campaign_id: campaignId,
+        started_at: s.firstSeen,
+        total: s.total,
+        completed: s.completed,
+        pickupRate: s.total > 0 ? Math.round((s.completed / s.total) * 100) : 0,
+      }))
+      .sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime());
+
+    // ── Cost analytics (estimated from call minutes — set CALL_COST_PER_MINUTE to your real rate) ──
+    const periodMinutes = durations.reduce((sum, d) => sum + d, 0) / 60;
+    const costAnalytics = {
+      ratePerMinute: COST_PER_MINUTE,
+      totalCost: Math.round(periodMinutes * COST_PER_MINUTE * 100) / 100,
+      byAgent: agentBreakdown.map((a) => ({
+        agent_id: a.agent_id,
+        agent_name: a.agent_name,
+        cost: Math.round(((a.avgDuration * a.completed) / 60) * COST_PER_MINUTE * 100) / 100,
+      })),
+    };
+
     return NextResponse.json({
       success: true,
-      stats: { total, completed, noAnswer, ringing, avgDuration, outbound, inbound, pickupRate, minutesUsed },
+      stats: { total, completed, noAnswer, ringing, avgDuration, outbound, inbound, pickupRate, minutesUsed, conversionRate },
       daily,
       previousPeriod: { total: prevTotal, completed: prevCompleted, pickupRate: prevPickupRate },
+      dispositionBreakdown,
+      agentBreakdown,
+      campaignBreakdown,
+      costAnalytics,
     });
   } catch (error) {
     const message =
