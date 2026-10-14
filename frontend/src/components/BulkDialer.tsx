@@ -470,7 +470,7 @@ export default function BulkDialer() {
       {/* Upload Contact File */}
       <div>
         <div className="flex items-center justify-between">
-          <label htmlFor="bulk-file" className="mb-0">Upload Contacts (optional)</label>
+          <label htmlFor="bulk-file" className="mb-0">Upload Contact (optional)</label>
           {fileName && (
             <button
               onClick={resetFileState}
