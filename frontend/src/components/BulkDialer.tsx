@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { substituteVariables, type PromptVariable } from "@/lib/promptVariables";
 import {
   parseContactWorkbook,
@@ -64,8 +64,38 @@ export default function BulkDialer() {
   const [showColumnPicker, setShowColumnPicker] = useState(false);
   const [fileError, setFileError] = useState("");
   const [parsedPreview, setParsedPreview] = useState<ExtractResult | null>(null);
+  const [sheetUrl, setSheetUrl] = useState("");
+  const [sheetLoading, setSheetLoading] = useState(false);
+  const [sheetError, setSheetError] = useState("");
+  const [autoCallEnabled, setAutoCallEnabled] = useState(false);
+  const [autoCallStatus, setAutoCallStatus] = useState("");
 
   const selectedAgent = agents.find((a) => a.id === selectedAgentId) ?? null;
+
+  // Latest-value refs so the 1-minute polling interval always uses current settings without resetting
+  const calledNumbersRef = useRef<Set<string>>(new Set());
+  const autoCallIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const sheetUrlRef = useRef(sheetUrl);
+  const contextRef = useRef(context);
+  const firstMessageRef = useRef(firstMessage);
+  const selectedAgentRef = useRef(selectedAgent);
+  const temperatureRef = useRef(temperature);
+  const variableValuesRef = useRef(variableValues);
+
+  useEffect(() => {
+    sheetUrlRef.current = sheetUrl;
+    contextRef.current = context;
+    firstMessageRef.current = firstMessage;
+    selectedAgentRef.current = selectedAgent;
+    temperatureRef.current = temperature;
+    variableValuesRef.current = variableValues;
+  });
+
+  useEffect(() => {
+    return () => {
+      if (autoCallIntervalRef.current) clearInterval(autoCallIntervalRef.current);
+    };
+  }, []);
 
   const fetchAgents = useCallback(async () => {
     try {
@@ -214,6 +244,140 @@ export default function BulkDialer() {
     resetFileState();
   };
 
+  const handleSheetImport = async () => {
+    const url = sheetUrl.trim();
+    if (!url) return;
+
+    setSheetError("");
+    setSheetLoading(true);
+    resetFileState();
+
+    try {
+      const res = await fetch("/api/sheets/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sheet_url: url }),
+      });
+      const data = await res.json();
+
+      if (!data.success) {
+        setSheetError(data.error || "Could not import this sheet");
+        return;
+      }
+
+      setFileName("Google Sheet");
+      setFileHeaders(data.headers);
+      setFileRows(data.rows);
+
+      const detected = detectPhoneColumnIndex(data.headers);
+      if (detected !== null) {
+        applyColumn(detected, data.rows);
+      } else {
+        setShowColumnPicker(true);
+      }
+    } catch {
+      setSheetError("Network error — could not reach the server");
+    } finally {
+      setSheetLoading(false);
+    }
+  };
+
+  const dispatchToNumbers = useCallback(async (phoneList: string[]) => {
+    if (phoneList.length === 0) return;
+    const agent = selectedAgentRef.current;
+    const finalContext = agent ? substituteVariables(contextRef.current, variableValuesRef.current) : contextRef.current;
+    const finalFirstMessage = agent ? substituteVariables(firstMessageRef.current, variableValuesRef.current) : firstMessageRef.current;
+
+    try {
+      const res = await fetch("/api/queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone_numbers: phoneList,
+          prompt: finalContext.trim(),
+          agent_id: agent?.group_id,
+          tts_provider: agent?.voice_provider,
+          voice_id: agent?.voice_id,
+          model_provider: agent?.llm_provider,
+          language: agent?.language,
+          temperature: temperatureRef.current,
+          first_message: finalFirstMessage.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (Array.isArray(data.results)) {
+        setResults((prev) => [...data.results, ...prev]);
+      }
+    } catch {
+      setResults((prev) => [
+        ...phoneList.map((phone) => ({ phone, status: "failed" as const, error: "Network error — check server" })),
+        ...prev,
+      ]);
+    }
+  }, []);
+
+  const checkSheetForNewNumbers = useCallback(async () => {
+    const url = sheetUrlRef.current.trim();
+    if (!url) return;
+
+    try {
+      const res = await fetch("/api/sheets/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sheet_url: url }),
+      });
+      const data = await res.json();
+
+      if (!data.success) {
+        setAutoCallStatus(`Last check failed: ${data.error}`);
+        return;
+      }
+
+      const columnIndex = detectPhoneColumnIndex(data.headers);
+      if (columnIndex === null) {
+        setAutoCallStatus("Last check: couldn't detect a phone number column in the sheet");
+        return;
+      }
+
+      const extracted = extractPhoneNumbers(data.rows, columnIndex, calledNumbersRef.current);
+      const checkedAt = new Date().toLocaleTimeString();
+
+      if (extracted.valid.length > 0) {
+        extracted.valid.forEach((n) => calledNumbersRef.current.add(n));
+        setAutoCallStatus(`Calling ${extracted.valid.length} new number${extracted.valid.length !== 1 ? "s" : ""} found at ${checkedAt}`);
+        await dispatchToNumbers(extracted.valid);
+      } else {
+        setAutoCallStatus(`No new numbers found — last checked ${checkedAt}`);
+      }
+    } catch {
+      setAutoCallStatus("Last check failed: network error");
+    }
+  }, [dispatchToNumbers]);
+
+  const handleToggleAutoCall = () => {
+    if (autoCallEnabled) {
+      if (autoCallIntervalRef.current) clearInterval(autoCallIntervalRef.current);
+      autoCallIntervalRef.current = null;
+      setAutoCallEnabled(false);
+      setAutoCallStatus("");
+      return;
+    }
+
+    if (!sheetUrl.trim()) {
+      setSheetError("Enter a Google Sheet link above to enable auto-calling");
+      return;
+    }
+
+    // Seed already-known numbers so the first check doesn't re-call people already in the list/results
+    existingNumbersNormalized().forEach((n) => calledNumbersRef.current.add(n));
+    results.forEach((r) => calledNumbersRef.current.add(r.phone));
+
+    setAutoCallEnabled(true);
+    setAutoCallStatus("Watching sheet — checking every 1 minute");
+    checkSheetForNewNumbers();
+    autoCallIntervalRef.current = setInterval(checkSheetForNewNumbers, 60_000);
+  };
+
   const handleLaunch = async () => {
     const parsed = numbers
       .split(/[\n,]+/)
@@ -328,53 +492,104 @@ export default function BulkDialer() {
         </p>
 
         {fileError && <p className="text-[11px] text-red-400 mt-1.5">{fileError}</p>}
+      </div>
 
-        {showColumnPicker && fileHeaders.length > 0 && (
-          <div className="mt-2">
-            <label htmlFor="bulk-column-picker">Which column has phone numbers?</label>
-            <select
-              id="bulk-column-picker"
-              defaultValue=""
-              onChange={(e) => applyColumn(parseInt(e.target.value, 10))}
-              className="!py-1.5 !text-xs w-full"
-            >
-              <option value="" disabled>Select a column...</option>
-              {fileHeaders.map((h, i) => (
-                <option key={i} value={i}>{h || `Column ${i + 1}`}</option>
-              ))}
-            </select>
-          </div>
-        )}
+      {/* Import from Google Sheet */}
+      <div>
+        <label htmlFor="bulk-sheet-url">Import from Google Sheet (optional)</label>
+        <div className="flex gap-2">
+          <input
+            id="bulk-sheet-url"
+            type="url"
+            placeholder="https://docs.google.com/spreadsheets/d/..."
+            value={sheetUrl}
+            onChange={(e) => setSheetUrl(e.target.value)}
+            className="!py-1.5 !text-xs flex-1"
+          />
+          <button
+            onClick={handleSheetImport}
+            disabled={sheetLoading || !sheetUrl.trim()}
+            className="px-3 py-1.5 rounded-lg text-[11px] font-semibold text-white bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+          >
+            {sheetLoading ? "Importing..." : "Import"}
+          </button>
+        </div>
+        <p className="text-[11px] text-[var(--color-text-muted)] mt-1.5">
+          Share the sheet as &quot;Anyone with the link can view&quot; — numbers are auto-detected from a column like &quot;Phone&quot; or &quot;Number&quot;
+        </p>
 
-        {parsedPreview && (
-          <div className="mt-2 space-y-2 px-3 py-2.5 rounded-lg bg-white/[0.04] text-xs">
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-green-400">{parsedPreview.valid.length} valid</span>
-              {parsedPreview.duplicateCount > 0 && (
-                <span className="text-amber-400">{parsedPreview.duplicateCount} duplicate{parsedPreview.duplicateCount !== 1 ? "s" : ""} skipped</span>
-              )}
-              {parsedPreview.invalid.length > 0 && (
-                <span className="text-red-400">{parsedPreview.invalid.length} invalid</span>
-              )}
-              <button
-                onClick={handleAddParsedNumbers}
-                disabled={parsedPreview.valid.length === 0}
-                className="ml-auto px-3 py-1 rounded-lg text-[10px] font-semibold text-white bg-green-600 hover:bg-green-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                Add {parsedPreview.valid.length} to Campaign
-              </button>
-            </div>
-            {parsedPreview.invalid.length > 0 && (
-              <details>
-                <summary className="text-red-400 cursor-pointer text-[11px]">Show invalid entries</summary>
-                <p className="text-[11px] text-[var(--color-text-muted)] font-mono mt-1 break-all">
-                  {parsedPreview.invalid.join(", ")}
-                </p>
-              </details>
-            )}
-          </div>
+        {sheetError && <p className="text-[11px] text-red-400 mt-1.5">{sheetError}</p>}
+
+        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-white/[0.06]">
+          <button
+            onClick={handleToggleAutoCall}
+            role="switch"
+            aria-checked={autoCallEnabled}
+            className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${
+              autoCallEnabled ? "bg-green-600" : "bg-white/[0.12]"
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                autoCallEnabled ? "translate-x-4" : ""
+              }`}
+            />
+          </button>
+          <span className="text-xs text-[var(--color-text-secondary)]">
+            Auto-call new numbers from this sheet every 1 minute
+          </span>
+        </div>
+        {autoCallStatus && (
+          <p className="text-[11px] text-[var(--color-text-muted)] mt-1.5">{autoCallStatus}</p>
         )}
       </div>
+
+      {/* Detected columns / preview — shared by file upload and Google Sheet import */}
+      {showColumnPicker && fileHeaders.length > 0 && (
+        <div>
+          <label htmlFor="bulk-column-picker">Which column has phone numbers?</label>
+          <select
+            id="bulk-column-picker"
+            defaultValue=""
+            onChange={(e) => applyColumn(parseInt(e.target.value, 10))}
+            className="!py-1.5 !text-xs w-full"
+          >
+            <option value="" disabled>Select a column...</option>
+            {fileHeaders.map((h, i) => (
+              <option key={i} value={i}>{h || `Column ${i + 1}`}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {parsedPreview && (
+        <div className="space-y-2 px-3 py-2.5 rounded-lg bg-white/[0.04] text-xs">
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-green-400">{parsedPreview.valid.length} valid</span>
+            {parsedPreview.duplicateCount > 0 && (
+              <span className="text-amber-400">{parsedPreview.duplicateCount} duplicate{parsedPreview.duplicateCount !== 1 ? "s" : ""} skipped</span>
+            )}
+            {parsedPreview.invalid.length > 0 && (
+              <span className="text-red-400">{parsedPreview.invalid.length} invalid</span>
+            )}
+            <button
+              onClick={handleAddParsedNumbers}
+              disabled={parsedPreview.valid.length === 0}
+              className="ml-auto px-3 py-1 rounded-lg text-[10px] font-semibold text-white bg-green-600 hover:bg-green-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              Add {parsedPreview.valid.length} to Campaign
+            </button>
+          </div>
+          {parsedPreview.invalid.length > 0 && (
+            <details>
+              <summary className="text-red-400 cursor-pointer text-[11px]">Show invalid entries</summary>
+              <p className="text-[11px] text-[var(--color-text-muted)] font-mono mt-1 break-all">
+                {parsedPreview.invalid.join(", ")}
+              </p>
+            </details>
+          )}
+        </div>
+      )}
 
       {/* Numbers */}
       <div>

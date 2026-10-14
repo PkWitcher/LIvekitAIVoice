@@ -8,9 +8,7 @@ export interface ParsedWorkbook {
 
 const PHONE_HEADER_PATTERN = /phone|mobile|contact|number|whatsapp/i;
 
-/** Read a spreadsheet/CSV file into a header row + data rows (first sheet only). */
-export function parseContactWorkbook(data: ArrayBuffer): ParsedWorkbook {
-  const workbook = XLSX.read(data, { type: "array" });
+function workbookToGrid(workbook: XLSX.WorkBook): ParsedWorkbook {
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const grid = XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1, raw: false, defval: "" });
   if (grid.length === 0) return { headers: [], rows: [] };
@@ -21,6 +19,16 @@ export function parseContactWorkbook(data: ArrayBuffer): ParsedWorkbook {
     .map((row) => row.map((cell) => String(cell ?? "").trim()))
     .filter((row) => row.some((cell) => cell.length > 0));
   return { headers, rows };
+}
+
+/** Read a spreadsheet/CSV file into a header row + data rows (first sheet only). */
+export function parseContactWorkbook(data: ArrayBuffer): ParsedWorkbook {
+  return workbookToGrid(XLSX.read(data, { type: "array" }));
+}
+
+/** Parse raw CSV text (e.g. fetched from a published Google Sheet) into a header row + data rows. */
+export function parseCsvText(csvText: string): ParsedWorkbook {
+  return workbookToGrid(XLSX.read(csvText, { type: "string" }));
 }
 
 /** Find a column whose header looks like a phone number column, if any. */
