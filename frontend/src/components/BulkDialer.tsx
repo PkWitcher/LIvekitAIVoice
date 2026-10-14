@@ -58,6 +58,9 @@ export default function BulkDialer() {
   const [firstMessage, setFirstMessage] = useState("");
   const [temperature, setTemperature] = useState<number | undefined>(undefined);
   const [variableValues, setVariableValues] = useState<Record<string, string>>({});
+  const [modelProvider, setModelProvider] = useState("openai");
+  const [voice, setVoice] = useState("4877b818-c7fe-4c89-b1cf-eadf8e23da72");
+  const [language, setLanguage] = useState("multi");
   const [fileName, setFileName] = useState("");
   const [fileHeaders, setFileHeaders] = useState<string[]>([]);
   const [fileRows, setFileRows] = useState<string[][]>([]);
@@ -81,6 +84,9 @@ export default function BulkDialer() {
   const selectedAgentRef = useRef(selectedAgent);
   const temperatureRef = useRef(temperature);
   const variableValuesRef = useRef(variableValues);
+  const modelProviderRef = useRef(modelProvider);
+  const voiceRef = useRef(voice);
+  const languageRef = useRef(language);
 
   useEffect(() => {
     sheetUrlRef.current = sheetUrl;
@@ -89,6 +95,9 @@ export default function BulkDialer() {
     selectedAgentRef.current = selectedAgent;
     temperatureRef.current = temperature;
     variableValuesRef.current = variableValues;
+    modelProviderRef.current = modelProvider;
+    voiceRef.current = voice;
+    languageRef.current = language;
   });
 
   useEffect(() => {
@@ -119,6 +128,9 @@ export default function BulkDialer() {
     setContext(agent.system_prompt);
     setFirstMessage(agent.first_message);
     setTemperature(agent.temperature);
+    setLanguage(agent.language);
+    setVoice(agent.voice_id);
+    setModelProvider(agent.llm_provider);
     const defaults: Record<string, string> = {};
     (agent.variables ?? []).forEach((v) => (defaults[v.name] = v.default_value || ""));
     setVariableValues(defaults);
@@ -297,9 +309,9 @@ export default function BulkDialer() {
           prompt: finalContext.trim(),
           agent_id: agent?.group_id,
           tts_provider: agent?.voice_provider,
-          voice_id: agent?.voice_id,
-          model_provider: agent?.llm_provider,
-          language: agent?.language,
+          voice_id: agent?.voice_id ?? voiceRef.current,
+          model_provider: agent?.llm_provider ?? modelProviderRef.current,
+          language: agent?.language ?? languageRef.current,
           temperature: temperatureRef.current,
           first_message: finalFirstMessage.trim(),
         }),
@@ -400,9 +412,9 @@ export default function BulkDialer() {
           prompt: finalContext.trim(),
           agent_id: selectedAgent?.group_id,
           tts_provider: selectedAgent?.voice_provider,
-          voice_id: selectedAgent?.voice_id,
-          model_provider: selectedAgent?.llm_provider,
-          language: selectedAgent?.language,
+          voice_id: selectedAgent?.voice_id ?? voice,
+          model_provider: selectedAgent?.llm_provider ?? modelProvider,
+          language: selectedAgent?.language ?? language,
           temperature,
           first_message: finalFirstMessage.trim(),
         }),
@@ -793,6 +805,57 @@ export default function BulkDialer() {
           value={context}
           onChange={(e) => setContext(e.target.value)}
         />
+      </div>
+
+      {/* Language + Voice */}
+      <div>
+        <label htmlFor="bulk-language">Language</label>
+        <select
+          id="bulk-language"
+          value={language}
+          onChange={(e) => setLanguage(e.target.value)}
+        >
+          <option value="multi">Auto-Detect (Multilingual)</option>
+          <option value="hi">Hindi</option>
+          <option value="en">English</option>
+          <option value="ta">Tamil</option>
+          <option value="te">Telugu</option>
+          <option value="bn">Bengali</option>
+          <option value="mr">Marathi</option>
+          <option value="gu">Gujarati</option>
+          <option value="kn">Kannada</option>
+          <option value="ml">Malayalam</option>
+          <option value="pa">Punjabi</option>
+        </select>
+      </div>
+
+      <div>
+        <label htmlFor="bulk-voice">Voice</label>
+        <select
+          id="bulk-voice"
+          value={voice}
+          onChange={(e) => setVoice(e.target.value)}
+        >
+          <optgroup label="Cartesia Indian (Hindi/English — Recommended)">
+            <option value="4877b818-c7fe-4c89-b1cf-eadf8e23da72">Rohan — Hindi Male (Default)</option>
+            <option value="0f14d8cb-f039-41fe-a813-a9b4bee7eed8">Hindi Female</option>
+          </optgroup>
+          <optgroup label="OpenAI (Multilingual)">
+            <option value="shimmer">Shimmer — Female</option>
+            <option value="nova">Nova — Female</option>
+            <option value="alloy">Alloy — Neutral</option>
+            <option value="echo">Echo — Male</option>
+            <option value="onyx">Onyx — Male</option>
+          </optgroup>
+          <optgroup label="Deepgram (English Only)">
+            <option value="aura-asteria-en">Asteria — Female</option>
+            <option value="aura-orion-en">Orion — Male</option>
+          </optgroup>
+          <optgroup label="ElevenLabs">
+            <option value="RABOvaPec1ymXz02oDQi">Indian Voice 1</option>
+            <option value="czQ9pLzjRaF61EAYjcPC">Indian Voice 2</option>
+          </optgroup>
+        </select>
       </div>
 
       {/* Submit */}
