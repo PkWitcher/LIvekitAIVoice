@@ -373,7 +373,7 @@ export default function BulkDialer() {
     results.forEach((r) => calledNumbersRef.current.add(r.phone));
 
     setAutoCallEnabled(true);
-    setAutoCallStatus("Watching sheet — checking every 1 minute");
+    setAutoCallStatus("Checking sheet now...");
     checkSheetForNewNumbers();
     autoCallIntervalRef.current = setInterval(checkSheetForNewNumbers, 60_000);
   };
@@ -520,17 +520,22 @@ export default function BulkDialer() {
 
         {sheetError && <p className="text-[11px] text-red-400 mt-1.5">{sheetError}</p>}
 
-        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-white/[0.06]">
+        <div
+          className="flex items-center gap-2 mt-3 pt-3 border-t"
+          style={{ borderColor: "var(--color-border)" }}
+        >
           <button
             onClick={handleToggleAutoCall}
             role="switch"
             aria-checked={autoCallEnabled}
-            className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${
-              autoCallEnabled ? "bg-green-600" : "bg-white/[0.12]"
-            }`}
+            className="relative w-9 h-5 rounded-full transition-colors shrink-0 border"
+            style={{
+              background: autoCallEnabled ? "#16a34a" : "var(--color-bg-input)",
+              borderColor: autoCallEnabled ? "#16a34a" : "var(--color-border)",
+            }}
           >
             <span
-              className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+              className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
                 autoCallEnabled ? "translate-x-4" : ""
               }`}
             />
@@ -539,6 +544,10 @@ export default function BulkDialer() {
             Auto-call new numbers from this sheet every 1 minute
           </span>
         </div>
+        <p className="text-[11px] text-[var(--color-text-muted)] mt-1.5">
+          No need to click Import — just paste the link above and turn this on. It checks the sheet
+          right away, then again every 1 minute, and calls any new numbers it finds automatically.
+        </p>
         {autoCallStatus && (
           <p className="text-[11px] text-[var(--color-text-muted)] mt-1.5">{autoCallStatus}</p>
         )}
