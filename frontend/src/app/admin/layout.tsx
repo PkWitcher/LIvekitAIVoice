@@ -1,3 +1,5 @@
+import AutoLogoutModal from "@/components/AutoLogoutModal";
+
 export const dynamic = 'force-dynamic';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -9,6 +11,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="admin-orb admin-orb-2" />
         <div className="admin-orb admin-orb-3" />
       </div>
+      <AutoLogoutModal />
       {children}
     </div>
   );

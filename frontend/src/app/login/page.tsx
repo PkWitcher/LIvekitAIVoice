@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase-browser";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
+import { markSessionStart } from "@/lib/sessionTimeout";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -53,6 +54,7 @@ export default function LoginPage() {
       if (error) {
         setError(error.message);
       } else {
+        markSessionStart();
         router.push("/dashboard");
         router.refresh();
       }

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase-browser";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
+import { markSessionStart } from "@/lib/sessionTimeout";
 
 const ADMIN_EMAIL = "Admin@gmail.com";
 
@@ -36,6 +37,7 @@ export default function AdminLoginPage() {
     if (error) {
       setError(error.message);
     } else {
+      markSessionStart();
       router.push("/admin");
       router.refresh();
     }

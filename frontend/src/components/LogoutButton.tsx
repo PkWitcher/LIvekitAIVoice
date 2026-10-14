@@ -2,12 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
+import { clearSessionStart } from "@/lib/sessionTimeout";
 
 export default function LogoutButton() {
   const router = useRouter();
   const supabase = createClient();
 
   const handleLogout = async () => {
+    clearSessionStart();
     await supabase.auth.signOut();
     router.push("/login");
     router.refresh();
