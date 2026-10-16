@@ -722,6 +722,11 @@ IMPORTANT RULES:
     track_ok = await wait_for_track_ready(participant)
     if not track_ok:
         logger.warning("Audio track not detected after 10s — greeting anyway")
+    else:
+        # Live audio is the earliest reliable proof the callee answered — mark connected
+        # now instead of waiting on STT to transcribe speech, which can lag past call end
+        # under CPU load (e.g. concurrent bulk calls) and wrongly leave status as "ringing".
+        await mark_call_connected(room_name_for_transcript)
 
     # Small stabilization buffer after track subscription
     await asyncio.sleep(0.3)
