@@ -7,7 +7,9 @@ import { createServerSupabase } from "@/lib/supabase-server";
 const LIVEKIT_URL = process.env.LIVEKIT_URL ?? "http://localhost:7880";
 const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY ?? "";
 const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET ?? "";
-const DIAL_DELAY_MS = 200;
+// Spaced out so concurrent pipeline cold-starts (STT/LLM/TTS) don't all hit the backend's
+// CPU at once — Render's limited vCPU can starve simultaneous calls (see repo notes).
+const DIAL_DELAY_MS = 5000;
 
 function getLivekitWsUrl(url: string): string {
   if (url.startsWith("wss://") || url.startsWith("ws://")) return url;
