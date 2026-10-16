@@ -759,6 +759,10 @@ if __name__ == "__main__":
         WorkerOptions(
             entrypoint_fnc=entrypoint,
             prewarm_fnc=prewarm,
-            num_idle_processes=1,
+            # 0 = no background idle-process prewarm. With >=1, consuming the idle slot for a
+            # call immediately spins up a replacement process (loads torch + Silero VAD) in the
+            # background, which competes for CPU with the live call's STT/LLM/TTS pipeline and
+            # can silently starve it (AI never speaks) — especially with 2+ concurrent calls.
+            num_idle_processes=0,
         ),
     )
