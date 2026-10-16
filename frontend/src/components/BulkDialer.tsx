@@ -332,6 +332,8 @@ export default function BulkDialer() {
     const url = sheetUrlRef.current.trim();
     if (!url) return;
 
+    // Reuse the Import button's loading state so the user sees feedback on every auto-check too
+    setSheetLoading(true);
     try {
       const res = await fetch("/api/sheets/import", {
         method: "POST",
@@ -363,6 +365,8 @@ export default function BulkDialer() {
       }
     } catch {
       setAutoCallStatus("Last check failed: network error");
+    } finally {
+      setSheetLoading(false);
     }
   }, [dispatchToNumbers]);
 

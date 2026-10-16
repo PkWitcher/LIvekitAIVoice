@@ -173,7 +173,7 @@ export async function POST(request: NextRequest) {
           user_id: user.id,
           phone_number: phone,
           direction: "outbound",
-          status: "initiated",
+          status: "ringing",
           room_name: roomName,
           model_provider: body.model_provider ?? "groq",
           voice_id: body.voice_id ?? "aura-asteria-en",
