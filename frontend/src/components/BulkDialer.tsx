@@ -201,7 +201,13 @@ export default function BulkDialer() {
 
   const applyColumn = (columnIndex: number, rows: string[][] = fileRows) => {
     setShowColumnPicker(false);
-    setParsedPreview(extractPhoneNumbers(rows, columnIndex, existingNumbersNormalized()));
+    const result = extractPhoneNumbers(rows, columnIndex, existingNumbersNormalized());
+    setParsedPreview(result);
+    // Auto-add — no extra click needed to get imported numbers into the dial list
+    if (result.valid.length > 0) {
+      const existingList = numbers.split(/[\n,]+/).map((n) => n.trim()).filter(Boolean);
+      setNumbers([...existingList, ...result.valid].join("\n"));
+    }
   };
 
   const resetFileState = () => {
@@ -247,13 +253,6 @@ export default function BulkDialer() {
     } catch {
       setFileError("Could not read this file — make sure it's a valid CSV/Excel file");
     }
-  };
-
-  const handleAddParsedNumbers = () => {
-    if (!parsedPreview || parsedPreview.valid.length === 0) return;
-    const existingList = numbers.split(/[\n,]+/).map((n) => n.trim()).filter(Boolean);
-    setNumbers([...existingList, ...parsedPreview.valid].join("\n"));
-    resetFileState();
   };
 
   const handleSheetImport = async () => {
@@ -598,11 +597,10 @@ export default function BulkDialer() {
               <span className="text-red-400">{parsedPreview.invalid.length} invalid</span>
             )}
             <button
-              onClick={handleAddParsedNumbers}
-              disabled={parsedPreview.valid.length === 0}
-              className="ml-auto px-3 py-1 rounded-lg text-[10px] font-semibold text-white bg-green-600 hover:bg-green-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              onClick={resetFileState}
+              className="ml-auto px-3 py-1 rounded-lg text-[10px] font-semibold text-white bg-green-600 hover:bg-green-500 transition-colors"
             >
-              Add {parsedPreview.valid.length} to Campaign
+              Added to list — Dismiss
             </button>
           </div>
           {parsedPreview.invalid.length > 0 && (
