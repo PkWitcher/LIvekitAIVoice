@@ -112,12 +112,22 @@ interface UserSubscription {
   minutes_used: number;
 }
 
+// Default global date filter — current month to date, shown as pre-selected on load
+function getCurrentMonthRange(): { from: string; to: string } {
+  const now = new Date();
+  const toIso = (d: Date) => d.toISOString().split("T")[0];
+  return {
+    from: toIso(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))),
+    to: toIso(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))),
+  };
+}
+
 export default function DashboardPage() {
   const [activeNav, setActiveNav] = useState<string>('dashboard');
   const [stats, setStats] = useState<Stats | null>(null);
   const [daily, setDaily] = useState<DailyData[]>([]);
   const [chartPeriod, setChartPeriod] = useState<ChartPeriod>("7d");
-  const [customRange, setCustomRange] = useState<{ from: string; to: string } | null>(null);
+  const [customRange, setCustomRange] = useState<{ from: string; to: string } | null>(getCurrentMonthRange);
   const [chartLoading, setChartLoading] = useState(false);
   const [previousPeriod, setPreviousPeriod] = useState<PreviousPeriod>({ total: 0, completed: 0, pickupRate: 0 });
   const [calls, setCalls] = useState<CallLog[]>([]);
