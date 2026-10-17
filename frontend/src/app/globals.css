@@ -4470,6 +4470,8 @@ input[type="range"]::-moz-range-thumb {
 .live-transcript-messages {
   flex: 1;
   overflow-y: auto;
+  /* Caps visible messages to roughly 5 before scrolling, instead of filling the whole sidebar */
+  max-height: 480px;
   padding: 1rem 1.25rem;
   display: flex;
   flex-direction: column;
