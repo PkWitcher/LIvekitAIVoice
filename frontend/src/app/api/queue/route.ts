@@ -19,7 +19,8 @@ function getLivekitWsUrl(url: string): string {
 }
 
 interface QueueBody {
-  phone_numbers: string[];
+  phone_numbers?: string[];
+  contacts?: { phone: string; prompt?: string; first_message?: string }[];
   prompt?: string;
   model_provider?: string;
   voice_id?: string;
@@ -67,26 +68,38 @@ export async function POST(request: NextRequest) {
 
     const body = (await request.json()) as QueueBody;
 
-    if (
-      !Array.isArray(body.phone_numbers) ||
-      body.phone_numbers.length === 0
-    ) {
+    // `contacts` (per-contact prompt/first_message, e.g. personalized {{name}}) takes priority;
+    // falls back to the older flat phone_numbers + one shared prompt for compatibility.
+    const normalizedContacts: { phone: string; prompt: string; first_message: string }[] =
+      Array.isArray(body.contacts) && body.contacts.length > 0
+        ? body.contacts.map((c) => ({
+            phone: c.phone,
+            prompt: c.prompt ?? body.prompt ?? "",
+            first_message: c.first_message ?? body.first_message ?? "",
+          }))
+        : (body.phone_numbers ?? []).map((phone) => ({
+            phone,
+            prompt: body.prompt ?? "",
+            first_message: body.first_message ?? "",
+          }));
+
+    if (normalizedContacts.length === 0) {
       return NextResponse.json(
-        { success: false, error: "phone_numbers array is required" },
+        { success: false, error: "contacts or phone_numbers array is required" },
         { status: 400 }
       );
     }
 
     // Check if user has enough calls remaining
     const remainingCalls = subscription.max_calls_per_month - subscription.calls_used;
-    if (body.phone_numbers.length > remainingCalls) {
+    if (normalizedContacts.length > remainingCalls) {
       return NextResponse.json(
         { success: false, error: `Only ${remainingCalls} calls remaining this month. Reduce numbers or upgrade plan.` },
         { status: 403 }
       );
     }
 
-    if (body.phone_numbers.length > 100) {
+    if (normalizedContacts.length > 100) {
       return NextResponse.json(
         { success: false, error: "Maximum 100 numbers per batch" },
         { status: 400 }
@@ -116,8 +129,8 @@ export async function POST(request: NextRequest) {
     const campaignId = randomUUID();
     const results: DialResult[] = [];
 
-    for (const raw of body.phone_numbers) {
-      let phone = raw.trim();
+    for (const contact of normalizedContacts) {
+      let phone = contact.phone.trim();
 
       if (!/^\+?\d{7,15}$/.test(phone)) {
         results.push({
@@ -140,13 +153,13 @@ export async function POST(request: NextRequest) {
 
         const metadata = JSON.stringify({
           phone_number: phone,
-          prompt: body.prompt ?? "",
+          prompt: contact.prompt,
           model_provider: body.model_provider ?? "openai",
           voice_id: body.voice_id ?? "aura-asteria-en",
           language: body.language ?? "multi",
           tts_provider: body.tts_provider,
           temperature: body.temperature,
-          first_message: body.first_message ?? "",
+          first_message: contact.first_message,
           agent_id: body.agent_id,
         });
 
@@ -180,7 +193,7 @@ export async function POST(request: NextRequest) {
           room_name: roomName,
           model_provider: body.model_provider ?? "groq",
           voice_id: body.voice_id ?? "aura-asteria-en",
-          prompt: body.prompt || null,
+          prompt: contact.prompt || null,
           agent_id: body.agent_id || null,
           campaign_id: campaignId,
           sheet_url: body.sheet_url || null,
@@ -204,8 +217,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Auto-save prompt to user's saved_prompts if not already saved
-    if (body.prompt && body.prompt.trim().length > 10 && dispatched > 0) {
-      const promptText = body.prompt.trim();
+    const promptToSave = body.prompt ?? normalizedContacts[0]?.prompt ?? "";
+    if (promptToSave.trim().length > 10 && dispatched > 0) {
+      const promptText = promptToSave.trim();
       const { data: existing } = await supabase
         ?.from("saved_prompts")
         .select("id")

@@ -7,6 +7,7 @@ export interface ParsedWorkbook {
 }
 
 const PHONE_HEADER_PATTERN = /phone|mobile|contact|number|whatsapp/i;
+const NAME_HEADER_PATTERN = /\bname\b/i;
 
 function workbookToGrid(workbook: XLSX.WorkBook): ParsedWorkbook {
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -37,6 +38,12 @@ export function detectPhoneColumnIndex(headers: string[]): number | null {
   return idx >= 0 ? idx : null;
 }
 
+/** Find a column whose header looks like a contact-name column, if any. */
+export function detectNameColumnIndex(headers: string[]): number | null {
+  const idx = headers.findIndex((h) => NAME_HEADER_PATTERN.test(h) && !PHONE_HEADER_PATTERN.test(h));
+  return idx >= 0 ? idx : null;
+}
+
 /** Normalize a raw cell value into a dialable phone number, or null if invalid. */
 export function normalizePhoneNumber(raw: string): string | null {
   let phone = raw.trim().replace(/[\s\-().]/g, "");
@@ -54,17 +61,21 @@ export interface ExtractResult {
   valid: string[];
   invalid: string[];
   duplicateCount: number;
+  /** phone -> contact name, only populated when nameColumnIndex is provided and found */
+  names: Record<string, string>;
 }
 
-/** Extract, validate, and dedupe phone numbers from a chosen column. `existing` numbers (e.g. already in the manual textarea) are treated as duplicates too. */
+/** Extract, validate, and dedupe phone numbers from a chosen column. `existing` numbers (e.g. already in the manual textarea) are treated as duplicates too. Optionally also pulls a per-row contact name for personalizing {{name}} per call. */
 export function extractPhoneNumbers(
   rows: string[][],
   columnIndex: number,
-  existing: Iterable<string> = []
+  existing: Iterable<string> = [],
+  nameColumnIndex: number | null = null
 ): ExtractResult {
   const seen = new Set(existing);
   const valid: string[] = [];
   const invalid: string[] = [];
+  const names: Record<string, string> = {};
   let duplicateCount = 0;
 
   for (const row of rows) {
@@ -81,7 +92,11 @@ export function extractPhoneNumbers(
     }
     seen.add(normalized);
     valid.push(normalized);
+    if (nameColumnIndex !== null) {
+      const name = (row[nameColumnIndex] ?? "").trim();
+      if (name) names[normalized] = name;
+    }
   }
 
-  return { valid, invalid, duplicateCount };
+  return { valid, invalid, duplicateCount, names };
 }

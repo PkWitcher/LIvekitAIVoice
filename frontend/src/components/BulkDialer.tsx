@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { substituteVariables, type PromptVariable } from "@/lib/promptVariables";
+import { substituteVariables, extractVariableNames, type PromptVariable } from "@/lib/promptVariables";
 import {
   parseContactWorkbook,
   detectPhoneColumnIndex,
+  detectNameColumnIndex,
   extractPhoneNumbers,
   normalizePhoneNumber,
   type ExtractResult,
@@ -74,6 +75,7 @@ export default function BulkDialer() {
   const [showColumnPicker, setShowColumnPicker] = useState(false);
   const [fileError, setFileError] = useState("");
   const [parsedPreview, setParsedPreview] = useState<ExtractResult | null>(null);
+  const [contactNames, setContactNames] = useState<Record<string, string>>({});
   const [sheetUrl, setSheetUrl] = useState("");
   const [sheetLoading, setSheetLoading] = useState(false);
   const [sheetError, setSheetError] = useState("");
@@ -99,6 +101,7 @@ export default function BulkDialer() {
   const modelProviderRef = useRef(modelProvider);
   const voiceRef = useRef(voice);
   const languageRef = useRef(language);
+  const contactNamesRef = useRef(contactNames);
 
   useEffect(() => {
     sheetUrlRef.current = sheetUrl;
@@ -110,6 +113,7 @@ export default function BulkDialer() {
     modelProviderRef.current = modelProvider;
     voiceRef.current = voice;
     languageRef.current = language;
+    contactNamesRef.current = contactNames;
   });
 
   useEffect(() => {
@@ -248,10 +252,14 @@ export default function BulkDialer() {
       .filter(Boolean)
       .map((n) => normalizePhoneNumber(n) ?? n);
 
-  const applyColumn = (columnIndex: number, rows: string[][] = fileRows) => {
+  const applyColumn = (columnIndex: number, rows: string[][] = fileRows, headers: string[] = fileHeaders) => {
     setShowColumnPicker(false);
-    const result = extractPhoneNumbers(rows, columnIndex, existingNumbersNormalized());
+    const nameColumnIndex = detectNameColumnIndex(headers);
+    const result = extractPhoneNumbers(rows, columnIndex, existingNumbersNormalized(), nameColumnIndex);
     setParsedPreview(result);
+    if (Object.keys(result.names).length > 0) {
+      setContactNames((prev) => ({ ...prev, ...result.names }));
+    }
     // Auto-add — no extra click needed to get imported numbers into the dial list
     if (result.valid.length > 0) {
       const existingList = numbers.split(/[\n,]+/).map((n) => n.trim()).filter(Boolean);
@@ -295,7 +303,7 @@ export default function BulkDialer() {
 
       const detected = detectPhoneColumnIndex(headers);
       if (detected !== null) {
-        applyColumn(detected, rows);
+        applyColumn(detected, rows, headers);
       } else {
         setShowColumnPicker(true);
       }
@@ -331,7 +339,7 @@ export default function BulkDialer() {
 
       const detected = detectPhoneColumnIndex(data.headers);
       if (detected !== null) {
-        applyColumn(detected, data.rows);
+        applyColumn(detected, data.rows, data.headers);
       } else {
         setShowColumnPicker(true);
       }
@@ -345,23 +353,28 @@ export default function BulkDialer() {
   const dispatchToNumbers = useCallback(async (phoneList: string[]) => {
     if (phoneList.length === 0) return;
     const agent = selectedAgentRef.current;
-    const finalContext = agent ? substituteVariables(contextRef.current, variableValuesRef.current) : contextRef.current;
-    const finalFirstMessage = agent ? substituteVariables(firstMessageRef.current, variableValuesRef.current) : firstMessageRef.current;
+    const baseValues = variableValuesRef.current;
+    const contacts = phoneList.map((phone) => {
+      const values = contactNamesRef.current[phone] ? { ...baseValues, name: contactNamesRef.current[phone] } : baseValues;
+      return {
+        phone,
+        prompt: substituteVariables(contextRef.current, values).trim(),
+        first_message: substituteVariables(firstMessageRef.current, values).trim(),
+      };
+    });
 
     try {
       const res = await fetch("/api/queue", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          phone_numbers: phoneList,
-          prompt: finalContext.trim(),
+          contacts,
           agent_id: agent?.group_id,
           tts_provider: agent?.voice_provider,
           voice_id: agent?.voice_id ?? voiceRef.current,
           model_provider: agent?.llm_provider ?? modelProviderRef.current,
           language: agent?.language ?? languageRef.current,
           temperature: temperatureRef.current,
-          first_message: finalFirstMessage.trim(),
           sheet_url: sheetUrlRef.current.trim() || undefined,
         }),
       });
@@ -402,11 +415,16 @@ export default function BulkDialer() {
         return;
       }
 
-      const extracted = extractPhoneNumbers(data.rows, columnIndex, calledNumbersRef.current);
+      const nameColumnIndex = detectNameColumnIndex(data.headers);
+      const extracted = extractPhoneNumbers(data.rows, columnIndex, calledNumbersRef.current, nameColumnIndex);
       const checkedAt = new Date().toLocaleTimeString();
 
       if (extracted.valid.length > 0) {
         extracted.valid.forEach((n) => calledNumbersRef.current.add(n));
+        if (Object.keys(extracted.names).length > 0) {
+          setContactNames((prev) => ({ ...prev, ...extracted.names }));
+          contactNamesRef.current = { ...contactNamesRef.current, ...extracted.names };
+        }
         setAutoCallStatus(`Calling ${extracted.valid.length} new number${extracted.valid.length !== 1 ? "s" : ""} found at ${checkedAt}`);
         await dispatchToNumbers(extracted.valid);
       } else {
@@ -453,23 +471,30 @@ export default function BulkDialer() {
     setLoading(true);
     setResults([]);
 
-    const finalContext = selectedAgent ? substituteVariables(context, variableValues) : context;
-    const finalFirstMessage = selectedAgent ? substituteVariables(firstMessage, variableValues) : firstMessage;
+    // Per-contact substitution — {{name}} is overridden with the sheet's own value per phone
+    // number when available, so one campaign can personalize each call instead of reusing
+    // a single shared name for everyone.
+    const contacts = parsed.map((phone) => {
+      const values = contactNames[phone] ? { ...variableValues, name: contactNames[phone] } : variableValues;
+      return {
+        phone,
+        prompt: substituteVariables(context, values).trim(),
+        first_message: substituteVariables(firstMessage, values).trim(),
+      };
+    });
 
     try {
       const res = await fetch("/api/queue", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          phone_numbers: parsed,
-          prompt: finalContext.trim(),
+          contacts,
           agent_id: selectedAgent?.group_id,
           tts_provider: selectedAgent?.voice_provider,
           voice_id: selectedAgent?.voice_id ?? voice,
           model_provider: selectedAgent?.llm_provider ?? modelProvider,
           language: selectedAgent?.language ?? language,
           temperature,
-          first_message: finalFirstMessage.trim(),
           sheet_url: sheetUrl.trim() || undefined,
         }),
       });
@@ -940,6 +965,29 @@ export default function BulkDialer() {
           value={context}
           onChange={(e) => setContext(e.target.value)}
         />
+
+        {!selectedAgent && extractVariableNames(context).length > 0 && (
+          <div className="mt-2 space-y-2">
+            <p className="text-[11px] text-[var(--color-text-muted)]">
+              Fill in a value for each variable used in your script. <code>{"{{name}}"}</code> is
+              auto-filled per contact from your imported sheet/file when available.
+            </p>
+            {extractVariableNames(context).map((name) => (
+              <div key={name} className="flex items-center gap-2">
+                <span className="text-[11px] font-mono px-2 py-1.5 rounded-lg bg-white/[0.04] text-purple-300 whitespace-nowrap">
+                  {"{{" + name + "}}"}
+                </span>
+                <input
+                  type="text"
+                  placeholder={name === "name" ? "Fallback if no per-contact name found" : "Value for this campaign"}
+                  value={variableValues[name] ?? ""}
+                  onChange={(e) => setVariableValues((prev) => ({ ...prev, [name]: e.target.value }))}
+                  className="!py-1.5 !text-xs flex-1"
+                />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Language + Voice */}
