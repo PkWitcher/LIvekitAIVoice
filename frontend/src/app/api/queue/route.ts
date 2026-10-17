@@ -28,6 +28,7 @@ interface QueueBody {
   tts_provider?: string;
   temperature?: number;
   first_message?: string;
+  sheet_url?: string;
 }
 
 interface DialResult {
@@ -182,6 +183,7 @@ export async function POST(request: NextRequest) {
           prompt: body.prompt || null,
           agent_id: body.agent_id || null,
           campaign_id: campaignId,
+          sheet_url: body.sheet_url || null,
         }).then();
       } catch (error) {
         const message =

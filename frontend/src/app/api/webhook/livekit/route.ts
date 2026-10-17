@@ -8,6 +8,7 @@ import {
 import { getSupabase } from "@/lib/supabase";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { classifyDisposition } from "@/lib/callDisposition";
+import { writeCallResultToSheet } from "@/lib/googleSheetsWrite";
 import { deliverWebhooks } from "@/lib/webhookDelivery";
 
 const LIVEKIT_URL = process.env.LIVEKIT_URL ?? "http://localhost:7880";
@@ -287,8 +288,28 @@ async function classifyAndStoreDisposition(roomName: string): Promise<void> {
     if (result) {
       await supabase
         .from("phone_logs")
-        .update({ disposition: result.disposition, ai_summary: result.summary })
+        .update({
+          disposition: result.disposition,
+          ai_summary: result.summary,
+          interested: result.interested,
+          appointment_date: result.appointmentDate || null,
+        })
         .eq("room_name", roomName);
+
+      // Write the outcome back into the originating Google Sheet, if this call came from one
+      const { data: log } = await supabase
+        .from("phone_logs")
+        .select("phone_number, sheet_url")
+        .eq("room_name", roomName)
+        .single();
+      if (log?.sheet_url) {
+        await writeCallResultToSheet(log.sheet_url, log.phone_number, {
+          interested: result.interested,
+          appointmentDate: result.appointmentDate,
+          summary: result.summary,
+          disposition: result.disposition,
+        });
+      }
     }
   } catch (err) {
     console.warn("[WEBHOOK] Disposition classification failed:", err);

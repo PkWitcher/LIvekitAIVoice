@@ -313,6 +313,7 @@ export default function BulkDialer() {
           language: agent?.language ?? languageRef.current,
           temperature: temperatureRef.current,
           first_message: finalFirstMessage.trim(),
+          sheet_url: sheetUrlRef.current.trim() || undefined,
         }),
       });
       const data = await res.json();
@@ -420,6 +421,7 @@ export default function BulkDialer() {
           language: selectedAgent?.language ?? language,
           temperature,
           first_message: finalFirstMessage.trim(),
+          sheet_url: sheetUrl.trim() || undefined,
         }),
       });
 

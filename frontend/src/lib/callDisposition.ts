@@ -22,6 +22,8 @@ export const POSITIVE_DISPOSITIONS: readonly string[] = ["Interested", "Booked",
 export interface DispositionResult {
   disposition: string;
   summary: string;
+  interested: "Yes" | "No" | "Unclear";
+  appointmentDate: string;
 }
 
 /** Classify a call transcript into a fixed disposition + one-line summary via OpenAI. */
@@ -44,7 +46,8 @@ export async function classifyDisposition(transcript: string): Promise<Dispositi
             role: "system",
             content:
               `Classify the outcome of this phone call transcript into exactly one of: ${DISPOSITIONS.join(", ")}. ` +
-              `Respond with JSON only: {"disposition": "<one of the categories>", "summary": "<one short sentence summarizing the call>"}.`,
+              `Also determine whether the caller expressed interest, and extract any appointment/demo/callback date or time they agreed to (in their own words, e.g. "tomorrow evening" or "Oct 20, 3pm") — empty string if none was discussed. ` +
+              `Respond with JSON only: {"disposition": "<one of the categories>", "summary": "<one short sentence summarizing the call>", "interested": "Yes" | "No" | "Unclear", "appointment_date": "<text or empty string>"}.`,
           },
           { role: "user", content: transcript.slice(0, 6000) },
         ],
@@ -58,7 +61,13 @@ export async function classifyDisposition(transcript: string): Promise<Dispositi
 
     const parsed = JSON.parse(content);
     const disposition = DISPOSITIONS.includes(parsed.disposition) ? parsed.disposition : "Other";
-    return { disposition, summary: String(parsed.summary ?? "").slice(0, 300) };
+    const interested = ["Yes", "No", "Unclear"].includes(parsed.interested) ? parsed.interested : "Unclear";
+    return {
+      disposition,
+      summary: String(parsed.summary ?? "").slice(0, 300),
+      interested,
+      appointmentDate: String(parsed.appointment_date ?? "").slice(0, 100),
+    };
   } catch {
     return null;
   }

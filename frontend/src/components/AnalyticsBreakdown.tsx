@@ -150,7 +150,7 @@ export default function AnalyticsBreakdown({
         {campaignBreakdown.length === 0 ? (
           <p className="dash-empty-state">No bulk campaigns launched yet in this period.</p>
         ) : (
-          <div className="dash-table-wrap">
+          <div className="dash-table-wrap dash-table-wrap-scroll-5">
             <table className="dash-table">
               <thead>
                 <tr>
