@@ -117,7 +117,7 @@ export default function AnalyticsBreakdown({
         {agentBreakdown.length === 0 ? (
           <p className="dash-empty-state">No calls dispatched with a saved Agent yet.</p>
         ) : (
-          <div className="dash-table-wrap">
+          <div className="dash-table-wrap dash-table-wrap-scroll-5">
             <table className="dash-table">
               <thead>
                 <tr>

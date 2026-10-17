@@ -5878,6 +5878,11 @@ input[type="range"]::-moz-range-thumb {
   overflow-x: auto;
   margin-top: 4px;
 }
+/* Caps visible rows to 5 before scrolling (header + 5 body rows) */
+.dash-table-wrap-scroll-5 {
+  overflow-y: auto;
+  max-height: 265px;
+}
 .dash-table {
   width: 100%;
   text-align: left;
