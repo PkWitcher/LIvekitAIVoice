@@ -128,53 +128,101 @@ export default function AutoLogoutModal() {
   const minutes = Math.floor(secondsLeft / 60);
   const seconds = secondsLeft % 60;
   const isExpired = prompt === "expired";
+  const totalSeconds = isExpired ? EXPIRY_COUNTDOWN_SECONDS : COUNTDOWN_SECONDS;
+  const progressPct = Math.max(0, Math.min(100, (secondsLeft / totalSeconds) * 100));
 
   return (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
       <div
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="auto-logout-title"
-        className="w-full max-w-sm rounded-2xl border p-6 shadow-2xl"
+        className="w-full max-w-md rounded-2xl border shadow-2xl overflow-hidden"
         style={{
           background: "var(--color-bg-card)",
           borderColor: "var(--color-border)",
         }}
       >
-        <h2 id="auto-logout-title" className="text-lg font-semibold" style={{ color: "var(--color-text-primary)" }}>
-          {isExpired ? "Session timed out" : "Are you still there?"}
-        </h2>
-        <p className="mt-2 text-sm" style={{ color: "var(--color-text-secondary)" }}>
-          {isExpired ? (
-            <>
-              Your session has expired for security reasons (10 hour limit). Please log in again
-              to continue. Redirecting in{" "}
-              <span className="font-semibold text-red-400">{seconds}s</span>.
-            </>
-          ) : (
-            <>
-              You&apos;ve been inactive for a while. For your security, you&apos;ll be logged out
-              automatically in{" "}
-              <span className="font-semibold text-red-400">
-                {minutes}:{seconds.toString().padStart(2, "0")}
-              </span>{" "}
-              unless you choose to continue.
-            </>
-          )}
-        </p>
-        <div className="mt-6 flex justify-end gap-3">
+        <div className="px-7 pt-7 pb-6">
+          <div className="flex items-start gap-4">
+            <div
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
+              style={{
+                background: isExpired ? "rgba(248, 113, 113, 0.12)" : "rgba(251, 191, 36, 0.12)",
+              }}
+            >
+              <svg
+                className="h-5.5 w-5.5"
+                style={{ color: isExpired ? "#f87171" : "#fbbf24" }}
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.75}
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+              </svg>
+            </div>
+            <div className="min-w-0 flex-1 pt-0.5">
+              <h2
+                id="auto-logout-title"
+                className="text-base font-semibold leading-snug"
+                style={{ color: "var(--color-text-primary)" }}
+              >
+                {isExpired ? "Session timed out" : "Are you still there?"}
+              </h2>
+              <p className="mt-2 text-[13px] leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
+                {isExpired ? (
+                  <>
+                    Your session has expired for security reasons (10 hour limit). Please log in
+                    again to continue.
+                  </>
+                ) : (
+                  <>
+                    You&apos;ve been inactive for a while. For your security, you&apos;ll be logged
+                    out automatically unless you choose to continue.
+                  </>
+                )}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 rounded-xl px-4 py-3" style={{ background: "var(--color-bg-input)" }}>
+            <div className="flex items-center justify-between text-xs">
+              <span style={{ color: "var(--color-text-muted)" }}>
+                {isExpired ? "Redirecting in" : "Time remaining"}
+              </span>
+              <span className="font-mono text-sm font-semibold tabular-nums" style={{ color: isExpired ? "#f87171" : "var(--color-text-primary)" }}>
+                {isExpired ? `${seconds}s` : `${minutes}:${seconds.toString().padStart(2, "0")}`}
+              </span>
+            </div>
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full" style={{ background: "var(--color-border)" }}>
+              <div
+                className="h-full rounded-full transition-all duration-1000 ease-linear"
+                style={{
+                  width: `${progressPct}%`,
+                  background: isExpired ? "#f87171" : "#fbbf24",
+                }}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div
+          className="flex items-center justify-end gap-3 border-t px-7 py-4"
+          style={{ borderColor: "var(--color-border)", background: "var(--color-bg-input)" }}
+        >
           {!isExpired && (
             <button
               onClick={handleLogout}
-              className="rounded-lg px-4 py-2 text-sm font-medium transition hover:text-red-400"
-              style={{ color: "var(--color-text-secondary)" }}
+              className="rounded-lg border px-4 py-2 text-sm font-medium transition-colors hover:border-red-400 hover:text-red-400"
+              style={{ color: "var(--color-text-secondary)", borderColor: "var(--color-border)" }}
             >
               Logout
             </button>
           )}
           <button
             onClick={isExpired ? handleLogout : handleContinue}
-            className="rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
+            className="rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90"
             style={{ background: "var(--color-accent)" }}
           >
             {isExpired ? "Log In Again" : "Continue Session"}
