@@ -35,11 +35,24 @@ export async function GET(request: NextRequest) {
     }
 
     const period = request.nextUrl.searchParams.get("period") ?? "7d";
-    const periodDays = PERIOD_DAYS[period] ?? PERIOD_DAYS["7d"];
+    const fromParam = request.nextUrl.searchParams.get("from");
+    const toParam = request.nextUrl.searchParams.get("to");
+    const isCustomRange = Boolean(fromParam && toParam);
 
-    // Current period: selected chart range
     const now = new Date();
-    const periodStart = new Date(now.getTime() - periodDays * 24 * 60 * 60 * 1000);
+    let periodStart: Date;
+    let periodEnd: Date | null = null; // exclusive upper bound — only set for a custom range
+    let periodDays: number;
+
+    if (isCustomRange) {
+      periodStart = new Date(`${fromParam}T00:00:00.000Z`);
+      const toDateInclusive = new Date(`${toParam}T00:00:00.000Z`);
+      periodEnd = new Date(toDateInclusive.getTime() + 24 * 60 * 60 * 1000);
+      periodDays = Math.min(366, Math.max(1, Math.round((periodEnd.getTime() - periodStart.getTime()) / (24 * 60 * 60 * 1000))));
+    } else {
+      periodDays = PERIOD_DAYS[period] ?? PERIOD_DAYS["7d"];
+      periodStart = new Date(now.getTime() - periodDays * 24 * 60 * 60 * 1000);
+    }
     const previousPeriodStart = new Date(periodStart.getTime() - periodDays * 24 * 60 * 60 * 1000);
 
     const { data: subscription } = await supabase
@@ -66,11 +79,13 @@ export async function GET(request: NextRequest) {
     );
 
     // Fetch current period data
-    const { data, error } = await supabase
+    let query = supabase
       .from("phone_logs")
       .select("status, duration_seconds, direction, created_at, disposition, agent_id, campaign_id")
       .eq("user_id", user.id)
       .gte("created_at", periodStart.toISOString());
+    if (periodEnd) query = query.lt("created_at", periodEnd.toISOString());
+    const { data, error } = await query;
 
     if (error) {
       return NextResponse.json(
@@ -127,8 +142,9 @@ export async function GET(request: NextRequest) {
     }
 
     const daily = Array.from({ length: periodDays }, (_, index) => {
-      const date = new Date(now);
-      date.setUTCDate(date.getUTCDate() - (periodDays - 1 - index));
+      const date = isCustomRange
+        ? new Date(periodStart.getTime() + index * 24 * 60 * 60 * 1000)
+        : new Date(now.getTime() - (periodDays - 1 - index) * 24 * 60 * 60 * 1000);
       const dateKey = date.toISOString().split("T")[0];
       return dailyMap[dateKey] ?? { date: dateKey, total: 0, completed: 0, outbound: 0, inbound: 0 };
     });

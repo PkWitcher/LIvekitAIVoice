@@ -12,6 +12,7 @@ import UpgradePlan from '@/components/UpgradePlan';
 import AnalyticsAssistant from '@/components/AnalyticsAssistant';
 import AgentBuilder from '@/components/AgentBuilder';
 import AnalyticsBreakdown from '@/components/AnalyticsBreakdown';
+import DashboardDateFilter from '@/components/DashboardDateFilter';
 import ApiKeysManager from '@/components/ApiKeysManager';
 import WebhooksManager from '@/components/WebhooksManager';
 import {
@@ -116,6 +117,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [daily, setDaily] = useState<DailyData[]>([]);
   const [chartPeriod, setChartPeriod] = useState<ChartPeriod>("7d");
+  const [customRange, setCustomRange] = useState<{ from: string; to: string } | null>(null);
   const [chartLoading, setChartLoading] = useState(false);
   const [previousPeriod, setPreviousPeriod] = useState<PreviousPeriod>({ total: 0, completed: 0, pickupRate: 0 });
   const [calls, setCalls] = useState<CallLog[]>([]);
@@ -168,8 +170,11 @@ export default function DashboardPage() {
   // Fetch stats + calls
   const fetchData = useCallback(async () => {
     try {
+      const statsUrl = customRange
+        ? `/api/stats?from=${customRange.from}&to=${customRange.to}`
+        : `/api/stats?period=${chartPeriod}`;
       const [statsRes, callsRes] = await Promise.all([
-        fetch(`/api/stats?period=${chartPeriod}`),
+        fetch(statsUrl),
         fetch('/api/calls'),
       ]);
       const statsData = await statsRes.json();
@@ -193,7 +198,7 @@ export default function DashboardPage() {
       setLoading(false);
       setChartLoading(false);
     }
-  }, [chartPeriod]);
+  }, [chartPeriod, customRange]);
 
   useEffect(() => {
     fetchData();
@@ -399,6 +404,14 @@ export default function DashboardPage() {
             <p className="dash-header-sub">{activeNav === 'dashboard' ? `Welcome back, ${displayName}!` : activeNav === 'calls' ? 'Manage and dispatch calls' : activeNav === 'agents' ? 'Build and manage your AI call agents' : activeNav === 'integrations' ? 'API keys and outbound webhooks' : activeNav === 'transcripts' ? 'View call transcripts' : 'Account settings'}</p>
           </div>
           <div className="dash-header-actions">
+            {activeNav === 'dashboard' && (
+              <DashboardDateFilter
+                from={customRange?.from ?? null}
+                to={customRange?.to ?? null}
+                onApply={(from, to) => { setChartLoading(true); setCustomRange({ from, to }); }}
+                onClear={() => { setChartLoading(true); setCustomRange(null); }}
+              />
+            )}
             <button onClick={toggleTheme} className="dash-icon-btn" title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
               {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
@@ -541,11 +554,12 @@ export default function DashboardPage() {
                     {/* Volume Chart */}
                     <div className="dash-card dash-chart-card">
                       <div className="dash-card-header">
-                        <h3 className="dash-card-title">Call Volume — {chartPeriodLabels[chartPeriod]}</h3>
+                        <h3 className="dash-card-title">Call Volume — {customRange ? "Custom Range" : chartPeriodLabels[chartPeriod]}</h3>
                         <select
                           value={chartPeriod}
                           onChange={(event) => {
                             setChartLoading(true);
+                            setCustomRange(null);
                             setChartPeriod(event.target.value as ChartPeriod);
                           }}
                           className="dash-chart-period"
