@@ -565,21 +565,22 @@ export default function DashboardPage() {
                     <div className="dash-card dash-chart-card">
                       <div className="dash-card-header">
                         <h3 className="dash-card-title">Call Volume — {customRange ? "Custom Range" : chartPeriodLabels[chartPeriod]}</h3>
-                        <select
-                          value={chartPeriod}
-                          onChange={(event) => {
-                            setChartLoading(true);
-                            setCustomRange(null);
-                            setChartPeriod(event.target.value as ChartPeriod);
-                          }}
-                          className="dash-chart-period"
-                          aria-label="Call volume date range"
-                        >
-                          <option value="7d">Last 7 days</option>
-                          <option value="1m">Last month</option>
-                          <option value="6m">Last 6 months</option>
-                          <option value="1y">Last year</option>
-                        </select>
+                        {!customRange && (
+                          <select
+                            value={chartPeriod}
+                            onChange={(event) => {
+                              setChartLoading(true);
+                              setChartPeriod(event.target.value as ChartPeriod);
+                            }}
+                            className="dash-chart-period"
+                            aria-label="Call volume date range"
+                          >
+                            <option value="7d">Last 7 days</option>
+                            <option value="1m">Last month</option>
+                            <option value="6m">Last 6 months</option>
+                            <option value="1y">Last year</option>
+                          </select>
+                        )}
                         <div className="dash-chart-legend">
                           <div className="dash-legend-item">
                             <span className="dash-legend-dot bg-blue-500" />
