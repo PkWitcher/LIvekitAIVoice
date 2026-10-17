@@ -189,6 +189,20 @@ class CallFunctions(llm.FunctionContext):
     def __init__(self, agent_id: Optional[str] = None):
         super().__init__()
         self.agent_id = agent_id
+        self.should_end_call = False
+
+    @llm.ai_callable(
+        description=(
+            "End the phone call. Call this ONLY immediately after you have said your final "
+            "goodbye/closing line and the caller has nothing more to add — e.g. after saying "
+            "'Thank you, have a good day'. Never call this mid-conversation or before closing."
+        )
+    )
+    async def end_call(self) -> str:
+        """Marks the call for hangup — the entrypoint disconnects shortly after this returns."""
+        logger.info("Agent requested call end")
+        self.should_end_call = True
+        return json.dumps({"status": "ending_call"})
 
     @llm.ai_callable(
         description="Look up a user by their phone number. Returns user info if found."
@@ -532,6 +546,23 @@ async def dial_outbound(ctx: JobContext, phone_number: str, metadata: dict) -> N
         await lk_api.aclose()
 
 
+async def hangup_call(room_name: str) -> None:
+    """Ends the call by deleting the LiveKit room — this disconnects the SIP leg too,
+    so the AI can proactively hang up instead of waiting for the caller to do it."""
+    lk_api = api.LiveKitAPI(
+        url=config.LIVEKIT_URL,
+        api_key=config.LIVEKIT_API_KEY,
+        api_secret=config.LIVEKIT_API_SECRET,
+    )
+    try:
+        await lk_api.room.delete_room(api.DeleteRoomRequest(room=room_name))
+        logger.info(f"Room {room_name} deleted — call ended by agent")
+    except Exception as e:
+        logger.warning(f"Failed to hang up room {room_name}: {e}")
+    finally:
+        await lk_api.aclose()
+
+
 # ──────────────────────────────────────────────
 # Prewarm — load models once at startup
 # ──────────────────────────────────────────────
@@ -640,6 +671,12 @@ IMPORTANT RULES:
     else:
         system_prompt += "\n\nCRITICAL LANGUAGE RULE: Detect the caller's language from their FIRST sentence. Then speak ONLY in that language for the entire call. NEVER switch mid-call."
 
+    system_prompt += (
+        "\n\nCALL ENDING RULE: When the conversation has naturally concluded — you've said your "
+        "final goodbye/closing line and the caller has nothing more to add — call the `end_call` "
+        "function immediately after that line. Do not wait for the caller to hang up first."
+    )
+
     # Create pipeline components — fnc_ctx is always available so saved Agents keep
     # access to tools (transfer_call, search_knowledge_base) even with a custom prompt.
     fnc_ctx = CallFunctions(agent_id=agent_id)
@@ -742,6 +779,19 @@ IMPORTANT RULES:
     # Start transcript polling (runs in background, doesn't touch agent internals)
     asyncio.create_task(poll_transcript())
     logger.info("Transcript polling started")
+
+    async def watch_for_end_call():
+        """Hangs up shortly after the LLM calls end_call(), giving the closing line time to play."""
+        while not shutdown_event.is_set():
+            if fnc_ctx.should_end_call:
+                logger.info("End-call requested — waiting for closing line to finish playing")
+                await asyncio.sleep(5.0)
+                await hangup_call(room_name_for_transcript)
+                return
+            await asyncio.sleep(0.5)
+
+    asyncio.create_task(watch_for_end_call())
+    logger.info("End-call watcher started")
 
     @ctx.room.on("disconnected")
     def on_disconnect():
