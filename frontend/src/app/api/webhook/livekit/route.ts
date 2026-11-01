@@ -194,6 +194,7 @@ export async function POST(request: NextRequest) {
             .eq("room_name", roomName);
 
           await notifyCallWebhooks(roomName, record.user_id, "call.no_answer");
+          await writeNoAnswerToSheet(roomName);
         }
       }
     }
@@ -243,6 +244,7 @@ export async function POST(request: NextRequest) {
             .eq("room_name", roomName);
 
           await notifyCallWebhooks(roomName, record.user_id, "call.no_answer");
+          await writeNoAnswerToSheet(roomName);
 
           // Send WhatsApp message — no answer / rejected
           const { data: missedLog } = await supabase
@@ -308,11 +310,33 @@ async function classifyAndStoreDisposition(roomName: string): Promise<void> {
           appointmentDate: result.appointmentDate,
           summary: result.summary,
           disposition: result.disposition,
+          callReceived: "Yes",
         });
       }
     }
   } catch (err) {
     console.warn("[WEBHOOK] Disposition classification failed:", err);
+  }
+}
+
+// No-answer calls never go through classifyAndStoreDisposition, so write "Call Received: No" separately
+async function writeNoAnswerToSheet(roomName: string): Promise<void> {
+  const supabase = getSupabase();
+  if (!supabase) return;
+  try {
+    const { data: log } = await supabase
+      .from("phone_logs")
+      .select("phone_number, sheet_url")
+      .eq("room_name", roomName)
+      .single();
+    if (log?.sheet_url) {
+      await writeCallResultToSheet(log.sheet_url, log.phone_number, {
+        disposition: "No Answer",
+        callReceived: "No",
+      });
+    }
+  } catch (err) {
+    console.warn("[WEBHOOK] writeNoAnswerToSheet failed:", err);
   }
 }
 

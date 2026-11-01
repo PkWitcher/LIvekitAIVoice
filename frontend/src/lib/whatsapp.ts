@@ -1,22 +1,28 @@
 /**
- * WhatsApp Integration via AiSensy
+ * WhatsApp Integration via Wampli (Meta Cloud API tech provider)
  *
- * Sends WhatsApp messages using AiSensy's API.
+ * Sends WhatsApp template messages using Wampli's "Send Message" API.
  *
- * Required env vars:
- *   AISENSY_API_KEY    — API key from AiSensy dashboard (Settings → API & Webhook)
- *   WHATSAPP_ENABLED   — Set to "true" to enable (disabled by default)
+ * Required env vars (Wampli dashboard → Settings → API Access & Webhook):
+ *   WAMPLI_API_TOKEN     — Account access token
+ *   WAMPLI_VENDOR_UID    — Your vendor UID (part of the endpoint path)
+ *   WAMPLI_BUSINESS_NAME — Fills the business-name template variable (optional, defaults to "Nova AI")
+ *   WHATSAPP_ENABLED     — Set to "true" to enable (disabled by default)
  *
- * You must create these 3 templates in AiSensy dashboard (Templates → Create):
- *   call_completed  — "Thank you for speaking with us. Your call lasted {{1}} minutes."
- *   call_missed     — "We tried reaching you but couldn't connect. Reply CALLBACK for a callback."
- *   call_rejected   — "We attempted to reach you. Reply CALLBACK or STOP to opt out."
+ * Before sending, connect your WhatsApp Business number via Wampli's Embedded Signup,
+ * then create + get Meta approval for these templates (Wampli dashboard → Templates),
+ * all Category: Utility, body variables field_1/field_2 (in order):
+ *   call_completed  — "Thank you for calling {{1}}. Your call lasted {{2}} minutes."
+ *   call_no_answer  — "We tried calling you from {{1}} but couldn't connect. Reply CALLBACK and we'll call you back."
+ *   call_declined   — "We tried reaching you from {{1}}. Reply CALLBACK to schedule a better time, or STOP to opt out."
  */
 
-const AISENSY_API_KEY = process.env.AISENSY_API_KEY ?? "";
+const WAMPLI_API_TOKEN = process.env.WAMPLI_API_TOKEN ?? "";
+const WAMPLI_VENDOR_UID = process.env.WAMPLI_VENDOR_UID ?? "";
+const WAMPLI_BUSINESS_NAME = process.env.WAMPLI_BUSINESS_NAME || "Nova AI";
 const WHATSAPP_ENABLED = process.env.WHATSAPP_ENABLED === "true";
 
-const AISENSY_API_URL = "https://backend.aisensy.com/campaign/t1/api/v2";
+const WAMPLI_API_BASE_URL = process.env.WAMPLI_API_BASE_URL || "https://wampli.in/api";
 
 export type WhatsAppMessageType = "call_completed" | "call_missed" | "call_rejected";
 
@@ -28,7 +34,7 @@ interface SendMessageOptions {
 }
 
 /**
- * Format phone number — ensure 91 prefix, digits only
+ * Wampli expects digits only, country code without a leading "+" or "0"
  */
 function formatPhone(phone: string): string {
   let digits = phone.replace(/[^0-9]/g, "");
@@ -40,32 +46,32 @@ function formatPhone(phone: string): string {
 }
 
 /**
- * Get AiSensy campaign/template name and params for each event type
+ * Get Wampli template name + body field values for each event type
  */
-function getCampaignConfig(type: WhatsAppMessageType, options: SendMessageOptions) {
+function getTemplateConfig(type: WhatsAppMessageType, options: SendMessageOptions) {
   switch (type) {
     case "call_completed": {
       const mins = options.callDuration ? Math.ceil(options.callDuration / 60) : 0;
       return {
-        campaignName: "call_completed",
-        templateParams: [String(mins)],
+        template_name: "call_completed",
+        fields: { field_1: WAMPLI_BUSINESS_NAME, field_2: String(mins) },
       };
     }
     case "call_missed":
       return {
-        campaignName: "call_missed",
-        templateParams: [],
+        template_name: "call_no_answer",
+        fields: { field_1: WAMPLI_BUSINESS_NAME },
       };
     case "call_rejected":
       return {
-        campaignName: "call_rejected",
-        templateParams: [],
+        template_name: "call_declined",
+        fields: { field_1: WAMPLI_BUSINESS_NAME },
       };
   }
 }
 
 /**
- * Send a WhatsApp message via AiSensy
+ * Send a WhatsApp message via Wampli
  */
 export async function sendWhatsAppMessage(options: SendMessageOptions): Promise<boolean> {
   if (!WHATSAPP_ENABLED) {
@@ -73,40 +79,42 @@ export async function sendWhatsAppMessage(options: SendMessageOptions): Promise<
     return false;
   }
 
-  if (!AISENSY_API_KEY) {
-    console.warn("[WHATSAPP] Missing AISENSY_API_KEY");
+  if (!WAMPLI_API_TOKEN || !WAMPLI_VENDOR_UID) {
+    console.warn("[WHATSAPP] Missing WAMPLI_API_TOKEN or WAMPLI_VENDOR_UID");
     return false;
   }
 
   const to = formatPhone(options.to);
-  if (!to || to.length < 12) {
+  if (to.length < 12) {
     console.warn(`[WHATSAPP] Invalid phone number: ${options.to}`);
     return false;
   }
 
-  const { campaignName, templateParams } = getCampaignConfig(options.type, options);
+  const { template_name, fields } = getTemplateConfig(options.type, options);
+  const url = `${WAMPLI_API_BASE_URL}/${WAMPLI_VENDOR_UID}/contact/send-message`;
 
   try {
-    const res = await fetch(AISENSY_API_URL, {
+    const res = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${WAMPLI_API_TOKEN}`,
+      },
       body: JSON.stringify({
-        apiKey: AISENSY_API_KEY,
-        campaignName,
-        destination: to,
-        userName: options.userName || "Customer",
-        templateParams,
-        source: "nova-ai-voice",
+        phone_number: to,
+        template_name,
+        template_language: "en",
+        ...fields,
       }),
     });
 
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
 
-    if (res.ok && data.status !== "error") {
-      console.log(`[WHATSAPP] AiSensy message sent to ${to} (${options.type})`);
+    if (res.ok) {
+      console.log(`[WHATSAPP] Wampli message sent to ${to} (${options.type})`);
       return true;
     } else {
-      console.error(`[WHATSAPP] AiSensy error for ${to}: ${JSON.stringify(data)}`);
+      console.error(`[WHATSAPP] Wampli error for ${to}: ${JSON.stringify(data)}`);
       return false;
     }
   } catch (err) {

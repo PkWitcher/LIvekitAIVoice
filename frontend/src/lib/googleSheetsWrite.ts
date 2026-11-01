@@ -11,13 +11,14 @@ const SERVICE_ACCOUNT_PRIVATE_KEY = (process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_
 const SHEET_URL_PATTERN = /^https:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/;
 const GID_PATTERN = /[?&#]gid=(\d+)/;
 
-const WRITEBACK_COLUMNS = ["Interested", "Appointment Date", "Call Summary", "Disposition"] as const;
+const WRITEBACK_COLUMNS = ["Interested", "Appointment Date", "Call Summary", "Disposition", "Call Received"] as const;
 
 export interface CallResultForSheet {
   interested?: string | null;
   appointmentDate?: string | null;
   summary?: string | null;
   disposition?: string | null;
+  callReceived?: string | null;
 }
 
 function base64url(input: Buffer | string): string {
@@ -77,7 +78,7 @@ function normalizeDigits(phone: string): string {
 
 /**
  * Finds the row matching `phoneNumber` in the Google Sheet and writes the call outcome
- * into Interested/Appointment Date/Call Summary/Disposition columns (added if missing).
+ * into Interested/Appointment Date/Call Summary/Disposition/Call Received columns (added if missing).
  * Best-effort: any failure (missing credentials, number not found, API error) is logged
  * and swallowed so a sheet problem never breaks call processing.
  */
@@ -146,7 +147,7 @@ export async function writeCallResultToSheet(
       return;
     }
 
-    // Ensure the 4 result columns exist, appending any that are missing to the header row
+    // Ensure the result columns exist, appending any that are missing to the header row
     const colIndexByName = new Map<string, number>();
     headerRow.forEach((h, i) => colIndexByName.set((h ?? "").trim(), i));
     const missing = WRITEBACK_COLUMNS.filter((c) => !colIndexByName.has(c));
@@ -166,7 +167,13 @@ export async function writeCallResultToSheet(
       );
     }
 
-    const values = [result.interested ?? "", result.appointmentDate ?? "", result.summary ?? "", result.disposition ?? ""];
+    const values = [
+      result.interested ?? "",
+      result.appointmentDate ?? "",
+      result.summary ?? "",
+      result.disposition ?? "",
+      result.callReceived ?? "",
+    ];
     const data = WRITEBACK_COLUMNS.map((col, i) => ({
       range: `${encodedTitle}!${columnLetter(colIndexByName.get(col)!)}${targetRowIndex + 1}`,
       values: [[values[i]]],
