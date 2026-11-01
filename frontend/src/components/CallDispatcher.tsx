@@ -465,6 +465,7 @@ export default function CallDispatcher() {
             <optgroup label="Cartesia Indian (Hindi/English — Recommended)">
               <option value="4877b818-c7fe-4c89-b1cf-eadf8e23da72">Rohan — Hindi Male (Default)</option>
               <option value="0f14d8cb-f039-41fe-a813-a9b4bee7eed8">Hindi Female</option>
+              <option value="1259b7e3-cb8a-43df-9446-30971a46b8b0">English Voice</option>
             </optgroup>
             <optgroup label="OpenAI (Multilingual)">
               <option value="shimmer">Shimmer — Female</option>
