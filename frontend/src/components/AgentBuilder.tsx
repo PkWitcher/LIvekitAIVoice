@@ -44,6 +44,7 @@ const VOICE_OPTIONS: Record<string, { label: string; voices: { id: string; label
     voices: [
       { id: "4877b818-c7fe-4c89-b1cf-eadf8e23da72", label: "Rohan — Hindi Male (Default)" },
       { id: "0f14d8cb-f039-41fe-a813-a9b4bee7eed8", label: "Hindi Female" },
+      { id: "1259b7e3-cb8a-43df-9446-30971a46b8b0", label: "English Male" },
     ],
   },
   openai: {
