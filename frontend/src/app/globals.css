@@ -5254,6 +5254,34 @@ input[type="range"]::-moz-range-thumb {
 .dash-notif-btn {
   position: relative;
 }
+.dash-notif-wrapper {
+  position: relative;
+}
+.dash-notif-dropdown {
+  width: 280px;
+}
+.dash-notif-dropdown-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #aaa;
+  padding: 2px 4px 0;
+}
+.dash-notif-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.dash-notif-item:last-of-type {
+  border-bottom: none;
+}
+.dash-notif-viewall {
+  width: 100%;
+  justify-content: center;
+  margin-top: 8px;
+}
 .dash-notif-dot {
   position: absolute;
   top: -2px;

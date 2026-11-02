@@ -140,6 +140,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [profileOpen, setProfileOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -320,6 +321,7 @@ export default function DashboardPage() {
 
   const recentCalls = calls.slice(0, 5);
   const activeCalls = calls.filter(c => c.status === 'ringing' || c.status === 'connected').length;
+  const activeCallsList = calls.filter(c => c.status === 'ringing' || c.status === 'connected').slice(0, 8);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -425,14 +427,42 @@ export default function DashboardPage() {
             <button onClick={toggleTheme} className="dash-icon-btn" title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
               {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
-            <button className="dash-icon-btn dash-notif-btn">
-              <Bell className="w-4 h-4" />
-              {activeCalls > 0 && (
-                <span className="dash-notif-dot">{activeCalls}</span>
+            <div className="dash-notif-wrapper">
+              <button className="dash-icon-btn dash-notif-btn" onClick={() => { setNotifOpen(!notifOpen); setProfileOpen(false); }}>
+                <Bell className="w-4 h-4" />
+                {activeCalls > 0 && (
+                  <span className="dash-notif-dot">{activeCalls}</span>
+                )}
+              </button>
+
+              {notifOpen && (
+                <div className="dash-profile-dropdown dash-notif-dropdown">
+                  <p className="dash-notif-dropdown-title">Active Calls</p>
+                  <div className="dash-profile-divider" />
+                  {activeCallsList.length > 0 ? (
+                    activeCallsList.map((call) => (
+                      <div key={call.id} className="dash-notif-item">
+                        <span className="dash-table-phone">{call.phone_number}</span>
+                        <span className={`dash-status-badge ${getStatusBadge(call.status)}`}>
+                          {statusLabel(call.status)}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="dash-empty-state">No active calls right now.</p>
+                  )}
+                  <button
+                    onClick={() => { setActiveNav('calls'); setNotifOpen(false); }}
+                    className="dash-view-all-btn dash-notif-viewall"
+                  >
+                    View all calls
+                    <ArrowUpRight className="w-3 h-3" />
+                  </button>
+                </div>
               )}
-            </button>
+            </div>
             <div className="dash-profile-wrapper">
-              <button onClick={() => setProfileOpen(!profileOpen)} className="dash-header-user">
+              <button onClick={() => { setProfileOpen(!profileOpen); setNotifOpen(false); }} className="dash-header-user">
                 <div className="dash-avatar-sm">
                   {userInitial}
                 </div>
