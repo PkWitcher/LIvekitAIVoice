@@ -18,41 +18,6 @@ interface DialResult {
   error?: string;
 }
 
-interface ContactPayload {
-  phone: string;
-  prompt: string;
-  first_message: string;
-}
-
-// Vercel Hobby plan caps function duration at 60s; /api/queue waits 5s between each dial
-// (CPU-safety stagger), so 10/batch (~50s) is the largest safe chunk size without timing out.
-const DISPATCH_BATCH_SIZE = 10;
-
-async function postContactsInBatches(
-  contacts: ContactPayload[],
-  extra: Record<string, unknown>,
-  onBatchResults: (results: DialResult[]) => void
-): Promise<void> {
-  for (let i = 0; i < contacts.length; i += DISPATCH_BATCH_SIZE) {
-    const batch = contacts.slice(i, i + DISPATCH_BATCH_SIZE);
-    try {
-      const res = await fetch("/api/queue", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contacts: batch, ...extra }),
-      });
-      const data = await res.json();
-      if (Array.isArray(data.results)) {
-        onBatchResults(data.results);
-      } else {
-        onBatchResults(batch.map((c) => ({ phone: c.phone, status: "failed" as const, error: data.error || "Unknown error" })));
-      }
-    } catch {
-      onBatchResults(batch.map((c) => ({ phone: c.phone, status: "failed" as const, error: "Network error — check server" })));
-    }
-  }
-}
-
 interface SavedPrompt {
   id: string;
   title: string;
@@ -389,7 +354,7 @@ export default function BulkDialer() {
     if (phoneList.length === 0) return;
     const agent = selectedAgentRef.current;
     const baseValues = variableValuesRef.current;
-    const contacts: ContactPayload[] = phoneList.map((phone) => {
+    const contacts = phoneList.map((phone) => {
       const values = contactNamesRef.current[phone] ? { ...baseValues, name: contactNamesRef.current[phone] } : baseValues;
       return {
         phone,
@@ -398,19 +363,31 @@ export default function BulkDialer() {
       };
     });
 
-    await postContactsInBatches(
-      contacts,
-      {
-        agent_id: agent?.group_id,
-        tts_provider: agent?.voice_provider,
-        voice_id: agent?.voice_id ?? voiceRef.current,
-        model_provider: agent?.llm_provider ?? modelProviderRef.current,
-        language: agent?.language ?? languageRef.current,
-        temperature: temperatureRef.current,
-        sheet_url: sheetUrlRef.current.trim() || undefined,
-      },
-      (batchResults) => setResults((prev) => [...batchResults, ...prev])
-    );
+    try {
+      const res = await fetch("/api/queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contacts,
+          agent_id: agent?.group_id,
+          tts_provider: agent?.voice_provider,
+          voice_id: agent?.voice_id ?? voiceRef.current,
+          model_provider: agent?.llm_provider ?? modelProviderRef.current,
+          language: agent?.language ?? languageRef.current,
+          temperature: temperatureRef.current,
+          sheet_url: sheetUrlRef.current.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (Array.isArray(data.results)) {
+        setResults((prev) => [...data.results, ...prev]);
+      }
+    } catch {
+      setResults((prev) => [
+        ...phoneList.map((phone) => ({ phone, status: "failed" as const, error: "Network error — check server" })),
+        ...prev,
+      ]);
+    }
   }, []);
 
   const checkSheetForNewNumbers = useCallback(async () => {
@@ -497,7 +474,7 @@ export default function BulkDialer() {
     // Per-contact substitution — {{name}} is overridden with the sheet's own value per phone
     // number when available, so one campaign can personalize each call instead of reusing
     // a single shared name for everyone.
-    const contacts: ContactPayload[] = parsed.map((phone) => {
+    const contacts = parsed.map((phone) => {
       const values = contactNames[phone] ? { ...variableValues, name: contactNames[phone] } : variableValues;
       return {
         phone,
@@ -506,21 +483,31 @@ export default function BulkDialer() {
       };
     });
 
-    await postContactsInBatches(
-      contacts,
-      {
-        agent_id: selectedAgent?.group_id,
-        tts_provider: selectedAgent?.voice_provider,
-        voice_id: selectedAgent?.voice_id ?? voice,
-        model_provider: selectedAgent?.llm_provider ?? modelProvider,
-        language: selectedAgent?.language ?? language,
-        temperature,
-        sheet_url: sheetUrl.trim() || undefined,
-      },
-      (batchResults) => setResults((prev) => [...prev, ...batchResults])
-    );
+    try {
+      const res = await fetch("/api/queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contacts,
+          agent_id: selectedAgent?.group_id,
+          tts_provider: selectedAgent?.voice_provider,
+          voice_id: selectedAgent?.voice_id ?? voice,
+          model_provider: selectedAgent?.llm_provider ?? modelProvider,
+          language: selectedAgent?.language ?? language,
+          temperature,
+          sheet_url: sheetUrl.trim() || undefined,
+        }),
+      });
 
-    setLoading(false);
+      const data = await res.json();
+      setResults(data.results ?? []);
+    } catch {
+      setResults([
+        { phone: "all", status: "failed", error: "Network error — check server" },
+      ]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const dispatched = results.filter((r) => r.status === "dispatched").length;
