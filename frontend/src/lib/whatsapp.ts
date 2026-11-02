@@ -46,7 +46,9 @@ function formatPhone(phone: string): string {
 }
 
 /**
- * Get Wampli template name + body field values for each event type
+ * Get Wampli template name + body field values for each event type.
+ * Wampli's API requires `message_body` (the full resolved text) in addition to the
+ * field_1/field_2 variables — their dashboard docs omit this, found via a live 400 error.
  */
 function getTemplateConfig(type: WhatsAppMessageType, options: SendMessageOptions) {
   switch (type) {
@@ -55,17 +57,20 @@ function getTemplateConfig(type: WhatsAppMessageType, options: SendMessageOption
       return {
         template_name: "call_completed",
         fields: { field_1: WAMPLI_BUSINESS_NAME, field_2: String(mins) },
+        message_body: `Thank you for calling ${WAMPLI_BUSINESS_NAME}. Your call lasted ${mins} minutes.`,
       };
     }
     case "call_missed":
       return {
         template_name: "call_no_answer",
         fields: { field_1: WAMPLI_BUSINESS_NAME },
+        message_body: `We tried calling you from ${WAMPLI_BUSINESS_NAME} but couldn't connect. Reply CALLBACK and we'll call you back.`,
       };
     case "call_rejected":
       return {
         template_name: "call_declined",
         fields: { field_1: WAMPLI_BUSINESS_NAME },
+        message_body: `We tried reaching you from ${WAMPLI_BUSINESS_NAME}. Reply CALLBACK to schedule a better time, or STOP to opt out.`,
       };
   }
 }
@@ -90,7 +95,7 @@ export async function sendWhatsAppMessage(options: SendMessageOptions): Promise<
     return false;
   }
 
-  const { template_name, fields } = getTemplateConfig(options.type, options);
+  const { template_name, fields, message_body } = getTemplateConfig(options.type, options);
   const url = `${WAMPLI_API_BASE_URL}/${WAMPLI_VENDOR_UID}/contact/send-message`;
 
   try {
@@ -104,6 +109,7 @@ export async function sendWhatsAppMessage(options: SendMessageOptions): Promise<
         phone_number: to,
         template_name,
         template_language: "en",
+        message_body,
         ...fields,
       }),
     });
