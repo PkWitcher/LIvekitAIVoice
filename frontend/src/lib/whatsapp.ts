@@ -117,7 +117,7 @@ export async function sendWhatsAppMessage(options: SendMessageOptions): Promise<
     const data = await res.json().catch(() => ({}));
 
     if (res.ok) {
-      console.log(`[WHATSAPP] Wampli message sent to ${to} (${options.type})`);
+      console.log(`[WHATSAPP] Wampli message sent to ${to} (${options.type}): ${JSON.stringify(data)}`);
       return true;
     } else {
       console.error(`[WHATSAPP] Wampli error for ${to}: ${JSON.stringify(data)}`);
