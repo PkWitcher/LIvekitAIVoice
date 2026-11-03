@@ -4,6 +4,10 @@ import { RoomServiceClient, SipClient } from "livekit-server-sdk";
 import { getSupabase } from "@/lib/supabase";
 import { createServerSupabase } from "@/lib/supabase-server";
 
+// Vercel Pro supports up to 300s per function — without this the route falls back to the
+// much lower default (15s), which the dial-stagger loop below easily exceeds.
+export const maxDuration = 300;
+
 const LIVEKIT_URL = process.env.LIVEKIT_URL ?? "http://localhost:7880";
 const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY ?? "";
 const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET ?? "";
