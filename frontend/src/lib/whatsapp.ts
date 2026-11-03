@@ -6,23 +6,32 @@
  * Required env vars (Wampli dashboard → Settings → API Access & Webhook):
  *   WAMPLI_API_TOKEN     — Account access token
  *   WAMPLI_VENDOR_UID    — Your vendor UID (part of the endpoint path)
- *   WAMPLI_BUSINESS_NAME — Fills the business-name template variable (optional, defaults to "Nova AI")
  *   WHATSAPP_ENABLED     — Set to "true" to enable (disabled by default)
  *
- * Before sending, connect your WhatsApp Business number via Wampli's Embedded Signup,
- * then create + get Meta approval for these templates (Wampli dashboard → Templates),
- * all Category: Utility, body variables field_1/field_2 (in order):
- *   call_completed  — "Thank you for calling {{1}}. Your call lasted {{2}} minutes."
- *   call_no_answer  — "We tried calling you from {{1}} but couldn't connect. Reply CALLBACK and we'll call you back."
- *   call_declined   — "We tried reaching you from {{1}}. Reply CALLBACK to schedule a better time, or STOP to opt out."
+ * Every call outcome (completed/no-answer/declined) sends the same approved template,
+ * Category: MARKETING, 1 body variable (field_1 = recipient's first name):
+ *   ai_summit_today — header "TODAY 11 AM: AI Summit", body greets {{1}} about today's summit.
  */
 
 const WAMPLI_API_TOKEN = process.env.WAMPLI_API_TOKEN ?? "";
 const WAMPLI_VENDOR_UID = process.env.WAMPLI_VENDOR_UID ?? "";
-const WAMPLI_BUSINESS_NAME = process.env.WAMPLI_BUSINESS_NAME || "Nova AI";
 const WHATSAPP_ENABLED = process.env.WHATSAPP_ENABLED === "true";
 
 const WAMPLI_API_BASE_URL = process.env.WAMPLI_API_BASE_URL || "https://wampli.in/api";
+
+// Exact approved body text for the ai_summit_today template — {{1}} is the recipient's name
+const AI_SUMMIT_TODAY_BODY = (name: string) => `TODAY. 🔥
+
+Hi ${name}, in a few hours we open the room.
+
+Don't come to take notes.
+Come with your laptop. Come ready to build.
+
+By the end of today's session, you'll have things on your laptop that didn't exist this morning.
+
+🖼 🎬 🧑‍💼 🎵 📞 ⚙
+
+We start at 11:00 AM sharp. See you inside.`;
 
 export type WhatsAppMessageType = "call_completed" | "call_missed" | "call_rejected";
 
@@ -46,33 +55,17 @@ function formatPhone(phone: string): string {
 }
 
 /**
- * Get Wampli template name + body field values for each event type.
+ * Every outcome uses the same ai_summit_today template.
  * Wampli's API requires `message_body` (the full resolved text) in addition to the
- * field_1/field_2 variables — their dashboard docs omit this, found via a live 400 error.
+ * field_1 variable — their dashboard docs omit this, found via a live 400 error.
  */
-function getTemplateConfig(type: WhatsAppMessageType, options: SendMessageOptions) {
-  switch (type) {
-    case "call_completed": {
-      const mins = options.callDuration ? Math.ceil(options.callDuration / 60) : 0;
-      return {
-        template_name: "call_completed",
-        fields: { field_1: WAMPLI_BUSINESS_NAME, field_2: String(mins) },
-        message_body: `Thank you for calling ${WAMPLI_BUSINESS_NAME}. Your call lasted ${mins} minutes.`,
-      };
-    }
-    case "call_missed":
-      return {
-        template_name: "call_no_answer",
-        fields: { field_1: WAMPLI_BUSINESS_NAME },
-        message_body: `We tried calling you from ${WAMPLI_BUSINESS_NAME} but couldn't connect. Reply CALLBACK and we'll call you back.`,
-      };
-    case "call_rejected":
-      return {
-        template_name: "call_declined",
-        fields: { field_1: WAMPLI_BUSINESS_NAME },
-        message_body: `We tried reaching you from ${WAMPLI_BUSINESS_NAME}. Reply CALLBACK to schedule a better time, or STOP to opt out.`,
-      };
-  }
+function getTemplateConfig(options: SendMessageOptions) {
+  const name = options.userName?.trim() || "there";
+  return {
+    template_name: "ai_summit_today",
+    fields: { field_1: name },
+    message_body: AI_SUMMIT_TODAY_BODY(name),
+  };
 }
 
 /**
@@ -95,7 +88,7 @@ export async function sendWhatsAppMessage(options: SendMessageOptions): Promise<
     return false;
   }
 
-  const { template_name, fields, message_body } = getTemplateConfig(options.type, options);
+  const { template_name, fields, message_body } = getTemplateConfig(options);
   const url = `${WAMPLI_API_BASE_URL}/${WAMPLI_VENDOR_UID}/contact/send-message`;
 
   try {
