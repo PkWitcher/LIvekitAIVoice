@@ -52,6 +52,8 @@ export default function BulkDialer() {
   const [context, setContext] = useState("");
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<DialResult[]>([]);
+  const [launchStatus, setLaunchStatus] = useState("");
+  const [stopRequested, setStopRequested] = useState(false);
   const [brief, setBrief] = useState("");
   const [generating, setGenerating] = useState(false);
   const [generated, setGenerated] = useState(false);
@@ -92,6 +94,7 @@ export default function BulkDialer() {
   // Latest-value refs so the 1-minute polling interval always uses current settings without resetting
   const calledNumbersRef = useRef<Set<string>>(new Set());
   const autoCallIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const cancelLaunchRef = useRef(false);
   const sheetUrlRef = useRef(sheetUrl);
   const contextRef = useRef(context);
   const firstMessageRef = useRef(firstMessage);
@@ -468,8 +471,11 @@ export default function BulkDialer() {
       .filter(Boolean);
 
     if (parsed.length === 0) return;
+    cancelLaunchRef.current = false;
+    setStopRequested(false);
     setLoading(true);
     setResults([]);
+    setLaunchStatus("");
 
     // Per-contact substitution — {{name}} is overridden with the sheet's own value per phone
     // number when available, so one campaign can personalize each call instead of reusing
@@ -483,31 +489,55 @@ export default function BulkDialer() {
       };
     });
 
-    try {
-      const res = await fetch("/api/queue", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contacts,
-          agent_id: selectedAgent?.group_id,
-          tts_provider: selectedAgent?.voice_provider,
-          voice_id: selectedAgent?.voice_id ?? voice,
-          model_provider: selectedAgent?.llm_provider ?? modelProvider,
-          language: selectedAgent?.language ?? language,
-          temperature,
-          sheet_url: sheetUrl.trim() || undefined,
-        }),
-      });
-
-      const data = await res.json();
-      setResults(data.results ?? []);
-    } catch {
-      setResults([
-        { phone: "all", status: "failed", error: "Network error — check server" },
-      ]);
-    } finally {
-      setLoading(false);
+    // Dispatched in small batches (not all at once) so Stop can take effect between
+    // batches — numbers already dialed in a finished batch can't be un-called, but
+    // everything after the stop point is skipped.
+    const LAUNCH_BATCH_SIZE = 10;
+    for (let i = 0; i < contacts.length; i += LAUNCH_BATCH_SIZE) {
+      if (cancelLaunchRef.current) {
+        setLaunchStatus(`Stopped — ${i} of ${contacts.length} numbers were already dispatched.`);
+        break;
+      }
+      const batch = contacts.slice(i, i + LAUNCH_BATCH_SIZE);
+      try {
+        const res = await fetch("/api/queue", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contacts: batch,
+            agent_id: selectedAgent?.group_id,
+            tts_provider: selectedAgent?.voice_provider,
+            voice_id: selectedAgent?.voice_id ?? voice,
+            model_provider: selectedAgent?.llm_provider ?? modelProvider,
+            language: selectedAgent?.language ?? language,
+            temperature,
+            sheet_url: sheetUrl.trim() || undefined,
+          }),
+        });
+        const data = await res.json();
+        if (Array.isArray(data.results)) {
+          setResults((prev) => [...prev, ...data.results]);
+        } else {
+          setResults((prev) => [
+            ...prev,
+            ...batch.map((c) => ({ phone: c.phone, status: "failed" as const, error: data.error || "Unknown error" })),
+          ]);
+        }
+      } catch {
+        setResults((prev) => [
+          ...prev,
+          ...batch.map((c) => ({ phone: c.phone, status: "failed" as const, error: "Network error — check server" })),
+        ]);
+      }
     }
+
+    setLoading(false);
+  };
+
+  const handleStopLaunch = () => {
+    cancelLaunchRef.current = true;
+    setStopRequested(true);
+    setLaunchStatus("Stopping after the current batch finishes…");
   };
 
   const dispatched = results.filter((r) => r.status === "dispatched").length;
@@ -1043,23 +1073,41 @@ export default function BulkDialer() {
       </div>
 
       {/* Submit */}
-      <button
-        onClick={handleLaunch}
-        disabled={loading || !numbers.trim()}
-        className="w-full py-2.5 rounded-lg font-medium text-sm text-white
-                   bg-green-600 hover:bg-green-500
-                   disabled:opacity-40 disabled:cursor-not-allowed
-                   transition-colors duration-150 flex items-center justify-center gap-2"
-      >
-        {loading ? (
-          <>
-            <span className="spinner" />
-            Launching…
-          </>
-        ) : (
-          <>Launch Campaign{parsedCount > 0 ? ` (${parsedCount})` : ""}</>
+      <div className="flex gap-2">
+        <button
+          onClick={handleLaunch}
+          disabled={loading || !numbers.trim()}
+          className="flex-1 py-2.5 rounded-lg font-medium text-sm text-white
+                     bg-green-600 hover:bg-green-500
+                     disabled:opacity-40 disabled:cursor-not-allowed
+                     transition-colors duration-150 flex items-center justify-center gap-2"
+        >
+          {loading ? (
+            <>
+              <span className="spinner" />
+              Launching…
+            </>
+          ) : (
+            <>Launch Campaign{parsedCount > 0 ? ` (${parsedCount})` : ""}</>
+          )}
+        </button>
+        {loading && (
+          <button
+            onClick={handleStopLaunch}
+            disabled={stopRequested}
+            className="px-4 py-2.5 rounded-lg font-medium text-sm text-white
+                       bg-red-600 hover:bg-red-500
+                       disabled:opacity-40 disabled:cursor-not-allowed
+                       transition-colors duration-150"
+          >
+            Stop
+          </button>
         )}
-      </button>
+      </div>
+
+      {launchStatus && (
+        <p className="text-[11px] text-amber-400">{launchStatus}</p>
+      )}
 
       {/* Progress bar */}
       {loading && (
