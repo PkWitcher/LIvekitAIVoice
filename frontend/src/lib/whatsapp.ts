@@ -9,8 +9,8 @@
  *   WHATSAPP_ENABLED     — Set to "true" to enable (disabled by default)
  *
  * Every call outcome (completed/no-answer/declined) sends the same approved template,
- * Category: MARKETING, 1 body variable (field_1 = recipient's first name):
- *   ai_summit_today — header "TODAY 11 AM: AI Summit", body greets {{1}} about today's summit.
+ * Category: UTILITY, 1 body variable (field_1 = recipient's first name):
+ *   ai_summit_today_4th_nov — header "TODAY 7 PM: AI Summit", reminds {{1}} about today's 7 PM session.
  */
 
 const WAMPLI_API_TOKEN = process.env.WAMPLI_API_TOKEN ?? "";
@@ -19,19 +19,16 @@ const WHATSAPP_ENABLED = process.env.WHATSAPP_ENABLED === "true";
 
 const WAMPLI_API_BASE_URL = process.env.WAMPLI_API_BASE_URL || "https://wampli.in/api";
 
-// Exact approved body text for the ai_summit_today template — {{1}} is the recipient's name
-const AI_SUMMIT_TODAY_BODY = (name: string) => `TODAY. 🔥
+// Exact approved body text for the ai_summit_today_4th_nov template — {{1}} is the recipient's name
+const AI_SUMMIT_TODAY_BODY = (name: string) => `Hi ${name},
 
-Hi ${name}, in a few hours we open the room.
+This is a reminder that your scheduled session is happening today at 7:00 PM.
 
-Don't come to take notes.
-Come with your laptop. Come ready to build.
+**Meeting Link:** https://us06web.zoom.us/meeting/register/2pQEWo7iTdiLj4vntdZCFw
 
-By the end of today's session, you'll have things on your laptop that didn't exist this morning.
+Please join the session on time and keep your laptop ready.
 
-🖼 🎬 🧑‍💼 🎵 📞 ⚙
-
-We start at 11:00 AM sharp. See you inside.`;
+We look forward to seeing you.`;
 
 export type WhatsAppMessageType = "call_completed" | "call_missed" | "call_rejected";
 
@@ -55,14 +52,14 @@ function formatPhone(phone: string): string {
 }
 
 /**
- * Every outcome uses the same ai_summit_today template.
+ * Every outcome uses the same ai_summit_today_4th_nov template.
  * Wampli's API requires `message_body` (the full resolved text) in addition to the
  * field_1 variable — their dashboard docs omit this, found via a live 400 error.
  */
 function getTemplateConfig(options: SendMessageOptions) {
   const name = options.userName?.trim() || "there";
   return {
-    template_name: "ai_summit_today",
+    template_name: "ai_summit_today_4th_nov",
     fields: { field_1: name },
     message_body: AI_SUMMIT_TODAY_BODY(name),
   };
