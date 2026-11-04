@@ -278,6 +278,12 @@ export default function BulkDialer() {
     setParsedPreview(null);
   };
 
+  const clearAllNumbers = () => {
+    setNumbers("");
+    setContactNames({});
+    resetFileState();
+  };
+
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -809,11 +815,22 @@ export default function BulkDialer() {
       <div>
         <div className="flex items-center justify-between">
           <label htmlFor="bulk-numbers">Phone Numbers</label>
-          {parsedCount > 0 && (
-            <span className="text-[11px] text-[var(--color-text-muted)] font-mono">
-              {parsedCount} number{parsedCount !== 1 ? "s" : ""}
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {parsedCount > 0 && (
+              <span className="text-[11px] text-[var(--color-text-muted)] font-mono">
+                {parsedCount} number{parsedCount !== 1 ? "s" : ""}
+              </span>
+            )}
+            {parsedCount > 0 && (
+              <button
+                type="button"
+                onClick={clearAllNumbers}
+                className="text-[11px] text-red-400 hover:text-red-300"
+              >
+                Clear
+              </button>
+            )}
+          </div>
         </div>
         <textarea
           id="bulk-numbers"
