@@ -24,7 +24,7 @@ function getLivekitWsUrl(url: string): string {
 
 interface QueueBody {
   phone_numbers?: string[];
-  contacts?: { phone: string; prompt?: string; first_message?: string }[];
+  contacts?: { phone: string; prompt?: string; first_message?: string; name?: string }[];
   prompt?: string;
   model_provider?: string;
   voice_id?: string;
@@ -74,17 +74,19 @@ export async function POST(request: NextRequest) {
 
     // `contacts` (per-contact prompt/first_message, e.g. personalized {{name}}) takes priority;
     // falls back to the older flat phone_numbers + one shared prompt for compatibility.
-    const normalizedContacts: { phone: string; prompt: string; first_message: string }[] =
+    const normalizedContacts: { phone: string; prompt: string; first_message: string; name: string }[] =
       Array.isArray(body.contacts) && body.contacts.length > 0
         ? body.contacts.map((c) => ({
             phone: c.phone,
             prompt: c.prompt ?? body.prompt ?? "",
             first_message: c.first_message ?? body.first_message ?? "",
+            name: c.name ?? "",
           }))
         : (body.phone_numbers ?? []).map((phone) => ({
             phone,
             prompt: body.prompt ?? "",
             first_message: body.first_message ?? "",
+            name: "",
           }));
 
     if (normalizedContacts.length === 0) {
@@ -201,6 +203,7 @@ export async function POST(request: NextRequest) {
           agent_id: body.agent_id || null,
           campaign_id: campaignId,
           sheet_url: body.sheet_url || null,
+          contact_name: contact.name || null,
         }).then();
       } catch (error) {
         const message =

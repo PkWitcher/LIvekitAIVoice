@@ -363,6 +363,7 @@ export default function BulkDialer() {
         phone,
         prompt: substituteVariables(contextRef.current, values).trim(),
         first_message: substituteVariables(firstMessageRef.current, values).trim(),
+        name: values.name,
       };
     });
 
@@ -486,6 +487,7 @@ export default function BulkDialer() {
         phone,
         prompt: substituteVariables(context, values).trim(),
         first_message: substituteVariables(firstMessage, values).trim(),
+        name: values.name,
       };
     });
 

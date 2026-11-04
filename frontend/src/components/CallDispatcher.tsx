@@ -165,6 +165,7 @@ export default function CallDispatcher() {
           tts_provider: selectedAgent?.voice_provider,
           temperature,
           first_message: finalFirstMessage.trim(),
+          name: variableValues.name,
         }),
       });
 

@@ -171,18 +171,7 @@ export async function POST(request: NextRequest) {
           await notifyCallWebhooks(roomName, record.user_id, "call.completed");
 
           // Send WhatsApp message — call completed
-          const { data: completedLog } = await supabase
-            .from("phone_logs")
-            .select("phone_number")
-            .eq("room_name", roomName)
-            .single();
-          if (completedLog?.phone_number) {
-            sendWhatsAppMessage({
-              to: completedLog.phone_number,
-              type: "call_completed",
-              callDuration: durationSeconds,
-            }).catch(() => {});
-          }
+          await sendWhatsAppAndRecordToSheet(roomName, "call_completed", durationSeconds);
         } else if (record.status === "ringing") {
           await supabase
             .from("phone_logs")
@@ -247,17 +236,7 @@ export async function POST(request: NextRequest) {
           await writeNoAnswerToSheet(roomName);
 
           // Send WhatsApp message — no answer / rejected
-          const { data: missedLog } = await supabase
-            .from("phone_logs")
-            .select("phone_number")
-            .eq("room_name", roomName)
-            .single();
-          if (missedLog?.phone_number) {
-            sendWhatsAppMessage({
-              to: missedLog.phone_number,
-              type: "call_missed",
-            }).catch(() => {});
-          }
+          await sendWhatsAppAndRecordToSheet(roomName, "call_missed");
         }
       }
     }
@@ -337,6 +316,41 @@ async function writeNoAnswerToSheet(roomName: string): Promise<void> {
     }
   } catch (err) {
     console.warn("[WEBHOOK] writeNoAnswerToSheet failed:", err);
+  }
+}
+
+// Sends the WhatsApp message and records "Yes"/"No" in the sheet's WhatsApp Sent column —
+// a separate partial update so it never clobbers the Interested/Disposition/etc. columns
+// written elsewhere for this same row.
+async function sendWhatsAppAndRecordToSheet(
+  roomName: string,
+  type: "call_completed" | "call_missed",
+  callDuration?: number
+): Promise<void> {
+  const supabase = getSupabase();
+  if (!supabase) return;
+  try {
+    const { data: log } = await supabase
+      .from("phone_logs")
+      .select("phone_number, sheet_url, contact_name")
+      .eq("room_name", roomName)
+      .single();
+    if (!log?.phone_number) return;
+
+    const sent = await sendWhatsAppMessage({
+      to: log.phone_number,
+      type,
+      callDuration,
+      userName: log.contact_name || undefined,
+    }).catch(() => false);
+
+    if (log.sheet_url) {
+      await writeCallResultToSheet(log.sheet_url, log.phone_number, {
+        whatsappSent: sent ? "Yes" : "No",
+      });
+    }
+  } catch (err) {
+    console.warn("[WEBHOOK] sendWhatsAppAndRecordToSheet failed:", err);
   }
 }
 

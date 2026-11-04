@@ -24,6 +24,7 @@ interface DispatchBody {
   tts_provider?: string;
   temperature?: number;
   first_message?: string;
+  name?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -137,6 +138,7 @@ export async function POST(request: NextRequest) {
       voice_id: body.voice_id ?? "aura-asteria-en",
       prompt: body.prompt || null,
       agent_id: body.agent_id || null,
+      contact_name: body.name || null,
     });
 
     // Auto-save prompt to user's saved_prompts if not already saved
