@@ -814,5 +814,10 @@ if __name__ == "__main__":
             # background, which competes for CPU with the live call's STT/LLM/TTS pipeline and
             # can silently starve it (AI never speaks) — especially with 2+ concurrent calls.
             num_idle_processes=0,
+            # Default is 10s. With num_idle_processes=0, EVERY call cold-starts a new process
+            # (import torch + load Silero VAD) from scratch — on a constrained CPU instance this
+            # can exceed 10s, causing "initialization timed out, killing process" in a loop and
+            # the agent never joining the call (stuck on ringing -> no answer).
+            initialize_process_timeout=60.0,
         ),
     )
