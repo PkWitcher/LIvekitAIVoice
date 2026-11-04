@@ -11,15 +11,27 @@ const SERVICE_ACCOUNT_PRIVATE_KEY = (process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_
 const SHEET_URL_PATTERN = /^https:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/;
 const GID_PATTERN = /[?&#]gid=(\d+)/;
 
-const WRITEBACK_COLUMNS = ["Interested", "Appointment Date", "Call Summary", "Disposition", "Call Received"] as const;
-
 export interface CallResultForSheet {
   interested?: string | null;
   appointmentDate?: string | null;
   summary?: string | null;
   disposition?: string | null;
   callReceived?: string | null;
+  whatsappSent?: string | null;
 }
+
+// Maps each sheet column to its CallResultForSheet key. Only keys actually present on the
+// `result` object passed in get written — this lets a later partial update (e.g. just
+// whatsappSent after the WhatsApp send resolves) avoid blanking out earlier columns.
+const COLUMN_FIELD_MAP: { column: string; key: keyof CallResultForSheet }[] = [
+  { column: "Interested", key: "interested" },
+  { column: "Appointment Date", key: "appointmentDate" },
+  { column: "Call Summary", key: "summary" },
+  { column: "Disposition", key: "disposition" },
+  { column: "Call Received", key: "callReceived" },
+  { column: "WhatsApp Sent", key: "whatsappSent" },
+];
+const WRITEBACK_COLUMNS = COLUMN_FIELD_MAP.map((c) => c.column);
 
 function base64url(input: Buffer | string): string {
   return Buffer.from(input).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -77,8 +89,9 @@ function normalizeDigits(phone: string): string {
 }
 
 /**
- * Finds the row matching `phoneNumber` in the Google Sheet and writes the call outcome
- * into Interested/Appointment Date/Call Summary/Disposition/Call Received columns (added if missing).
+ * Finds the row matching `phoneNumber` in the Google Sheet and writes the given fields
+ * (only keys present on `result` are written) into Interested/Appointment Date/Call
+ * Summary/Disposition/Call Received/WhatsApp Sent columns (added if missing).
  * Best-effort: any failure (missing credentials, number not found, API error) is logged
  * and swallowed so a sheet problem never breaks call processing.
  */
@@ -167,17 +180,11 @@ export async function writeCallResultToSheet(
       );
     }
 
-    const values = [
-      result.interested ?? "",
-      result.appointmentDate ?? "",
-      result.summary ?? "",
-      result.disposition ?? "",
-      result.callReceived ?? "",
-    ];
-    const data = WRITEBACK_COLUMNS.map((col, i) => ({
-      range: `${encodedTitle}!${columnLetter(colIndexByName.get(col)!)}${targetRowIndex + 1}`,
-      values: [[values[i]]],
+    const data = COLUMN_FIELD_MAP.filter(({ key }) => result[key] !== undefined).map(({ column, key }) => ({
+      range: `${encodedTitle}!${columnLetter(colIndexByName.get(column)!)}${targetRowIndex + 1}`,
+      values: [[result[key] ?? ""]],
     }));
+    if (data.length === 0) return;
 
     const updateRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values:batchUpdate`, {
       method: "POST",
