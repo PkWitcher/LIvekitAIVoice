@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
-import { RoomServiceClient } from "livekit-server-sdk";
+import { RoomServiceClient, SipClient } from "livekit-server-sdk";
 import { getSupabase } from "@/lib/supabase";
 import { createServerSupabase } from "@/lib/supabase-server";
 
@@ -126,6 +126,12 @@ export async function POST(request: NextRequest) {
       LIVEKIT_API_SECRET
     );
 
+    const sipClient = new SipClient(wsUrl, LIVEKIT_API_KEY, LIVEKIT_API_SECRET);
+
+    // Always auto-discover trunk (setup_sip_trunk.py recreates it on every startup)
+    const trunks = await sipClient.listSipOutboundTrunk();
+    const trunkId = trunks.length > 0 ? trunks[0].sipTrunkId : null;
+
     const campaignId = randomUUID();
     const results: DialResult[] = [];
 
@@ -165,18 +171,23 @@ export async function POST(request: NextRequest) {
 
         await roomService.createRoom({
           name: roomName,
+          metadata,
           emptyTimeout: 300,
           maxParticipants: 5,
         });
 
-        // Explicitly set metadata after room creation (LiveKit Cloud requires this —
-        // embedding it directly in createRoom() above isn't reliably applied).
-        await roomService.updateRoomMetadata(roomName, metadata);
+        if (trunkId) {
+          await sipClient.createSipParticipant(
+            trunkId,
+            phone,
+            roomName,
+            {
+              participantIdentity: `phone-${phone}`,
+              participantName: `Caller ${phone}`,
+            }
+          );
+        }
 
-        // Do NOT create the SIP participant here — the agent handles dialing via
-        // dial_outbound() when it joins and reads phone_number from metadata. Dialing
-        // directly from the API (old behavior) silently no-op'd whenever trunk discovery
-        // returned nothing, yet still reported status "dispatched".
         results.push({ phone, status: "dispatched", room_name: roomName });
 
         // Log to Supabase
