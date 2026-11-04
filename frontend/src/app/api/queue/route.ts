@@ -1,19 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
-import { RoomServiceClient, SipClient } from "livekit-server-sdk";
+import { RoomServiceClient } from "livekit-server-sdk";
 import { getSupabase } from "@/lib/supabase";
 import { createServerSupabase } from "@/lib/supabase-server";
 
 // Vercel Pro supports up to 300s per function — without this the route falls back to the
-// much lower default (15s), which the dial-stagger loop below easily exceeds.
+// much lower default (15s), which the serialized-call loop below easily exceeds.
 export const maxDuration = 300;
 
 const LIVEKIT_URL = process.env.LIVEKIT_URL ?? "http://localhost:7880";
 const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY ?? "";
 const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET ?? "";
-// Spaced out so concurrent pipeline cold-starts (STT/LLM/TTS) don't all hit the backend's
-// CPU at once — Render's limited vCPU can starve simultaneous calls (see repo notes).
-const DIAL_DELAY_MS = 5000;
+// Calls are fully serialized (wait for each to finish before dialing the next) so a single
+// worker (e.g. a laptop) never has to run multiple concurrent pipelines — a fixed stagger
+// alone doesn't prevent overlap since calls run far longer than any reasonable delay.
+const CALL_POLL_INTERVAL_MS = 2000;
+const CALL_MAX_WAIT_MS = 60_000;
+const MIN_GAP_MS = 2000;
 
 function getLivekitWsUrl(url: string): string {
   if (url.startsWith("wss://") || url.startsWith("ws://")) return url;
@@ -45,6 +48,27 @@ interface DialResult {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Poll phone_logs until the call reaches a terminal status (or the max wait elapses). */
+async function waitForCallToFinish(roomName: string): Promise<void> {
+  const supabase = getSupabase();
+  if (!supabase) {
+    await sleep(MIN_GAP_MS);
+    return;
+  }
+  const deadline = Date.now() + CALL_MAX_WAIT_MS;
+  while (Date.now() < deadline) {
+    await sleep(CALL_POLL_INTERVAL_MS);
+    const { data } = await supabase
+      .from("phone_logs")
+      .select("status")
+      .eq("room_name", roomName)
+      .single();
+    if (data && data.status !== "ringing" && data.status !== "connected") {
+      return;
+    }
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -126,12 +150,6 @@ export async function POST(request: NextRequest) {
       LIVEKIT_API_SECRET
     );
 
-    const sipClient = new SipClient(wsUrl, LIVEKIT_API_KEY, LIVEKIT_API_SECRET);
-
-    // Always auto-discover trunk (setup_sip_trunk.py recreates it on every startup)
-    const trunks = await sipClient.listSipOutboundTrunk();
-    const trunkId = trunks.length > 0 ? trunks[0].sipTrunkId : null;
-
     const campaignId = randomUUID();
     const results: DialResult[] = [];
 
@@ -171,27 +189,20 @@ export async function POST(request: NextRequest) {
 
         await roomService.createRoom({
           name: roomName,
-          metadata,
           emptyTimeout: 300,
           maxParticipants: 5,
         });
 
-        if (trunkId) {
-          await sipClient.createSipParticipant(
-            trunkId,
-            phone,
-            roomName,
-            {
-              participantIdentity: `phone-${phone}`,
-              participantName: `Caller ${phone}`,
-            }
-          );
-        }
+        // Explicitly set metadata after room creation (LiveKit Cloud requires this —
+        // embedding it directly in createRoom() above isn't reliably applied).
+        await roomService.updateRoomMetadata(roomName, metadata);
 
+        // Do NOT create the SIP participant here — the agent handles dialing via
+        // dial_outbound() when it joins and reads phone_number from metadata.
         results.push({ phone, status: "dispatched", room_name: roomName });
 
-        // Log to Supabase
-        getSupabase()?.from("phone_logs").insert({
+        // Log to Supabase — awaited so the row exists before we poll its status below
+        await getSupabase()?.from("phone_logs").insert({
           user_id: user.id,
           phone_number: phone,
           direction: "outbound",
@@ -209,9 +220,15 @@ export async function POST(request: NextRequest) {
         const message =
           error instanceof Error ? error.message : "Unknown error";
         results.push({ phone, status: "failed", error: message });
+        continue;
       }
 
-      await sleep(DIAL_DELAY_MS);
+      const lastRoomName = results[results.length - 1]?.room_name;
+      if (lastRoomName) {
+        await waitForCallToFinish(lastRoomName);
+      } else {
+        await sleep(MIN_GAP_MS);
+      }
     }
 
     // Update calls_used count in subscription
