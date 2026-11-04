@@ -493,9 +493,9 @@ export default function BulkDialer() {
 
     // Dispatched in small batches (not all at once) so Stop can take effect between
     // batches — numbers already dialed in a finished batch can't be un-called, but
-    // everything after the stop point is skipped. 40/batch (~200s of 5s-staggered dials)
-    // fits safely under Vercel Pro's 300s maxDuration; also stays under the server's 100-cap.
-    const LAUNCH_BATCH_SIZE = 40;
+    // everything after the stop point is skipped. 10/batch with a 5s dial stagger (~50s)
+    // reduces how many calls can be concurrently live at once on the current Render plan.
+    const LAUNCH_BATCH_SIZE = 10;
     for (let i = 0; i < contacts.length; i += LAUNCH_BATCH_SIZE) {
       if (cancelLaunchRef.current) {
         setLaunchStatus(`Stopped — ${i} of ${contacts.length} numbers were already dispatched.`);
