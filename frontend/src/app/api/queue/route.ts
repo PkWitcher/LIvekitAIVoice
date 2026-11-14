@@ -4,21 +4,15 @@ import { RoomServiceClient } from "livekit-server-sdk";
 import { getSupabase } from "@/lib/supabase";
 import { createServerSupabase } from "@/lib/supabase-server";
 
-// Vercel Pro supports up to 300s per function — without this the route falls back to the
-// much lower default (15s), which the serialized-call loop below easily exceeds.
-export const maxDuration = 300;
+// This route only dispatches calls (fast: create room + metadata + log row) and returns —
+// it never waits for calls to finish. Group-at-a-time pacing and waiting for completion is
+// handled client-side (BulkDialer.tsx) so a single request can't exceed the serverless
+// function's execution time limit.
+export const maxDuration = 60;
 
 const LIVEKIT_URL = process.env.LIVEKIT_URL ?? "http://localhost:7880";
 const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY ?? "";
 const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET ?? "";
-// Calls run in bounded-concurrency groups: GROUP_SIZE calls are dialed at once, then the
-// next group waits until every call in the current group has finished — avoids both full
-// serialization (1 at a time, slow) and full parallelism (all at once, overloads a single
-// worker / hits TTS provider concurrency limits).
-const GROUP_SIZE = 5;
-const CALL_POLL_INTERVAL_MS = 2000;
-const CALL_MAX_WAIT_MS = 60_000;
-const MIN_GAP_MS = 2000;
 
 function getLivekitWsUrl(url: string): string {
   if (url.startsWith("wss://") || url.startsWith("ws://")) return url;
@@ -46,31 +40,6 @@ interface DialResult {
   status: "dispatched" | "failed";
   room_name?: string;
   error?: string;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-/** Poll phone_logs until the call reaches a terminal status (or the max wait elapses). */
-async function waitForCallToFinish(roomName: string): Promise<void> {
-  const supabase = getSupabase();
-  if (!supabase) {
-    await sleep(MIN_GAP_MS);
-    return;
-  }
-  const deadline = Date.now() + CALL_MAX_WAIT_MS;
-  while (Date.now() < deadline) {
-    await sleep(CALL_POLL_INTERVAL_MS);
-    const { data } = await supabase
-      .from("phone_logs")
-      .select("status")
-      .eq("room_name", roomName)
-      .single();
-    if (data && data.status !== "ringing" && data.status !== "connected") {
-      return;
-    }
-  }
 }
 
 export async function POST(request: NextRequest) {
@@ -226,19 +195,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Process GROUP_SIZE contacts concurrently, then wait for the whole group to finish
-    // before dialing the next group — gives bounded concurrency instead of either fully
-    // serial (1 at a time) or fully parallel (all at once).
-    for (let i = 0; i < normalizedContacts.length; i += GROUP_SIZE) {
-      const group = normalizedContacts.slice(i, i + GROUP_SIZE);
-      const roomNames = await Promise.all(group.map((contact) => dialContact(contact)));
-      const activeRoomNames = roomNames.filter((r): r is string => r !== null);
-      if (activeRoomNames.length > 0) {
-        await Promise.all(activeRoomNames.map((roomName) => waitForCallToFinish(roomName)));
-      } else {
-        await sleep(MIN_GAP_MS);
-      }
-    }
+    // Dispatch every contact in this request concurrently — the caller (BulkDialer.tsx)
+    // is responsible for sending contacts in small groups and waiting for each group to
+    // finish before sending the next, so this stays fast regardless of group size.
+    await Promise.all(normalizedContacts.map((contact) => dialContact(contact)));
 
     // Update calls_used count in subscription
     const dispatched = results.filter((r) => r.status === "dispatched").length;

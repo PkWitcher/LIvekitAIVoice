@@ -497,23 +497,23 @@ export default function BulkDialer() {
       };
     });
 
-    // Dispatched in small batches (not all at once) so Stop can take effect between
-    // batches. Within a batch, queue/route.ts runs calls in groups of 5 concurrent calls,
-    // waiting for each group to finish (up to 60s) before starting the next group. 20/batch
-    // ≈ 4 groups × 60s = 240s, safely under Vercel Pro's 300s maxDuration.
-    const LAUNCH_BATCH_SIZE = 20;
-    for (let i = 0; i < contacts.length; i += LAUNCH_BATCH_SIZE) {
+    // Dispatched 5 at a time: each /api/queue request only creates the rooms/dials for one
+    // small group and returns immediately (fast, can't time out), then we poll /api/calls
+    // client-side until every call in that group leaves "ringing"/"connected" before
+    // sending the next group — this keeps the wait out of the serverless function entirely.
+    const GROUP_SIZE = 5;
+    for (let i = 0; i < contacts.length; i += GROUP_SIZE) {
       if (cancelLaunchRef.current) {
         setLaunchStatus(`Stopped — ${i} of ${contacts.length} numbers were already dispatched.`);
         break;
       }
-      const batch = contacts.slice(i, i + LAUNCH_BATCH_SIZE);
+      const group = contacts.slice(i, i + GROUP_SIZE);
       try {
         const res = await fetch("/api/queue", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            contacts: batch,
+            contacts: group,
             agent_id: selectedAgent?.group_id,
             tts_provider: selectedAgent?.voice_provider,
             voice_id: selectedAgent?.voice_id ?? voice,
@@ -526,21 +526,50 @@ export default function BulkDialer() {
         const data = await res.json();
         if (Array.isArray(data.results)) {
           setResults((prev) => [...prev, ...data.results]);
+          const roomNames = data.results
+            .filter((r: DialResult) => r.status === "dispatched" && r.room_name)
+            .map((r: DialResult) => r.room_name as string);
+          if (roomNames.length > 0) {
+            await waitForGroupToFinish(roomNames);
+          }
         } else {
           setResults((prev) => [
             ...prev,
-            ...batch.map((c) => ({ phone: c.phone, status: "failed" as const, error: data.error || "Unknown error" })),
+            ...group.map((c) => ({ phone: c.phone, status: "failed" as const, error: data.error || "Unknown error" })),
           ]);
         }
       } catch {
         setResults((prev) => [
           ...prev,
-          ...batch.map((c) => ({ phone: c.phone, status: "failed" as const, error: "Network error — check server" })),
+          ...group.map((c) => ({ phone: c.phone, status: "failed" as const, error: "Network error — check server" })),
         ]);
       }
     }
 
     setLoading(false);
+  };
+
+  // Polls /api/calls every 2s (up to 60s) until every given room_name has left
+  // "ringing"/"connected", so the next group isn't dispatched while this one is still live.
+  const waitForGroupToFinish = async (roomNames: string[]) => {
+    const deadline = Date.now() + 60_000;
+    const pending = new Set(roomNames);
+    while (pending.size > 0 && Date.now() < deadline && !cancelLaunchRef.current) {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      try {
+        const res = await fetch("/api/calls");
+        const data = await res.json();
+        if (Array.isArray(data.calls)) {
+          for (const call of data.calls) {
+            if (pending.has(call.room_name) && call.status !== "ringing" && call.status !== "connected") {
+              pending.delete(call.room_name);
+            }
+          }
+        }
+      } catch {
+        // transient fetch error while polling — keep retrying until deadline
+      }
+    }
   };
 
   const handleStopLaunch = () => {
