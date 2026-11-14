@@ -11,9 +11,11 @@ export const maxDuration = 300;
 const LIVEKIT_URL = process.env.LIVEKIT_URL ?? "http://localhost:7880";
 const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY ?? "";
 const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET ?? "";
-// Calls are fully serialized (wait for each to finish before dialing the next) so a single
-// worker (e.g. a laptop) never has to run multiple concurrent pipelines — a fixed stagger
-// alone doesn't prevent overlap since calls run far longer than any reasonable delay.
+// Calls run in bounded-concurrency groups: GROUP_SIZE calls are dialed at once, then the
+// next group waits until every call in the current group has finished — avoids both full
+// serialization (1 at a time, slow) and full parallelism (all at once, overloads a single
+// worker / hits TTS provider concurrency limits).
+const GROUP_SIZE = 5;
 const CALL_POLL_INTERVAL_MS = 2000;
 const CALL_MAX_WAIT_MS = 60_000;
 const MIN_GAP_MS = 2000;
@@ -74,17 +76,18 @@ async function waitForCallToFinish(roomName: string): Promise<void> {
 export async function POST(request: NextRequest) {
   try {
     const supabaseAuth = await createServerSupabase();
-    const { data: { user } } = await supabaseAuth.auth.getUser();
-    if (!user) {
+    const { data: { user: authUser } } = await supabaseAuth.auth.getUser();
+    if (!authUser) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
+    const userId: string = authUser.id;
 
     // Check subscription — user must have an active plan to make calls
     const supabase = getSupabase();
     const { data: subscription } = await supabase
       ?.from("user_subscriptions")
       .select("status, max_calls_per_month, calls_used")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .single() ?? { data: null };
 
     if (!subscription || (subscription.status !== "active" && subscription.status !== "trial")) {
@@ -153,16 +156,13 @@ export async function POST(request: NextRequest) {
     const campaignId = randomUUID();
     const results: DialResult[] = [];
 
-    for (const contact of normalizedContacts) {
+    /** Dial a single contact: creates the room + metadata, logs to Supabase. Returns the room_name on success. */
+    async function dialContact(contact: typeof normalizedContacts[number]): Promise<string | null> {
       let phone = contact.phone.trim();
 
       if (!/^\+?\d{7,15}$/.test(phone)) {
-        results.push({
-          phone,
-          status: "failed",
-          error: "Invalid format",
-        });
-        continue;
+        results.push({ phone, status: "failed", error: "Invalid format" });
+        return null;
       }
 
       // Auto-add +91 for 10-digit Indian numbers without country code
@@ -203,7 +203,7 @@ export async function POST(request: NextRequest) {
 
         // Log to Supabase — awaited so the row exists before we poll its status below
         await getSupabase()?.from("phone_logs").insert({
-          user_id: user.id,
+          user_id: userId,
           phone_number: phone,
           direction: "outbound",
           status: "ringing",
@@ -216,16 +216,25 @@ export async function POST(request: NextRequest) {
           sheet_url: body.sheet_url || null,
           contact_name: contact.name || null,
         }).then();
+
+        return roomName;
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Unknown error";
         results.push({ phone, status: "failed", error: message });
-        continue;
+        return null;
       }
+    }
 
-      const lastRoomName = results[results.length - 1]?.room_name;
-      if (lastRoomName) {
-        await waitForCallToFinish(lastRoomName);
+    // Process GROUP_SIZE contacts concurrently, then wait for the whole group to finish
+    // before dialing the next group — gives bounded concurrency instead of either fully
+    // serial (1 at a time) or fully parallel (all at once).
+    for (let i = 0; i < normalizedContacts.length; i += GROUP_SIZE) {
+      const group = normalizedContacts.slice(i, i + GROUP_SIZE);
+      const roomNames = await Promise.all(group.map((contact) => dialContact(contact)));
+      const activeRoomNames = roomNames.filter((r): r is string => r !== null);
+      if (activeRoomNames.length > 0) {
+        await Promise.all(activeRoomNames.map((roomName) => waitForCallToFinish(roomName)));
       } else {
         await sleep(MIN_GAP_MS);
       }
@@ -237,7 +246,7 @@ export async function POST(request: NextRequest) {
       await supabase
         ?.from("user_subscriptions")
         .update({ calls_used: subscription.calls_used + dispatched })
-        .eq("user_id", user.id);
+        .eq("user_id", userId);
     }
 
     // Auto-save prompt to user's saved_prompts if not already saved
@@ -247,7 +256,7 @@ export async function POST(request: NextRequest) {
       const { data: existing } = await supabase
         ?.from("saved_prompts")
         .select("id")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .eq("prompt", promptText)
         .limit(1) ?? { data: null };
 
@@ -255,7 +264,7 @@ export async function POST(request: NextRequest) {
         const firstLine = promptText.split('\n')[0].replace(/^#+\s*/, '').replace(/^Tu |^You are /i, '');
         const autoTitle = firstLine.length > 40 ? firstLine.substring(0, 40) + '...' : firstLine;
         await supabase?.from("saved_prompts").insert({
-          user_id: user.id,
+          user_id: userId,
           title: autoTitle,
           prompt: promptText,
         });
