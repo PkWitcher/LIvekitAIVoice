@@ -2271,6 +2271,7 @@ input[type="range"]::-moz-range-thumb {
 .admin-layout {
   display: flex;
   height: 100vh;
+  height: 100dvh;
   position: relative;
   z-index: 1;
   background: #0f1117;
@@ -2432,7 +2433,9 @@ input[type="range"]::-moz-range-thumb {
 .admin-main {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2493,6 +2496,7 @@ input[type="range"]::-moz-range-thumb {
 /* ── Content ── */
 .admin-content {
   flex: 1;
+  min-height: 0;
   padding: 1.5rem 2rem 2rem;
   overflow-y: auto;
 }
