@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Voice Agent — Vobiz Integration Status Report</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    color: #1c2430;
+    margin: 0;
+    font-size: 12.5px;
+    line-height: 1.55;
+  }
+  h1.doc-title {
+    font-size: 24px;
+    color: #14213d;
+    margin: 0 0 4px;
+  }
+  p.subtitle {
+    font-size: 12.5px;
+    color: #54617a;
+    margin: 0 0 6px;
+  }
+  p.intro {
+    font-size: 12.5px;
+    color: #33415c;
+    background: #eef4ff;
+    border-left: 4px solid #3b82f6;
+    padding: 10px 14px;
+    border-radius: 4px;
+    margin: 14px 0 22px;
+  }
+  h1.section-title {
+    font-size: 18px;
+    color: #14213d;
+    border-bottom: 3px solid #3b82f6;
+    padding-bottom: 7px;
+    margin: 26px 0 14px;
+  }
+  h1.section-title.first { margin-top: 10px; }
+  .card-list { display: flex; flex-direction: column; gap: 10px; }
+  .card {
+    border: 1px solid #e3e8f2;
+    border-radius: 8px;
+    padding: 10px 14px;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 5px;
+  }
+  .card-head .area {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #14213d;
+  }
+  .badge {
+    display: inline-block;
+    padding: 3px 11px;
+    border-radius: 10px;
+    font-size: 10.5px;
+    font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .badge.done { background: #dcfce7; color: #16a34a; }
+  .badge.now { background: #dbeafe; color: #1d4ed8; }
+  .badge.spec { background: #fef3c7; color: #b45309; }
+  .badge.blocked { background: #fee2e2; color: #dc2626; }
+  .badge.business { background: #ede9fe; color: #6d28d9; }
+  .card .details {
+    font-size: 12px;
+    color: #33415c;
+  }
+  .card .details code {
+    background: #f1f4fa;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 11px;
+    color: #1d3a8f;
+  }
+  ul.deps { margin: 0; padding-left: 20px; }
+  ul.deps li { margin: 8px 0; font-size: 12.5px; }
+  ol.next { margin: 0; padding-left: 20px; }
+  ol.next li { margin: 8px 0; font-size: 12.5px; }
+  footer.pagefoot {
+    font-size: 10px; color: #8b95a8; text-align: center; margin-top: 26px;
+  }
+</style>
+</head>
+<body>
+
+<h1 class="doc-title">Voice Agent — Vobiz Integration Status Report</h1>
+<p class="subtitle">Nova AI Voice Agent (LiveKit + Vobiz SIP) &bull; Generated 19 Nov 2026</p>
+<p class="intro">
+  This report summarizes what is already implemented in the voice agent platform, what still
+  needs to be built to fully answer Vobiz/Rudra's integration questions (SIP trunking,
+  API/webhooks, sub-accounts, number provisioning), and what is blocked on external approvals
+  rather than engineering effort.
+</p>
+
+<!-- ===================== 1. COMPLETED ===================== -->
+<h1 class="section-title first">1. What We Have Completed</h1>
+<div class="card-list">
+
+  <div class="card">
+    <div class="card-head"><span class="area">SIP Trunking</span><span class="badge done">Done</span></div>
+    <div class="details">Outbound SIP trunk to Vobiz is auto-created/reused on startup (<code>backend/setup_sip_trunk.py</code>), configured with TCP transport, and the trunk ID is written out for the agent to pick up automatically.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><span class="area">Outbound Calling API</span><span class="badge done">Done</span></div>
+    <div class="details">Two routes: <code>/api/dispatch</code> (dashboard, session-authenticated) and <code>/api/public/calls</code> (API-key authenticated, for n8n / Make / Zapier / Meta Lead Ads and other custom integrations).</div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><span class="area">Call Events / Status Tracking</span><span class="badge done">Done</span></div>
+    <div class="details"><code>/api/webhook/livekit</code> consumes LiveKit's own webhooks (<code>participant_joined</code> / <code>participant_left</code> / <code>room_finished</code>) to track call lifecycle and trigger downstream actions.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><span class="area">Call Recording</span><span class="badge done">Done</span></div>
+    <div class="details">LiveKit Egress starts on participant join and stops on call end; the recording is uploaded to Supabase S3-compatible storage.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><span class="area">Call Transcripts &amp; AI Summary</span><span class="badge done">Done</span></div>
+    <div class="details">A full transcript is stored per call; AI classifies disposition and interest, extracts the appointment date, and generates a summary automatically.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><span class="area">Outbound Webhooks (to customers)</span><span class="badge done">Done</span></div>
+    <div class="details">Customers can register their own webhook URLs; HMAC-signed payloads are delivered on <code>call.completed</code> (and related) events.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><span class="area">API Key Management</span><span class="badge done">Done</span></div>
+    <div class="details">Customers can generate/revoke their own API keys to trigger calls programmatically (<code>api_keys</code> tab in Settings &gt; Integrations).</div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><span class="area">WhatsApp Notifications</span><span class="badge done">Done</span></div>
+    <div class="details">An automated WhatsApp message is sent after each call via Wampli, including the call outcome.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><span class="area">Google Sheets Write-back</span><span class="badge done">Done</span></div>
+    <div class="details">Call outcome (interested, appointment date, disposition, summary) is written back into the originating Google Sheet row.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><span class="area">Usage &amp; Subscription Limits</span><span class="badge done">Done</span></div>
+    <div class="details">Per-user plan with <code>calls_used</code> / <code>minutes_used</code> enforcement before allowing new outbound calls.</div>
+  </div>
+
+</div>
+
+<!-- ===================== 2. STILL NEEDED ===================== -->
+<h1 class="section-title">2. What We Still Need to Create</h1>
+<div class="card-list">
+
+  <div class="card">
+    <div class="card-head"><span class="area">DTMF Handling</span><span class="badge now">Code now</span></div>
+    <div class="details">No DTMF capture exists today. Needs LiveKit SIP DTMF event handling added to <code>backend/agent.py</code> so keypad input during a call can be read and acted on.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><span class="area">Vobiz-native Webhook Receiver</span><span class="badge spec">Code + spec</span></div>
+    <div class="details">We currently rely only on LiveKit's own webhooks. If Vobiz needs to push call-event/recording notifications directly to us, we need a dedicated receiver endpoint built against Vobiz's payload format.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><span class="area">Programmatic Number Provisioning</span><span class="badge blocked">Blocked on credentials</span></div>
+    <div class="details">Vobiz's Calls/Account/Trunks REST API (<code>https://api.vobiz.ai/api/v1</code>) needs an <code>X-Auth-ID</code> / <code>X-Auth-Token</code> pair issued to us before we can provision numbers programmatically.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><span class="area">Sub-accounts / Reseller Model</span><span class="badge blocked">Blocked on approval</span></div>
+    <div class="details">Vobiz natively supports sub-accounts (own Auth ID/Token, numbers, usage per child account), but we need Vobiz's confirmation and Partner API access before we can create and manage them programmatically.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><span class="area">Per-customer Outbound Routing</span><span class="badge now">Code, after above</span></div>
+    <div class="details">Today all customers share one Vobiz trunk and one outbound number. Once sub-accounts exist, each customer/org can be routed through its own trunk and number.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><span class="area">Reseller / Partner Pricing</span><span class="badge business">Business step</span></div>
+    <div class="details">Not a code item. Vobiz requires our detailed use case, target countries, and expected call volume before they can quote reseller/partner pricing.</div>
+  </div>
+
+</div>
+
+<!-- ===================== 3. DEPENDENCIES ===================== -->
+<h1 class="section-title">3. Dependencies Before the Remaining Items Can Work</h1>
+<ul class="deps">
+  <li>Obtain the Vobiz Console <b>Auth ID</b> and <b>Auth Token</b> (<code>X-Auth-ID</code> / <code>X-Auth-Token</code>) for REST API access — separate from the existing SIP trunk username/password.</li>
+  <li>Get confirmation / access to the <b>Partner API</b> from Vobiz if we want to create sub-accounts programmatically, rather than manually via the Console.</li>
+  <li>Share our <b>use case, target countries, and expected call volume</b> with Vobiz so they can quote reseller/partner pricing (already requested in our reply to Rudra).</li>
+  <li>If a native Vobiz webhook receiver is required, get the exact <b>payload and signature spec</b> from Vobiz docs/support before building it.</li>
+  <li>All new integrations should be tested against Vobiz's sandbox/live API with a real test call before being considered production-ready.</li>
+</ul>
+
+<!-- ===================== 4. NEXT STEPS ===================== -->
+<h1 class="section-title">4. Recommended Next Steps</h1>
+<ol class="next">
+  <li>Build and test DTMF handling now — no external dependency.</li>
+  <li>Send Vobiz our use case / countries / volume to unlock partner pricing and Partner API access.</li>
+  <li>Once Auth ID/Token are issued, wire up programmatic number provisioning.</li>
+  <li>Design the sub-account ↔ internal org/user mapping once Partner API access is confirmed.</li>
+</ol>
+
+<footer class="pagefoot">Nova AI Voice Agent &bull; Vobiz Integration Status Report &bull; Generated 19 Nov 2026</footer>
+
+</body>
+</html>

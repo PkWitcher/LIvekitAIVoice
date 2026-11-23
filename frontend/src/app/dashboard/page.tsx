@@ -35,6 +35,8 @@ import {
   ArrowUpRight,
   Bot,
   Webhook,
+  Menu,
+  X,
 } from 'lucide-react';
 
 // --- Types ---
@@ -124,6 +126,7 @@ function getCurrentMonthRange(): { from: string; to: string } {
 
 export default function DashboardPage() {
   const [activeNav, setActiveNav] = useState<string>('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [stats, setStats] = useState<Stats | null>(null);
   const [daily, setDaily] = useState<DailyData[]>([]);
   const [chartPeriod, setChartPeriod] = useState<ChartPeriod>("7d");
@@ -329,6 +332,11 @@ export default function DashboardPage() {
     router.refresh();
   };
 
+  const handleNavClick = (nav: string) => {
+    setActiveNav(nav);
+    setSidebarOpen(false);
+  };
+
   return (
     <div data-dashboard className="dash-root">
       {/* Background Effects */}
@@ -337,22 +345,36 @@ export default function DashboardPage() {
         <div className="dash-glow dash-glow-2" />
       </div>
 
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
+        <div className="dash-sidebar-overlay" onClick={() => setSidebarOpen(false)} />
+      )}
+
       {/* Sidebar */}
-      <aside className="dash-sidebar">
+      <aside className={`dash-sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div>
-          <Link href="/" className="dash-brand">
-            <div className="dash-brand-icon">
-              <Phone className="w-[18px] h-[18px]" />
-            </div>
-            <div>
-              <h1 className="dash-brand-title">Nova AI</h1>
-              <span className="dash-brand-sub">Voice Platform</span>
-            </div>
-          </Link>
+          <div className="dash-brand-row">
+            <Link href="/" className="dash-brand">
+              <div className="dash-brand-icon">
+                <Phone className="w-[18px] h-[18px]" />
+              </div>
+              <div>
+                <h1 className="dash-brand-title">Nova AI</h1>
+                <span className="dash-brand-sub">Voice Platform</span>
+              </div>
+            </Link>
+            <button
+              className="dash-sidebar-close-btn"
+              onClick={() => setSidebarOpen(false)}
+              aria-label="Close menu"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
 
           <nav className="dash-nav">
             <button
-              onClick={() => setActiveNav('dashboard')}
+              onClick={() => handleNavClick('dashboard')}
               className={`dash-nav-item ${activeNav === 'dashboard' ? 'active' : ''}`}
             >
               <LayoutDashboard className="w-4 h-4" />
@@ -360,7 +382,7 @@ export default function DashboardPage() {
             </button>
 
             <button
-              onClick={() => setActiveNav('calls')}
+              onClick={() => handleNavClick('calls')}
               className={`dash-nav-item ${activeNav === 'calls' ? 'active' : ''}`}
             >
               <Phone className="w-4 h-4" />
@@ -371,7 +393,7 @@ export default function DashboardPage() {
             </button>
 
             <button
-              onClick={() => setActiveNav('agents')}
+              onClick={() => handleNavClick('agents')}
               className={`dash-nav-item ${activeNav === 'agents' ? 'active' : ''}`}
             >
               <Bot className="w-4 h-4" />
@@ -379,7 +401,7 @@ export default function DashboardPage() {
             </button>
 
             <button
-              onClick={() => setActiveNav('integrations')}
+              onClick={() => handleNavClick('integrations')}
               className={`dash-nav-item ${activeNav === 'integrations' ? 'active' : ''}`}
             >
               <Webhook className="w-4 h-4" />
@@ -387,7 +409,7 @@ export default function DashboardPage() {
             </button>
 
             <button
-              onClick={() => setActiveNav('transcripts')}
+              onClick={() => handleNavClick('transcripts')}
               className={`dash-nav-item ${activeNav === 'transcripts' ? 'active' : ''}`}
             >
               <FileText className="w-4 h-4" />
@@ -395,7 +417,7 @@ export default function DashboardPage() {
             </button>
 
             <button
-              onClick={() => setActiveNav('settings')}
+              onClick={() => handleNavClick('settings')}
               className={`dash-nav-item ${activeNav === 'settings' ? 'active' : ''}`}
             >
               <Settings className="w-4 h-4" />
@@ -411,9 +433,18 @@ export default function DashboardPage() {
       <main className="dash-main">
         {/* Header */}
         <header className="dash-header">
-          <div>
-            <h2 className="dash-header-title">{activeNav.charAt(0).toUpperCase() + activeNav.slice(1)}</h2>
-            <p className="dash-header-sub">{activeNav === 'dashboard' ? `Welcome back, ${displayName}!` : activeNav === 'calls' ? 'Manage and dispatch calls' : activeNav === 'agents' ? 'Build and manage your AI call agents' : activeNav === 'integrations' ? 'API keys and outbound webhooks' : activeNav === 'transcripts' ? 'View call transcripts' : 'Account settings'}</p>
+          <div className="dash-header-left">
+            <button
+              className="dash-hamburger-btn"
+              onClick={() => setSidebarOpen(true)}
+              aria-label="Open menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <div>
+              <h2 className="dash-header-title">{activeNav.charAt(0).toUpperCase() + activeNav.slice(1)}</h2>
+              <p className="dash-header-sub">{activeNav === 'dashboard' ? `Welcome back, ${displayName}!` : activeNav === 'calls' ? 'Manage and dispatch calls' : activeNav === 'agents' ? 'Build and manage your AI call agents' : activeNav === 'integrations' ? 'API keys and outbound webhooks' : activeNav === 'transcripts' ? 'View call transcripts' : 'Account settings'}</p>
+            </div>
           </div>
           <div className="dash-header-actions">
             {activeNav === 'dashboard' && (

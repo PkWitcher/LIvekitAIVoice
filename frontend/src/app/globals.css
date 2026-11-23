@@ -5066,6 +5066,29 @@ input[type="range"]::-moz-range-thumb {
   overflow-y: auto;
   flex-shrink: 0;
 }
+.dash-brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.dash-sidebar-close-btn {
+  display: none;
+  padding: 6px;
+  border-radius: 8px;
+  color: #888;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  margin-bottom: 32px;
+}
+.dash-sidebar-close-btn:hover {
+  color: #fff;
+  background: rgba(255,255,255,0.06);
+}
+.dash-sidebar-overlay {
+  display: none;
+}
 .dash-brand {
   display: flex;
   align-items: center;
@@ -5232,6 +5255,26 @@ input[type="range"]::-moz-range-thumb {
   font-size: 12px;
   color: #666;
   margin-top: 2px;
+}
+.dash-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.dash-hamburger-btn {
+  display: none;
+  padding: 8px;
+  border-radius: 8px;
+  color: #ccc;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.dash-hamburger-btn:hover {
+  color: #fff;
+  background: rgba(255,255,255,0.06);
 }
 .dash-header-actions {
   display: flex;
@@ -5970,6 +6013,49 @@ input[type="range"]::-moz-range-thumb {
 }
 
 /* ═══════════════════════════════════════════════════
+   DASHBOARD — Mobile / Off-canvas Sidebar
+   ═══════════════════════════════════════════════════ */
+@media (max-width: 1024px) {
+  .dash-hamburger-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .dash-sidebar-close-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .dash-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 100;
+    width: min(80vw, 280px);
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    box-shadow: 0 0 40px rgba(0,0,0,0.4);
+  }
+  .dash-sidebar.open {
+    transform: translateX(0);
+  }
+  .dash-sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(2px);
+  }
+  .dash-header {
+    padding: 14px 16px;
+  }
+  .dash-header-title {
+    font-size: 16px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
    DASHBOARD — Light Mode Overrides
    Targets [data-theme="light"] [data-dashboard]
    ═══════════════════════════════════════════════════ */
@@ -6000,6 +6086,10 @@ input[type="range"]::-moz-range-thumb {
 [data-theme="light"] .dash-user-plan { color: #8892a4 !important; }
 [data-theme="light"] .dash-logout-btn { color: #dc2626 !important; }
 [data-theme="light"] .dash-logout-btn:hover { background: rgba(220,38,38,0.04) !important; }
+[data-theme="light"] .dash-sidebar-close-btn { color: #8892a4 !important; }
+[data-theme="light"] .dash-sidebar-close-btn:hover { color: #1a1a2e !important; background: rgba(0,0,0,0.04) !important; }
+[data-theme="light"] .dash-hamburger-btn { color: #5a5a6e !important; }
+[data-theme="light"] .dash-hamburger-btn:hover { color: #1a1a2e !important; background: rgba(0,0,0,0.04) !important; }
 
 /* Header */
 [data-theme="light"] .dash-header { background: rgba(245,247,250,0.8) !important; border-color: #e8e8ec !important; }

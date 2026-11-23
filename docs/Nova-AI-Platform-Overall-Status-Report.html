@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Nova AI Voice Platform — Overall Status Report</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    color: #1c2430;
+    margin: 0;
+    font-size: 12.5px;
+    line-height: 1.55;
+  }
+  h1.doc-title { font-size: 23px; color: #14213d; margin: 0 0 4px; }
+  p.subtitle { font-size: 12.5px; color: #54617a; margin: 0 0 6px; }
+  p.intro {
+    font-size: 12.5px; color: #33415c; background: #eef4ff;
+    border-left: 4px solid #3b82f6; padding: 10px 14px; border-radius: 4px;
+    margin: 14px 0 20px;
+  }
+  .legend { display:flex; flex-wrap:wrap; gap:8px; margin: 0 0 20px; }
+  .legend .badge { font-size: 10px; }
+  h1.section-title {
+    font-size: 17px; color: #14213d; border-bottom: 3px solid #3b82f6;
+    padding-bottom: 6px; margin: 24px 0 12px;
+  }
+  h1.section-title.first { margin-top: 8px; }
+  h2.group {
+    font-size: 13px; color: #1d3a8f; margin: 16px 0 8px;
+    text-transform: uppercase; letter-spacing: 0.4px;
+  }
+  .card-list { display: flex; flex-direction: column; gap: 9px; }
+  .card {
+    border: 1px solid #e3e8f2; border-radius: 8px; padding: 9px 13px;
+    break-inside: avoid; page-break-inside: avoid;
+  }
+  .card-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; margin-bottom: 4px;
+  }
+  .card-head .area { font-size: 13px; font-weight: 700; color: #14213d; }
+  .badge {
+    display: inline-block; padding: 3px 11px; border-radius: 10px;
+    font-size: 10.5px; font-weight: 700; white-space: nowrap; flex-shrink: 0;
+  }
+  .badge.done { background: #dcfce7; color: #16a34a; }
+  .badge.now { background: #dbeafe; color: #1d4ed8; }
+  .badge.partial { background: #fef3c7; color: #b45309; }
+  .badge.blocked { background: #fee2e2; color: #dc2626; }
+  .badge.business { background: #ede9fe; color: #6d28d9; }
+  .card .details { font-size: 12px; color: #33415c; }
+  .card .details code {
+    background: #f1f4fa; padding: 1px 5px; border-radius: 4px;
+    font-size: 11px; color: #1d3a8f;
+  }
+  ul.deps { margin: 0; padding-left: 20px; }
+  ul.deps li { margin: 8px 0; font-size: 12.5px; }
+  ol.next { margin: 0; padding-left: 20px; }
+  ol.next li { margin: 8px 0; font-size: 12.5px; }
+  footer.pagefoot { font-size: 10px; color: #8b95a8; text-align: center; margin-top: 26px; }
+  .cost-card { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .cost-card .area { font-size: 12.8px; font-weight: 600; color: #14213d; }
+  .effort-badge {
+    background: #eef4ff; color: #1d3a8f; font-size: 11px; font-weight: 700;
+    padding: 3px 10px; border-radius: 10px; white-space: nowrap; flex-shrink: 0;
+  }
+  .cost-grid { display: flex; flex-direction: column; gap: 5px; }
+  .cost-total {
+    margin-top: 12px; border: 2px solid #3b82f6; border-radius: 8px;
+    padding: 12px 16px; background: #f4f8ff;
+  }
+  .cost-total .row { display:flex; justify-content:space-between; font-size: 12.8px; padding: 3px 0; }
+  .cost-total .row b { color: #14213d; }
+  .cost-total .grand { font-size: 15px; color: #14213d; border-top: 1px solid #c7d7f5; margin-top: 6px; padding-top: 8px; }
+  .assumptions { font-size: 11.5px; color: #697490; margin-top: 10px; }
+  .assumptions li { margin: 3px 0; }
+</style>
+</head>
+<body>
+
+<h1 class="doc-title">Nova AI Voice Platform — Overall Status Report</h1>
+<p class="subtitle">Full portal review across every module &bull; "Nova AI" is a working name &bull; Generated 20 Nov 2026</p>
+<p class="intro">
+  This report covers the <b>entire portal</b> — not just the Vobiz telephony integration (see the
+  dedicated <i>Vobiz Integration Status Report</i> for that detail). It summarizes what is built and
+  working, what is built but needs hardening before it's fully production-ready, what is still pending
+  on the engineering side, and what is pending on the business side (naming, logo, payment setup).
+</p>
+<div class="legend">
+  <span class="badge done">Done</span>
+  <span class="badge partial">Needs Hardening</span>
+  <span class="badge now">Code Pending</span>
+  <span class="badge blocked">Blocked — External</span>
+  <span class="badge business">Business Decision</span>
+</div>
+
+<!-- ===================== 1. COMPLETED ===================== -->
+<h1 class="section-title first">1. Core Platform — What's Built &amp; Working</h1>
+
+<h2 class="group">Authentication &amp; Onboarding</h2>
+<div class="card-list">
+  <div class="card">
+    <div class="card-head"><span class="area">Sign-up / Sign-in</span><span class="badge done">Done</span></div>
+    <div class="details">Email/password auth via Supabase (<code>frontend/src/app/login/page.tsx</code>); sign-up collects name &amp; phone and upserts <code>user_profiles</code>, then requires email confirmation.</div>
+  </div>
+  <div class="card">
+    <div class="card-head"><span class="area">Route Protection</span><span class="badge done">Done</span></div>
+    <div class="details">Dashboard/admin pages and key API routes are gated by <code>frontend/src/middleware.ts</code>; separate admin login screen at <code>/admin/login</code>.</div>
+  </div>
+</div>
+
+<h2 class="group">Dashboard &amp; Analytics</h2>
+<div class="card-list">
+  <div class="card">
+    <div class="card-head"><span class="area">Stats, Charts &amp; Date Filters</span><span class="badge done">Done</span></div>
+    <div class="details"><code>DashboardStats.tsx</code> shows call totals/rates/charts; <code>DashboardDateFilter.tsx</code> provides date-range selection, all backed by a live stats API.</div>
+  </div>
+  <div class="card">
+    <div class="card-head"><span class="area">Disposition &amp; Cost Breakdown</span><span class="badge done">Done</span></div>
+    <div class="details"><code>AnalyticsBreakdown.tsx</code> reports call dispositions and per-agent/per-campaign performance, with an estimated cost figure based on a rate-per-minute.</div>
+  </div>
+  <div class="card">
+    <div class="card-head"><span class="area">AI Analytics Assistant</span><span class="badge done">Done</span></div>
+    <div class="details">Chat-style Q&amp;A over the user's own call logs (<code>AnalyticsAssistant.tsx</code> + <code>/api/analytics-assistant</code>), with persisted chat threads.</div>
+  </div>
+</div>
+
+<h2 class="group">Calling</h2>
+<div class="card-list">
+  <div class="card">
+    <div class="card-head"><span class="area">Single Call Dispatcher</span><span class="badge done">Done</span></div>
+    <div class="details"><code>CallDispatcher.tsx</code> &rarr; <code>/api/dispatch</code> validates the phone number, checks subscription quota, creates a LiveKit room with call metadata, and logs the call.</div>
+  </div>
+  <div class="card">
+    <div class="card-head"><span class="area">Bulk Dialer Campaigns</span><span class="badge done">Done</span></div>
+    <div class="details"><code>BulkDialer.tsx</code> supports phone lists, file uploads, saved scripts, per-contact personalization and Google Sheet import; <code>/api/queue</code> dispatches up to 100 contacts per request with quota checks.</div>
+  </div>
+  <div class="card">
+    <div class="card-head"><span class="area">Call History &amp; Transcripts</span><span class="badge done">Done</span></div>
+    <div class="details"><code>CallHistory.tsx</code>, <code>TranscriptHistory.tsx</code> and <code>LiveTranscript.tsx</code> provide recordings, searchable transcripts and a Supabase-realtime live transcript view during active calls.</div>
+  </div>
+</div>
+
+<h2 class="group">AI Agents &amp; Knowledge Base</h2>
+<div class="card-list">
+  <div class="card">
+    <div class="card-head"><span class="area">Agent Builder</span><span class="badge done">Done</span></div>
+    <div class="details"><code>AgentBuilder.tsx</code> supports templates, language/voice selection, versioning, duplication, archiving and in-app testing (<code>AgentTestWidget.tsx</code>) via <code>/api/agents</code> and its sub-routes.</div>
+  </div>
+  <div class="card">
+    <div class="card-head"><span class="area">Knowledge Base (RAG)</span><span class="badge done">Done</span></div>
+    <div class="details"><code>KnowledgeBaseManager.tsx</code> ingests files/URLs/pasted text, chunks and embeds them (capped at 300 chunks/document); <code>backend/agent.py</code> retrieves relevant chunks at call time via the <code>match_knowledge_chunks</code> RPC.</div>
+  </div>
+</div>
+
+<h2 class="group">Integrations</h2>
+<div class="card-list">
+  <div class="card">
+    <div class="card-head"><span class="area">Outbound Webhooks</span><span class="badge done">Done</span></div>
+    <div class="details">Customers register webhook URLs (<code>WebhooksManager.tsx</code>); HMAC-signed deliveries fire on <code>call.completed</code> / <code>call.no_answer</code>, with a delivery-history view.</div>
+  </div>
+  <div class="card">
+    <div class="card-head"><span class="area">API Keys</span><span class="badge done">Done</span></div>
+    <div class="details"><code>ApiKeysManager.tsx</code> issues/revokes keys through <code>/api/api-keys</code>; the raw key is shown once on creation and only a prefix is stored/listed afterward.</div>
+  </div>
+  <div class="card">
+    <div class="card-head"><span class="area">WhatsApp Notifications</span><span class="badge done">Done</span></div>
+    <div class="details">Post-call WhatsApp message sent via Wampli from the LiveKit webhook handler, gated by the <code>WHATSAPP_ENABLED</code> flag and configured credentials.</div>
+  </div>
+  <div class="card">
+    <div class="card-head"><span class="area">Google Sheets Read/Write</span><span class="badge done">Done</span></div>
+    <div class="details">Public sheets can be imported as a contact list (up to 2,000 rows); <code>googleSheetsWrite.ts</code> writes call outcomes back to the matching row via a Google service account.</div>
+  </div>
+</div>
+
+<h2 class="group">Billing, Admin &amp; Backend Core</h2>
+<div class="card-list">
+  <div class="card">
+    <div class="card-head"><span class="area">Subscriptions &amp; Payment</span><span class="badge done">Done</span></div>
+    <div class="details">Razorpay Checkout integration (<code>UpgradePlan.tsx</code> &rarr; <code>/api/payment</code> &rarr; <code>/api/payment/verify</code>) creates orders, verifies the HMAC signature, and activates Basic/Pro/Enterprise plans.</div>
+  </div>
+  <div class="card">
+    <div class="card-head"><span class="area">Admin Panel</span><span class="badge done">Done</span></div>
+    <div class="details"><code>/admin</code> exposes user and subscription management via <code>/api/admin/users</code> and <code>/api/admin/subscriptions</code>, aggregating usage/call stats across all accounts.</div>
+  </div>
+  <div class="card">
+    <div class="card-head"><span class="area">Voice Pipeline</span><span class="badge done">Done</span></div>
+    <div class="details"><code>backend/agent.py</code> runs the LiveKit voice loop: Silero VAD, Deepgram Nova-2 STT, Groq (default) or OpenAI LLM, and Cartesia (default; Deepgram/OpenAI/Sarvam/ElevenLabs also supported) TTS.</div>
+  </div>
+  <div class="card">
+    <div class="card-head"><span class="area">Telephony — Vobiz SIP</span><span class="badge done">Done</span></div>
+    <div class="details">Outbound SIP trunking, call dispatch APIs, event webhooks, recording and transcripts are all live. Remaining telephony work (DTMF, native Vobiz webhooks, number provisioning, sub-accounts) is tracked in the separate <i>Vobiz Integration Status Report</i> and summarized in Section 5.</div>
+  </div>
+</div>
+
+<!-- ===================== 2. DEVELOPER COST ESTIMATE ===================== -->
+<h1 class="section-title">2. Estimated Developer Build Cost (2-Year-Experience Developer)</h1>
+<p style="margin:0 0 10px; font-size:12.5px; color:#54617a;">
+  Rough estimate of the engineering effort to build everything listed in Section&nbsp;1 from scratch,
+  if done solo and sequentially by one full-stack developer with <b>~2 years of experience</b>
+  (figures include a learning-curve buffer for the less-common pieces — LiveKit/SIP telephony,
+  Razorpay integration, and RAG/vector search — which are non-trivial even at this experience level).
+</p>
+<div class="card-list">
+  <div class="card cost-card"><span class="area">Authentication &amp; Onboarding</span><span class="effort-badge">~3 days</span></div>
+  <div class="card cost-card"><span class="area">Dashboard &amp; Analytics (stats, charts, date filters, cost breakdown)</span><span class="effort-badge">~5 days</span></div>
+  <div class="card cost-card"><span class="area">AI Analytics Assistant</span><span class="effort-badge">~4 days</span></div>
+  <div class="card cost-card"><span class="area">Single Call Dispatcher</span><span class="effort-badge">~4 days</span></div>
+  <div class="card cost-card"><span class="area">Bulk Dialer Campaigns</span><span class="effort-badge">~7 days</span></div>
+  <div class="card cost-card"><span class="area">Call History &amp; Transcripts</span><span class="effort-badge">~5 days</span></div>
+  <div class="card cost-card"><span class="area">Agent Builder (templates, versioning, testing widget)</span><span class="effort-badge">~8 days</span></div>
+  <div class="card cost-card"><span class="area">Knowledge Base (ingestion, embeddings, vector search)</span><span class="effort-badge">~6 days</span></div>
+  <div class="card cost-card"><span class="area">Outbound Webhooks</span><span class="effort-badge">~3 days</span></div>
+  <div class="card cost-card"><span class="area">API Keys Management</span><span class="effort-badge">~2 days</span></div>
+  <div class="card cost-card"><span class="area">WhatsApp Notifications</span><span class="effort-badge">~2 days</span></div>
+  <div class="card cost-card"><span class="area">Google Sheets Read/Write Integration</span><span class="effort-badge">~3 days</span></div>
+  <div class="card cost-card"><span class="area">Billing &amp; Subscriptions (Razorpay)</span><span class="effort-badge">~4 days</span></div>
+  <div class="card cost-card"><span class="area">Admin Panel</span><span class="effort-badge">~4 days</span></div>
+  <div class="card cost-card"><span class="area">Backend Voice Pipeline (VAD/STT/LLM/TTS orchestration)</span><span class="effort-badge">~10 days</span></div>
+  <div class="card cost-card"><span class="area">Vobiz SIP Trunking &amp; Telephony Webhooks</span><span class="effort-badge">~4 days</span></div>
+  <div class="card cost-card"><span class="area">UI / Theme / Landing Page</span><span class="effort-badge">~5 days</span></div>
+  <div class="card cost-card"><span class="area">Database Schema &amp; Migrations (11 migration files)</span><span class="effort-badge">~4 days</span></div>
+  <div class="card cost-card"><span class="area">Integration Testing, Debugging &amp; Deployment Setup</span><span class="effort-badge">~8 days</span></div>
+  <div class="card cost-card"><span class="area">Project Setup &amp; Environment Configuration</span><span class="effort-badge">~3 days</span></div>
+</div>
+
+<div class="cost-total">
+  <div class="row"><span>Total estimated effort</span><b>~94 developer-days baseline + ~15% learning-curve buffer &asymp; 100&ndash;110 days</b></div>
+  <div class="row"><span>At 8 hours/day, 22 working days/month</span><b>&asymp; 4.3&ndash;5 months full-time (solo)</b></div>
+  <div class="row"><span>Assumed cost for a 2-yr-experience developer</span><b>&#8377;50,000/month (&asymp; &#8377;284/hour)</b></div>
+  <div class="row grand"><span>Estimated build cost</span><b>&asymp; &#8377;2.15 &ndash; &#8377;2.5 lakh (&#8377;215,000&ndash;&#8377;250,000)</b></div>
+</div>
+
+<h2 class="group" style="margin-top:18px;">Part-Time Scenario &mdash; 2 Hours/Day</h2>
+<p style="margin:0 0 8px; font-size:12px; color:#54617a;">
+  Since the cost above is driven by total hours worked (not calendar time), the <b>rupee total doesn't change</b>
+  if the developer works part-time instead of full-time &mdash; only the calendar timeline changes. Two ways to read "2 hours/day, 3 months":
+</p>
+<div class="cost-total" style="border-color:#8b5cf6; background:#f8f6ff;">
+  <div class="row"><span><b>If 3 months is a fixed engagement</b> (2 hrs/day &times; ~22 working days/month &times; 3 months)</span><b>132 hours total</b></div>
+  <div class="row"><span>Equivalent to</span><b>&asymp; 16&ndash;17 full-time dev-days &mdash; only &asymp;15% of the full ~100&ndash;110-day project</b></div>
+  <div class="row"><span>Cost at the same &#8377;284/hour rate</span><b>&asymp; &#8377;37,000 &ndash; &#8377;38,000</b></div>
+  <div class="row" style="border-top:1px solid #ddd6fe; margin-top:4px; padding-top:6px;"><span><b>If the goal is to finish the entire platform</b> at a 2 hrs/day pace instead of full-time</span><b>800&ndash;880 hours needed</b></div>
+  <div class="row"><span>Calendar time required at 2 hrs/day</span><b>&asymp; 18&ndash;20 months (part-time)</b></div>
+  <div class="row grand"><span>Total cost (same hours, same rate)</span><b>&asymp; &#8377;2.15 &ndash; &#8377;2.5 lakh &mdash; unchanged</b></div>
+</div>
+<p style="margin:8px 0 0; font-size:11.5px; color:#697490;">
+  In short: at 2 hrs/day for a fixed 3 months, expect roughly <b>₹37,000&ndash;₹38,000</b> of work completed &mdash;
+  enough for a handful of the smaller items in the table above (e.g. Authentication + API Keys + Webhooks +
+  WhatsApp Notifications), not the full platform. To get the <i>entire</i> platform built part-time at 2 hrs/day,
+  budget &asymp;18&ndash;20 months calendar time for the same &asymp;&#8377;2.15&ndash;2.5 lakh total cost.
+</p>
+
+<ul class="assumptions">
+  <li>Assumes one developer working solo and sequentially — no parallel team, no project manager/QA overhead beyond the testing line item above.</li>
+  <li>Covers engineering labor only. Excludes third-party service/API costs (LiveKit, Deepgram, Groq/OpenAI, Cartesia, Razorpay fees, Supabase, Vobiz), and excludes design, branding and business-decision time (Section 3).</li>
+  <li>Figures are directional estimates for planning purposes, not a formal quote — actual time varies with the individual developer and how much hand-holding/code review is available.</li>
+</ul>
+
+<!-- ===================== 3. NEEDS HARDENING ===================== -->
+<h1 class="section-title">3. Built, But Needs Hardening Before Production Scale</h1>
+<div class="card-list">
+  <div class="card">
+    <div class="card-head"><span class="area">Hardcoded Admin Access</span><span class="badge partial">Needs Hardening</span></div>
+    <div class="details">Admin authorization is a single hardcoded email (<code>admin@gmail.com</code>) in <code>middleware.ts</code>, not a role-based model — fine for now, but won't scale to multiple admins.</div>
+  </div>
+  <div class="card">
+    <div class="card-head"><span class="area">Silent Fetch/Write Failures</span><span class="badge partial">Needs Hardening</span></div>
+    <div class="details"><code>CallHistory.tsx</code> and dashboard stats polling swallow fetch errors silently; <code>/api/dispatch</code> doesn't verify the subscription-update or phone-log insert succeeded before reporting success to the user.</div>
+  </div>
+  <div class="card">
+    <div class="card-head"><span class="area">Bulk Dialer Is Client-Driven</span><span class="badge partial">Needs Hardening</span></div>
+    <div class="details">Campaign pacing/continuation is handled in the browser, not a durable server-side job queue — closing the tab or losing connection can interrupt an in-progress bulk campaign.</div>
+  </div>
+  <div class="card">
+    <div class="card-head"><span class="area">Hardcoded Business Values</span><span class="badge partial">Needs Hardening</span></div>
+    <div class="details">Plan pricing/quotas are hardcoded in the payment routes (₹999/₹2,999/₹9,999); <code>DEFAULT_TRANSFER_NUMBER</code> in <code>backend/config.py</code> is a hardcoded placeholder number; login-page stats ("500+ Calls Made", "98% Uptime") are hardcoded marketing copy, not live metrics.</div>
+  </div>
+  <div class="card">
+    <div class="card-head"><span class="area">No Payment Webhook Reconciliation</span><span class="badge partial">Needs Hardening</span></div>
+    <div class="details">Subscription activation relies on the client calling <code>/api/payment/verify</code> after checkout; there's no server-side Razorpay webhook to reconcile payments that succeed but never reach that call.</div>
+  </div>
+  <div class="card">
+    <div class="card-head"><span class="area">WhatsApp Template Is Fixed</span><span class="badge partial">Needs Hardening</span></div>
+    <div class="details">Every call outcome currently sends the same event-reminder WhatsApp template with a fixed Zoom link, rather than an outcome-specific message — looks like a leftover from a one-off campaign.</div>
+  </div>
+</div>
+
+<!-- ===================== 3. BUSINESS DECISIONS PENDING ===================== -->
+<h1 class="section-title">4. Business &amp; Branding Decisions Pending</h1>
+<div class="card-list">
+  <div class="card">
+    <div class="card-head"><span class="area">Portal Naming</span><span class="badge business">Pending Decision</span></div>
+    <div class="details">The product is currently shipped under the working name <b>"Nova AI"</b> across the landing page, login, dashboard, admin panel and page titles. Final brand name is not yet decided — once chosen, this is a find-and-replace across the app plus the page title/metadata in <code>layout.tsx</code>.</div>
+  </div>
+  <div class="card">
+    <div class="card-head"><span class="area">Logo</span><span class="badge business">Pending Design</span></div>
+    <div class="details">No designed logo asset exists yet — the landing/login screens currently use a text wordmark / inline SVG icon as a placeholder, no favicon beyond the framework default. Needs a final logo (and favicon) once naming is locked.</div>
+  </div>
+  <div class="card">
+    <div class="card-head"><span class="area">Payment / Billing</span><span class="badge business">Pending Decision</span></div>
+    <div class="details">Razorpay is integrated in code (order creation + signature verification), but running in test mode — live merchant account activation (KYC) and final pricing/plan structure are not yet confirmed. Current ₹999/₹2,999/₹9,999 tiers in code are placeholders pending that decision.</div>
+  </div>
+</div>
+
+<!-- ===================== 4. TELEPHONY SUMMARY ===================== -->
+<h1 class="section-title">5. Telephony / Vobiz Integration — Condensed Summary</h1>
+<p style="margin:0 0 10px; font-size:12.5px; color:#54617a;">
+  Full detail is in the dedicated <i>Vobiz Integration Status Report</i>. Condensed here for completeness of the overall portal view.
+</p>
+<div class="card-list">
+  <div class="card">
+    <div class="card-head"><span class="area">DTMF Handling</span><span class="badge now">Code Pending</span></div>
+    <div class="details">No DTMF capture yet — needs LiveKit SIP DTMF event handling in <code>backend/agent.py</code>. No external dependency; can be built now.</div>
+  </div>
+  <div class="card">
+    <div class="card-head"><span class="area">Vobiz-native Webhook Receiver</span><span class="badge now">Code + Spec Pending</span></div>
+    <div class="details">We only consume LiveKit's own webhooks today. A native Vobiz receiver would need Vobiz's exact payload/signature spec first.</div>
+  </div>
+  <div class="card">
+    <div class="card-head"><span class="area">Programmatic Number Provisioning</span><span class="badge blocked">Blocked — External</span></div>
+    <div class="details">Needs a Vobiz Console <code>X-Auth-ID</code> / <code>X-Auth-Token</code> pair for REST API access, separate from the existing SIP credentials.</div>
+  </div>
+  <div class="card">
+    <div class="card-head"><span class="area">Sub-accounts / Reseller Model</span><span class="badge blocked">Blocked — External</span></div>
+    <div class="details">Vobiz supports sub-accounts natively, but we need Partner API access/confirmation from Vobiz before building per-customer provisioning.</div>
+  </div>
+</div>
+
+<!-- ===================== 5. DEPENDENCIES ===================== -->
+<h1 class="section-title">6. Dependencies Before Remaining Items Can Close</h1>
+<ul class="deps">
+  <li><b>Brand name</b> finalized by stakeholders, so naming and logo work can be completed in one pass instead of twice.</li>
+  <li><b>Logo</b> designed (or commissioned) once the name is locked.</li>
+  <li><b>Razorpay live account</b> (KYC/activation) and <b>final pricing tiers</b> confirmed by the business so the payment routes can be updated from placeholder values.</li>
+  <li>Vobiz <b>Auth ID / Auth Token</b> for REST API access (number provisioning).</li>
+  <li>Vobiz <b>Partner API</b> access/confirmation (sub-accounts / reseller model).</li>
+  <li>Our <b>use case, target countries and expected call volume</b> shared with Vobiz for reseller/partner pricing.</li>
+</ul>
+
+<!-- ===================== 6. NEXT STEPS ===================== -->
+<h1 class="section-title">7. Recommended Next Steps</h1>
+<ol class="next">
+  <li>Get a decision on brand name + logo so all customer-facing screens can be finalized together.</li>
+  <li>Confirm Razorpay live activation and pricing tiers; replace hardcoded plan values once confirmed.</li>
+  <li>Add a Razorpay webhook for server-side payment reconciliation (don't rely solely on the client-side verify call).</li>
+  <li>Build DTMF handling now (no external dependency) and clean up the fixed WhatsApp template.</li>
+  <li>Move bulk-dialer campaign execution to a durable server-side queue so campaigns survive a closed browser tab.</li>
+  <li>Send Vobiz our use case / countries / volume to unlock Partner API access and reseller pricing.</li>
+</ol>
+
+<footer class="pagefoot">Nova AI Voice Platform (working name) &bull; Overall Status Report &bull; Generated 20 Nov 2026</footer>
+
+</body>
+</html>
