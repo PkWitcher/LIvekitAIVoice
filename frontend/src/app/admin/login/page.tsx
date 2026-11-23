@@ -1,13 +1,92 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import { createClient } from "@/lib/supabase-browser";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import {
+  Activity,
+  ArrowLeft,
+  CircleAlert,
+  Eye,
+  EyeOff,
+  KeyRound,
+  LoaderCircle,
+  Lock,
+  Mail,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import { markSessionStart } from "@/lib/sessionTimeout";
+import "@/styles/public-pages.css";
 
 const ADMIN_EMAIL = "Admin@gmail.com";
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const CAPABILITIES = [
+  { icon: Users, title: "User management", desc: "Review accounts, usage and activity across the platform." },
+  { icon: KeyRound, title: "Subscriptions & billing", desc: "Manage plans, limits and payment status for every user." },
+  { icon: Activity, title: "System analytics", desc: "Monitor call volume and platform health in one place." },
+];
+
+function validateEmail(value: string): string | null {
+  const v = value.trim();
+  if (!v) return "Enter your admin email address.";
+  return EMAIL_RE.test(v) ? null : "Enter a valid email address.";
+}
+
+function validatePassword(value: string): string | null {
+  return value ? null : "Enter your password.";
+}
+
+interface AuthFieldProps {
+  id: string;
+  label: string;
+  type: string;
+  value: string;
+  onChange: (v: string) => void;
+  onBlur: () => void;
+  error: string | null;
+  icon: ReactNode;
+  placeholder: string;
+  autoComplete: string;
+  trailing?: ReactNode;
+}
+
+function AuthField(p: AuthFieldProps) {
+  const errId = `${p.id}-error`;
+  return (
+    <div className="pp2-field">
+      <label htmlFor={p.id}>{p.label}</label>
+      <div className="pp2-input-wrap">
+        <span className="pp2-input-icon" aria-hidden="true">{p.icon}</span>
+        <input
+          id={p.id}
+          name={p.id}
+          type={p.type}
+          className={`pp2-input${p.trailing ? " has-toggle" : ""}`}
+          value={p.value}
+          onChange={(e) => p.onChange(e.target.value)}
+          onBlur={p.onBlur}
+          placeholder={p.placeholder}
+          autoComplete={p.autoComplete}
+          spellCheck={false}
+          autoCapitalize="none"
+          aria-invalid={p.error ? true : undefined}
+          aria-describedby={p.error ? errId : undefined}
+        />
+        {p.trailing}
+      </div>
+      {p.error && (
+        <p id={errId} className="pp2-field-error">
+          <CircleAlert size={14} aria-hidden="true" />
+          <span>{p.error}</span>
+        </p>
+      )}
+    </div>
+  );
+}
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState("");
@@ -15,22 +94,35 @@ export default function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [touched, setTouched] = useState({ email: false, password: false });
   const router = useRouter();
   const supabase = createClient();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const emailError = validateEmail(email);
+  const passwordError = validatePassword(password);
+
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    if (loading) return;
     setError(null);
 
-    if (email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+    if (emailError || passwordError) {
+      setTouched({ email: true, password: true });
+      document.getElementById(emailError ? "admin-email" : "admin-password")?.focus();
+      return;
+    }
+
+    setLoading(true);
+    const cleanEmail = email.trim();
+
+    if (cleanEmail.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
       setError("Access denied. Admin credentials required.");
       setLoading(false);
       return;
     }
 
     const { error } = await supabase.auth.signInWithPassword({
-      email,
+      email: cleanEmail,
       password,
     });
 
@@ -46,162 +138,128 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="admin-login-page">
-      {/* Ambient background */}
-      <div className="admin-login-bg">
-        <div className="admin-login-orb admin-login-orb-1" />
-        <div className="admin-login-orb admin-login-orb-2" />
-        <div className="bg-ring bg-ring-1" />
-        <div className="bg-ring bg-ring-2" />
+    <div className="pp2 pp2-auth pp2-admin">
+      <div className="pp2-auth-brand">
+        <div className="pp2-auth-brand-inner">
+          <Link href="/" className="pp2-brand" aria-label="Nova AI home">
+            <span className="pp2-logo" aria-hidden="true"><ShieldCheck size={17} strokeWidth={2.25} /></span>
+            Nova AI <span style={{ fontWeight: 500, color: "var(--pp-muted)" }}>Admin</span>
+          </Link>
+          <h2>Admin Console</h2>
+          <p className="pp2-auth-brand-lead">
+            Operate the Nova AI voice platform — users, subscriptions and system analytics from one secure workspace.
+          </p>
+          <ul className="pp2-benefits">
+            {CAPABILITIES.map((c) => (
+              <li key={c.title} className="pp2-benefit">
+                <span className="pp2-icon-box"><c.icon size={18} aria-hidden="true" /></span>
+                <div>
+                  <strong>{c.title}</strong>
+                  <span>{c.desc}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
 
-      {/* Floating Particles */}
-      <div className="bg-particles">
-        <div className="bg-particle" />
-        <div className="bg-particle" />
-        <div className="bg-particle" />
-        <div className="bg-particle" />
-        <div className="bg-particle" />
-        <div className="bg-particle" />
-      </div>
-
-      <div className="admin-login-topbar">
-        <Link href="/" className="admin-login-back">
-          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-          </svg>
-          Back to Home
-        </Link>
-        <ThemeToggle />
-      </div>
-
-      <div className="admin-login-container">
-        {/* Left branding panel */}
-        <div className="admin-login-branding">
-          <div className="admin-login-brand-content">
-            <div className="admin-login-brand-icon">
-              <svg width="32" height="32" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="white">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
-              </svg>
-            </div>
-            <h2 className="admin-login-brand-title">Nova AI Admin</h2>
-            <p className="admin-login-brand-desc">
-              Manage your AI voice platform — users, subscriptions, and system analytics all in one place.
-            </p>
-            <div className="admin-login-brand-features">
-              <div className="admin-login-feature">
-                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                </svg>
-                <span>User management & analytics</span>
-              </div>
-              <div className="admin-login-feature">
-                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                </svg>
-                <span>Subscription & billing control</span>
-              </div>
-              <div className="admin-login-feature">
-                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                </svg>
-                <span>Real-time system monitoring</span>
-              </div>
-            </div>
-          </div>
+      <main className="pp2-auth-main">
+        <div className="pp2-auth-top">
+          <Link href="/" className="pp2-back">
+            <ArrowLeft size={16} aria-hidden="true" />
+            Back to home
+          </Link>
+          <ThemeToggle />
         </div>
 
-        {/* Right form panel */}
-        <div className="admin-login-form-panel">
-          <div className="admin-login-form-wrapper">
-            <div className="admin-login-form-header">
-              <h1>Welcome back</h1>
-              <p>Sign in with your admin credentials to continue</p>
+        <div className="pp2-auth-center">
+          <div className="pp2-auth-card">
+            <Link href="/" className="pp2-brand pp2-auth-mobile-brand" aria-label="Nova AI home">
+              <span className="pp2-logo" aria-hidden="true"><ShieldCheck size={17} strokeWidth={2.25} /></span>
+              Nova AI Admin
+            </Link>
+
+            <div className="pp2-auth-head">
+              <span className="pp2-restricted">
+                <Lock size={12} aria-hidden="true" />
+                Restricted access
+              </span>
+              <h1>Admin sign in</h1>
+              <p>Use your administrator credentials to open the console.</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="admin-login-form">
-              <div className="admin-form-group">
-                <label htmlFor="email">Admin Email</label>
-                <div className="admin-input-wrapper">
-                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="admin-input-icon">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
-                  </svg>
-                  <input
-                    id="email"
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Admin@gmail.com"
-                  />
-                </div>
-              </div>
+            <form onSubmit={handleSubmit} className="pp2-form" noValidate aria-busy={loading}>
+              <AuthField
+                id="admin-email"
+                label="Admin email"
+                type="email"
+                value={email}
+                onChange={setEmail}
+                onBlur={() => setTouched((t) => ({ ...t, email: true }))}
+                error={touched.email ? emailError : null}
+                icon={<Mail size={16} />}
+                placeholder="name@company.com"
+                autoComplete="username"
+              />
 
-              <div className="admin-form-group">
-                <label htmlFor="password">Password</label>
-                <div className="admin-input-wrapper">
-                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="admin-input-icon">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
-                  </svg>
-                  <input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                  />
+              <AuthField
+                id="admin-password"
+                label="Password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={setPassword}
+                onBlur={() => setTouched((t) => ({ ...t, password: true }))}
+                error={touched.password ? passwordError : null}
+                icon={<Lock size={16} />}
+                placeholder="Enter your password"
+                autoComplete="current-password"
+                trailing={
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="password-toggle-btn"
+                    className="pp2-eye"
+                    onClick={() => setShowPassword((s) => !s)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-pressed={showPassword}
                   >
-                    {showPassword ? (
-                      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
-                      </svg>
-                    ) : (
-                      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                      </svg>
-                    )}
+                    {showPassword ? <EyeOff size={17} aria-hidden="true" /> : <Eye size={17} aria-hidden="true" />}
                   </button>
-                </div>
-              </div>
+                }
+              />
 
               {error && (
-                <div className="admin-login-error">
-                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-                  </svg>
+                <div className="pp2-alert pp2-alert-error" role="alert">
+                  <CircleAlert size={16} aria-hidden="true" />
                   <span>{error}</span>
                 </div>
               )}
 
-              <button type="submit" disabled={loading} className="admin-login-submit">
+              <button type="submit" disabled={loading} className="pp2-btn pp2-btn-primary pp2-btn-lg pp2-btn-block">
                 {loading ? (
-                  <span className="admin-login-submit-loading">
-                    <span className="spinner" style={{ width: 16, height: 16 }} />
-                    Signing in...
-                  </span>
+                  <>
+                    <LoaderCircle size={17} className="pp2-spin" aria-hidden="true" />
+                    Signing in…
+                  </>
                 ) : (
-                  <span className="admin-login-submit-text">
-                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
-                    </svg>
-                    Admin Sign In
-                  </span>
+                  <>
+                    <Lock size={16} aria-hidden="true" />
+                    Sign in to console
+                  </>
                 )}
               </button>
             </form>
 
-            <div className="admin-login-footer">
-              <p>Restricted access — authorized personnel only</p>
+            <div className="pp2-secure-note">
+              <ShieldCheck size={16} aria-hidden="true" />
+              <span>This area is for authorised administrators only.</span>
             </div>
+
+            <p className="pp2-switch">
+              Not an administrator?
+              <Link href="/login" className="pp2-link-btn">User sign in</Link>
+            </p>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

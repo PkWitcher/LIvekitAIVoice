@@ -1,37 +1,196 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import { createClient } from "@/lib/supabase-browser";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import {
+  ArrowLeft,
+  ArrowRight,
+  CircleAlert,
+  CircleCheck,
+  Eye,
+  EyeOff,
+  FileText,
+  LoaderCircle,
+  Lock,
+  Mail,
+  Phone,
+  Upload,
+  User,
+  Webhook,
+} from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import { markSessionStart } from "@/lib/sessionTimeout";
+import "@/styles/public-pages.css";
+
+type FieldName = "fullName" | "phone" | "email" | "password";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MIN_SIGNUP_PASSWORD = 8;
+
+const BENEFITS = [
+  { icon: Phone, title: "AI agents that make the calls", desc: "Write the script, pick a voice and attach your knowledge base." },
+  { icon: Upload, title: "Bulk campaigns", desc: "Upload a CSV/XLSX contact list and dial the whole batch." },
+  { icon: FileText, title: "Transcripts, recordings & outcomes", desc: "Every answered call is documented and classified." },
+  { icon: Webhook, title: "API keys & webhooks", desc: "Trigger calls and receive signed events from your own systems." },
+];
+
+function validateField(field: FieldName, value: string, isSignUp: boolean): string | null {
+  const v = value.trim();
+  switch (field) {
+    case "fullName":
+      return v.length < 2 ? "Enter your full name." : null;
+    case "phone": {
+      if (!v) return "Enter your phone number.";
+      const digits = v.replace(/\D/g, "");
+      if (!/^\+?[0-9\s\-()]+$/.test(v) || digits.length < 10 || digits.length > 15) {
+        return "Enter a valid phone number (10–15 digits, e.g. +91 98765 43210).";
+      }
+      return null;
+    }
+    case "email":
+      if (!v) return "Enter your email address.";
+      return EMAIL_RE.test(v) ? null : "Enter a valid email address.";
+    case "password":
+      if (!value) return "Enter your password.";
+      if (isSignUp && value.length < MIN_SIGNUP_PASSWORD) {
+        return `Password must be at least ${MIN_SIGNUP_PASSWORD} characters.`;
+      }
+      return null;
+  }
+}
+
+function passwordStrength(pw: string): { level: number; label: string } {
+  if (!pw) return { level: 0, label: "" };
+  let score = 0;
+  if (pw.length >= MIN_SIGNUP_PASSWORD) score++;
+  if (pw.length >= 12) score++;
+  if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score++;
+  if (/\d/.test(pw) && /[^A-Za-z0-9]/.test(pw)) score++;
+  if (pw.length < MIN_SIGNUP_PASSWORD) score = Math.min(score, 1);
+  const level = Math.max(1, score);
+  return { level, label: ["", "Weak", "Fair", "Good", "Strong"][level] };
+}
+
+interface AuthFieldProps {
+  id: string;
+  label: string;
+  type: string;
+  value: string;
+  onChange: (v: string) => void;
+  onBlur: () => void;
+  error: string | null;
+  icon: ReactNode;
+  placeholder: string;
+  autoComplete: string;
+  inputMode?: "tel" | "email" | "text";
+  trailing?: ReactNode;
+  describedBy?: string;
+  children?: ReactNode;
+}
+
+function AuthField(p: AuthFieldProps) {
+  const errId = `${p.id}-error`;
+  const describedBy = [p.error ? errId : null, p.describedBy].filter(Boolean).join(" ") || undefined;
+  return (
+    <div className="pp2-field">
+      <label htmlFor={p.id}>{p.label}</label>
+      <div className="pp2-input-wrap">
+        <span className="pp2-input-icon" aria-hidden="true">{p.icon}</span>
+        <input
+          id={p.id}
+          name={p.id}
+          type={p.type}
+          className={`pp2-input${p.trailing ? " has-toggle" : ""}`}
+          value={p.value}
+          onChange={(e) => p.onChange(e.target.value)}
+          onBlur={p.onBlur}
+          placeholder={p.placeholder}
+          autoComplete={p.autoComplete}
+          inputMode={p.inputMode}
+          spellCheck={false}
+          autoCapitalize="none"
+          aria-invalid={p.error ? true : undefined}
+          aria-describedby={describedBy}
+        />
+        {p.trailing}
+      </div>
+      {p.error && (
+        <p id={errId} className="pp2-field-error">
+          <CircleAlert size={14} aria-hidden="true" />
+          <span>{p.error}</span>
+        </p>
+      )}
+      {p.children}
+    </div>
+  );
+}
 
 export default function LoginPage() {
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(searchParams.get("mode") === "signup");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [touched, setTouched] = useState<Partial<Record<FieldName, boolean>>>({});
   const router = useRouter();
   const supabase = createClient();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const values: Record<FieldName, string> = { fullName, phone, email, password };
+  const activeFields: FieldName[] = isSignUp ? ["fullName", "phone", "email", "password"] : ["email", "password"];
+  const errors: Partial<Record<FieldName, string | null>> = {};
+  for (const f of activeFields) errors[f] = validateField(f, values[f], isSignUp);
+  const shown = (f: FieldName) => (touched[f] ? errors[f] ?? null : null);
+  const touch = (f: FieldName) => setTouched((t) => ({ ...t, [f]: true }));
+  const strength = passwordStrength(password);
+
+  const switchMode = (signUp: boolean) => {
+    if (signUp === isSignUp) return;
+    setIsSignUp(signUp);
+    setError(null);
+    setMessage(null);
+    setTouched({});
+    setShowPassword(false);
+  };
+
+  const onTabKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight" && e.key !== "Home" && e.key !== "End") return;
     e.preventDefault();
-    setLoading(true);
+    const next = e.key === "ArrowLeft" || e.key === "Home" ? false : true;
+    switchMode(next);
+    document.getElementById(next ? "auth-tab-signup" : "auth-tab-signin")?.focus();
+  };
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (loading) return;
     setError(null);
     setMessage(null);
 
+    const firstInvalid = activeFields.find((f) => errors[f]);
+    if (firstInvalid) {
+      setTouched(Object.fromEntries(activeFields.map((f) => [f, true])));
+      document.getElementById(`login-${firstInvalid}`)?.focus();
+      return;
+    }
+
+    setLoading(true);
+    const cleanEmail = email.trim();
+
     if (isSignUp) {
+      const cleanName = fullName.trim();
+      const cleanPhone = phone.trim();
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: cleanEmail,
         password,
         options: {
-          data: { full_name: fullName, phone: phone },
+          data: { full_name: cleanName, phone: cleanPhone },
         },
       });
       if (error) {
@@ -40,15 +199,17 @@ export default function LoginPage() {
         // Save profile to user_profiles table
         await supabase.from("user_profiles").upsert({
           id: data.user.id,
-          email,
-          full_name: fullName,
-          phone,
+          email: cleanEmail,
+          full_name: cleanName,
+          phone: cleanPhone,
         });
         setMessage("Check your email to confirm your account, then log in.");
+        setPassword("");
+        setTouched({});
       }
     } else {
       const { error } = await supabase.auth.signInWithPassword({
-        email,
+        email: cleanEmail,
         password,
       });
       if (error) {
@@ -63,252 +224,210 @@ export default function LoginPage() {
     setLoading(false);
   };
 
+  const eyeButton = (
+    <button
+      type="button"
+      className="pp2-eye"
+      onClick={() => setShowPassword((s) => !s)}
+      aria-label={showPassword ? "Hide password" : "Show password"}
+      aria-pressed={showPassword}
+    >
+      {showPassword ? <EyeOff size={17} aria-hidden="true" /> : <Eye size={17} aria-hidden="true" />}
+    </button>
+  );
+
   return (
-    <div className="user-login-page">
-      {/* Ambient background */}
-      <div className="user-login-bg">
-        <div className="user-login-orb user-login-orb-1" />
-        <div className="user-login-orb user-login-orb-2" />
-        <div className="user-login-orb user-login-orb-3" />
-        <div className="bg-ring bg-ring-1" />
-        <div className="bg-ring bg-ring-2" />
-        <div className="bg-ring bg-ring-3" />
+    <div className="pp2 pp2-auth">
+      <div className="pp2-auth-brand">
+        <div className="pp2-auth-brand-inner">
+          <Link href="/" className="pp2-brand" aria-label="Nova AI home">
+            <span className="pp2-logo" aria-hidden="true"><Phone size={16} strokeWidth={2.25} /></span>
+            Nova AI
+          </Link>
+          <h2>Run AI phone calls from one dashboard</h2>
+          <p className="pp2-auth-brand-lead">
+            Build voice agents, dial contact lists and review every conversation — without managing telephony yourself.
+          </p>
+          <ul className="pp2-benefits">
+            {BENEFITS.map((b) => (
+              <li key={b.title} className="pp2-benefit">
+                <span className="pp2-icon-box"><b.icon size={18} aria-hidden="true" /></span>
+                <div>
+                  <strong>{b.title}</strong>
+                  <span>{b.desc}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <p className="pp2-auth-foot">Powered by LiveKit, Deepgram and OpenAI</p>
+        </div>
       </div>
 
-      {/* Floating Particles */}
-      <div className="bg-particles">
-        <div className="bg-particle" />
-        <div className="bg-particle" />
-        <div className="bg-particle" />
-        <div className="bg-particle" />
-        <div className="bg-particle" />
-        <div className="bg-particle" />
-        <div className="bg-particle" />
-        <div className="bg-particle" />
-      </div>
-
-      {/* Top bar */}
-      <div className="user-login-topbar">
-        <Link href="/" className="user-login-back">
-          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-          </svg>
-          Home
-        </Link>
-        <ThemeToggle />
-      </div>
-
-      {/* Main container */}
-      <div className="user-login-container">
-        {/* Left branding panel */}
-        <div className="user-login-branding">
-          <div className="user-login-brand-content">
-            <div className="user-login-brand-icon">
-              <svg width="28" height="28" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="white">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
-              </svg>
-            </div>
-            <h2 className="user-login-brand-title">Nova AI Voice Platform</h2>
-            <p className="user-login-brand-desc">
-              Automate phone calls with AI that speaks naturally. Deploy intelligent voice agents for customer outreach, reminders, and follow-ups.
-            </p>
-
-            <div className="user-login-stats">
-              <div className="user-login-stat">
-                <span className="user-login-stat-value">500+</span>
-                <span className="user-login-stat-label">Calls Made</span>
-              </div>
-              <div className="user-login-stat">
-                <span className="user-login-stat-value">&lt;₹2</span>
-                <span className="user-login-stat-label">Per Minute</span>
-              </div>
-              <div className="user-login-stat">
-                <span className="user-login-stat-value">98%</span>
-                <span className="user-login-stat-label">Uptime</span>
-              </div>
-            </div>
-
-            <div className="user-login-brand-features">
-              <div className="user-login-feature">
-                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                </svg>
-                <span>Natural AI voice conversations</span>
-              </div>
-              <div className="user-login-feature">
-                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                </svg>
-                <span>Bulk campaigns with one click</span>
-              </div>
-              <div className="user-login-feature">
-                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                </svg>
-                <span>Real-time call tracking & recordings</span>
-              </div>
-            </div>
-          </div>
+      <main className="pp2-auth-main">
+        <div className="pp2-auth-top">
+          <Link href="/" className="pp2-back">
+            <ArrowLeft size={16} aria-hidden="true" />
+            Back to home
+          </Link>
+          <ThemeToggle />
         </div>
 
-        {/* Right form panel */}
-        <div className="user-login-form-panel">
-          <div className="user-login-form-wrapper">
-            <div className="user-login-form-header">
-              <h1>{isSignUp ? "Create your account" : "Welcome back"}</h1>
-              <p>{isSignUp ? "Start automating calls in under a minute" : "Sign in to access your dashboard"}</p>
-            </div>
+        <div className="pp2-auth-center">
+          <div className="pp2-auth-card">
+            <Link href="/" className="pp2-brand pp2-auth-mobile-brand" aria-label="Nova AI home">
+              <span className="pp2-logo" aria-hidden="true"><Phone size={16} strokeWidth={2.25} /></span>
+              Nova AI
+            </Link>
 
-            <form onSubmit={handleSubmit} className="user-login-form">
-              {isSignUp && (
-                <>
-                  <div className="user-form-group">
-                    <label htmlFor="fullName">Full Name</label>
-                    <div className="user-input-wrapper">
-                      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="user-input-icon">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-                      </svg>
-                      <input
-                        id="fullName"
-                        type="text"
-                        required
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        placeholder="John Doe"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="user-form-group">
-                    <label htmlFor="phone">Phone Number</label>
-                    <div className="user-input-wrapper">
-                      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="user-input-icon">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
-                      </svg>
-                      <input
-                        id="phone"
-                        type="tel"
-                        required
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        placeholder="+91 98765 43210"
-                      />
-                    </div>
-                  </div>
-                </>
-              )}
-
-              <div className="user-form-group">
-                <label htmlFor="email">Email Address</label>
-                <div className="user-input-wrapper">
-                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="user-input-icon">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
-                  </svg>
-                  <input
-                    id="email"
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                  />
-                </div>
-              </div>
-
-              <div className="user-form-group">
-                <label htmlFor="password">Password</label>
-                <div className="user-input-wrapper">
-                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="user-input-icon">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
-                  </svg>
-                  <input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    required
-                    minLength={6}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="password-toggle-btn"
-                  >
-                    {showPassword ? (
-                      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
-                      </svg>
-                    ) : (
-                      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                      </svg>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {error && (
-                <div className="user-login-error">
-                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-                  </svg>
-                  <span>{error}</span>
-                </div>
-              )}
-
-              {message && (
-                <div className="user-login-success">
-                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                  </svg>
-                  <span>{message}</span>
-                </div>
-              )}
-
-              <button type="submit" disabled={loading} className="user-login-submit">
-                {loading ? (
-                  <span className="user-login-submit-loading">
-                    <span className="spinner" style={{ width: 16, height: 16 }} />
-                    Please wait...
-                  </span>
-                ) : (
-                  <span className="user-login-submit-text">
-                    {isSignUp ? "Create Account" : "Sign In"}
-                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
-                    </svg>
-                  </span>
-                )}
-              </button>
-            </form>
-
-            {/* Toggle Sign In / Sign Up */}
-            <div className="user-login-toggle">
-              <div className="user-login-divider">
-                <span />
-                <p>or</p>
-                <span />
-              </div>
+            <div className="pp2-tabs" role="tablist" aria-label="Account access">
               <button
-                onClick={() => {
-                  setIsSignUp(!isSignUp);
-                  setError(null);
-                  setMessage(null);
-                }}
-                className="user-login-toggle-btn"
+                type="button"
+                role="tab"
+                id="auth-tab-signin"
+                className="pp2-tab"
+                aria-selected={!isSignUp}
+                aria-controls="auth-panel"
+                tabIndex={isSignUp ? -1 : 0}
+                onClick={() => switchMode(false)}
+                onKeyDown={onTabKeyDown}
               >
-                {isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up"}
+                Sign in
+              </button>
+              <button
+                type="button"
+                role="tab"
+                id="auth-tab-signup"
+                className="pp2-tab"
+                aria-selected={isSignUp}
+                aria-controls="auth-panel"
+                tabIndex={isSignUp ? 0 : -1}
+                onClick={() => switchMode(true)}
+                onKeyDown={onTabKeyDown}
+              >
+                Create account
               </button>
             </div>
 
-            <div className="user-login-footer">
-              <p>Powered by LiveKit &middot; Deepgram &middot; OpenAI</p>
+            <div id="auth-panel" role="tabpanel" aria-labelledby={isSignUp ? "auth-tab-signup" : "auth-tab-signin"}>
+              <div className="pp2-auth-head">
+                <h1>{isSignUp ? "Create your account" : "Welcome back"}</h1>
+                <p>{isSignUp ? "Start automating calls in a few minutes." : "Sign in to access your dashboard."}</p>
+              </div>
+
+              <form onSubmit={handleSubmit} className="pp2-form" noValidate aria-busy={loading}>
+                {isSignUp && (
+                  <>
+                    <AuthField
+                      id="login-fullName"
+                      label="Full name"
+                      type="text"
+                      value={fullName}
+                      onChange={setFullName}
+                      onBlur={() => touch("fullName")}
+                      error={shown("fullName")}
+                      icon={<User size={16} />}
+                      placeholder="Jane Doe"
+                      autoComplete="name"
+                    />
+                    <AuthField
+                      id="login-phone"
+                      label="Phone number"
+                      type="tel"
+                      inputMode="tel"
+                      value={phone}
+                      onChange={setPhone}
+                      onBlur={() => touch("phone")}
+                      error={shown("phone")}
+                      icon={<Phone size={16} />}
+                      placeholder="+91 98765 43210"
+                      autoComplete="tel"
+                    />
+                  </>
+                )}
+
+                <AuthField
+                  id="login-email"
+                  label="Email address"
+                  type="email"
+                  inputMode="email"
+                  value={email}
+                  onChange={setEmail}
+                  onBlur={() => touch("email")}
+                  error={shown("email")}
+                  icon={<Mail size={16} />}
+                  placeholder="you@company.com"
+                  autoComplete={isSignUp ? "email" : "username"}
+                />
+
+                <AuthField
+                  id="login-password"
+                  label="Password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={setPassword}
+                  onBlur={() => touch("password")}
+                  error={shown("password")}
+                  icon={<Lock size={16} />}
+                  placeholder={isSignUp ? `At least ${MIN_SIGNUP_PASSWORD} characters` : "Enter your password"}
+                  autoComplete={isSignUp ? "new-password" : "current-password"}
+                  trailing={eyeButton}
+                  describedBy={isSignUp ? "login-password-hint" : undefined}
+                >
+                  {isSignUp && (
+                    <div id="login-password-hint">
+                      <div className="pp2-strength" data-level={strength.level} aria-hidden="true">
+                        <i /><i /><i /><i />
+                      </div>
+                      <p className="pp2-strength-label" aria-live="polite">
+                        {password ? (
+                          <>Password strength: <b>{strength.label}</b></>
+                        ) : (
+                          <>Use {MIN_SIGNUP_PASSWORD}+ characters. Mix upper/lower case, numbers and symbols for a stronger password.</>
+                        )}
+                      </p>
+                    </div>
+                  )}
+                </AuthField>
+
+                {error && (
+                  <div className="pp2-alert pp2-alert-error" role="alert">
+                    <CircleAlert size={16} aria-hidden="true" />
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                {message && (
+                  <div className="pp2-alert pp2-alert-success" role="status" aria-live="polite">
+                    <CircleCheck size={16} aria-hidden="true" />
+                    <span>{message}</span>
+                  </div>
+                )}
+
+                <button type="submit" disabled={loading} className="pp2-btn pp2-btn-primary pp2-btn-lg pp2-btn-block">
+                  {loading ? (
+                    <>
+                      <LoaderCircle size={17} className="pp2-spin" aria-hidden="true" />
+                      {isSignUp ? "Creating account…" : "Signing in…"}
+                    </>
+                  ) : (
+                    <>
+                      {isSignUp ? "Create account" : "Sign in"}
+                      <ArrowRight size={17} className="pp2-submit-icon" aria-hidden="true" />
+                    </>
+                  )}
+                </button>
+              </form>
+
+              <p className="pp2-switch">
+                {isSignUp ? "Already have an account?" : "New to Nova AI?"}
+                <button type="button" className="pp2-link-btn" onClick={() => switchMode(!isSignUp)}>
+                  {isSignUp ? "Sign in" : "Create an account"}
+                </button>
+              </p>
             </div>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

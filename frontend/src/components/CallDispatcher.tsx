@@ -1,8 +1,25 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import type { FormEvent, ReactNode } from "react";
+import { createPortal } from "react-dom";
+import {
+  PhoneCall,
+  Sparkles,
+  RefreshCw,
+  Star,
+  Trash2,
+  Info,
+  CircleCheck,
+  CircleAlert,
+  TriangleAlert,
+  MessageSquare,
+  X,
+} from "lucide-react";
 import LiveTranscript from "@/components/LiveTranscript";
 import { substituteVariables, type PromptVariable } from "@/lib/promptVariables";
+import { normalizePhoneNumber } from "@/lib/phoneListParser";
+import "@/styles/calls.css";
 
 interface DispatchResult {
   success: boolean;
@@ -32,19 +49,123 @@ interface Agent {
   variables: PromptVariable[];
 }
 
+type ResultKind = "success" | "error" | "limit";
+
+interface RecentCall {
+  phone: string;
+  time: string;
+  ok: boolean;
+  room?: string;
+}
+
+const COUNTRY_PREFIXES: [string, string][] = [
+  ["+91", "India"], ["+1", "US / Canada"], ["+44", "United Kingdom"], ["+971", "UAE"], ["+65", "Singapore"],
+  ["+61", "Australia"], ["+49", "Germany"], ["+33", "France"], ["+81", "Japan"], ["+86", "China"],
+  ["+92", "Pakistan"], ["+880", "Bangladesh"], ["+94", "Sri Lanka"], ["+977", "Nepal"], ["+966", "Saudi Arabia"],
+  ["+974", "Qatar"], ["+60", "Malaysia"], ["+27", "South Africa"],
+];
+
+const LANGUAGES: [string, string][] = [
+  ["multi", "Auto-detect (multilingual)"], ["hi", "Hindi"], ["en", "English"], ["ta", "Tamil"], ["te", "Telugu"],
+  ["bn", "Bengali"], ["mr", "Marathi"], ["gu", "Gujarati"], ["kn", "Kannada"], ["ml", "Malayalam"], ["pa", "Punjabi"],
+];
+
+interface PhoneAnalysis {
+  state: "empty" | "invalid" | "valid";
+  message?: string;
+  normalized?: string;
+  display?: string;
+  country?: string;
+  note?: string;
+}
+
+function analyzePhone(raw: string): PhoneAnalysis {
+  const trimmed = raw.trim();
+  if (!trimmed) return { state: "empty" };
+
+  const cleaned = trimmed.replace(/[\s\-().]/g, "");
+  if (!/^\+?\d+$/.test(cleaned)) {
+    return { state: "invalid", message: "Use digits only — spaces, dashes and a leading + are allowed." };
+  }
+  const digits = cleaned.replace("+", "");
+  if (digits.length < 7) return { state: "invalid", message: `Too short — a phone number needs at least 7 digits (you entered ${digits.length}).` };
+  if (digits.length > 15) return { state: "invalid", message: `Too long — numbers can have at most 15 digits (you entered ${digits.length}).` };
+
+  const normalized = normalizePhoneNumber(trimmed);
+  if (!normalized) return { state: "invalid", message: "This doesn't look like a valid phone number." };
+
+  const country = COUNTRY_PREFIXES
+    .filter(([prefix]) => normalized.startsWith(prefix))
+    .sort((a, b) => b[0].length - a[0].length)[0]?.[1];
+
+  let note: string | undefined;
+  if (/^\d{10}$/.test(cleaned)) note = "10-digit number — +91 (India) will be added.";
+  else if (!cleaned.startsWith("+")) note = "No + found — dialled as the international number shown below.";
+  else if (normalized.startsWith("+91") && normalized.length !== 13) note = "Indian numbers normally have 10 digits after +91 — double-check this one.";
+
+  const display = normalized.startsWith("+91") && normalized.length === 13
+    ? `+91 ${normalized.slice(3, 8)} ${normalized.slice(8)}`
+    : normalized;
+
+  return { state: "valid", normalized, display, country, note };
+}
+
+function ConfirmDialog({
+  title,
+  children,
+  confirmLabel,
+  tone = "danger",
+  onConfirm,
+  onCancel,
+}: {
+  title: string;
+  children: ReactNode;
+  confirmLabel: string;
+  tone?: "danger" | "primary";
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => { cancelRef.current?.focus(); }, []);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onCancel(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+
+  return createPortal(
+    <div className="cl2 cl2-portal">
+      <div className="cl2-overlay" onClick={onCancel}>
+        <div className="cl2-modal" role="alertdialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
+          <div className="cl2-modal-head"><h3>{title}</h3></div>
+          <div className="cl2-modal-body">{children}</div>
+          <div className="cl2-modal-foot">
+            <button type="button" ref={cancelRef} className="cl2-btn" onClick={onCancel}>Cancel</button>
+            <button type="button" className={`cl2-btn ${tone === "danger" ? "cl2-btn-danger" : "cl2-btn-primary"}`} onClick={onConfirm}>
+              {confirmLabel}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 export default function CallDispatcher() {
   const [phone, setPhone] = useState("");
+  const [phoneTouched, setPhoneTouched] = useState(false);
   const [prompt, setPrompt] = useState("");
   const [modelProvider, setModelProvider] = useState("openai");
   const [voice, setVoice] = useState("4877b818-c7fe-4c89-b1cf-eadf8e23da72");
   const [language, setLanguage] = useState("multi");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<DispatchResult | null>(null);
+  const [resultKind, setResultKind] = useState<ResultKind>("success");
+  const [resultPhone, setResultPhone] = useState("");
   const [activeRoomName, setActiveRoomName] = useState<string | null>(null);
   const [showTranscript, setShowTranscript] = useState(false);
-  const [recentCalls, setRecentCalls] = useState<
-    { phone: string; time: string; status: string }[]
-  >([]);
+  const [recentCalls, setRecentCalls] = useState<RecentCall[]>([]);
   const [brief, setBrief] = useState("");
   const [generating, setGenerating] = useState(false);
   const [generated, setGenerated] = useState(false);
@@ -54,13 +175,23 @@ export default function CallDispatcher() {
   const [saveTitle, setSaveTitle] = useState("");
   const [showSaveInput, setShowSaveInput] = useState(false);
   const [showSavedList, setShowSavedList] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<SavedPrompt | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [selectedAgentId, setSelectedAgentId] = useState("");
   const [firstMessage, setFirstMessage] = useState("");
   const [temperature, setTemperature] = useState<number | undefined>(undefined);
   const [variableValues, setVariableValues] = useState<Record<string, string>>({});
+  const [toast, setToast] = useState<{ kind: "success" | "error"; text: string } | null>(null);
 
   const selectedAgent = agents.find((a) => a.id === selectedAgentId) ?? null;
+  const analysis = useMemo(() => analyzePhone(phone), [phone]);
+  const showPhoneError = analysis.state === "invalid" || (phoneTouched && analysis.state === "empty");
+
+  useEffect(() => {
+    if (!toast) return;
+    const id = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(id);
+  }, [toast]);
 
   const fetchAgents = useCallback(async () => {
     try {
@@ -117,16 +248,24 @@ export default function CallDispatcher() {
         setShowSaveInput(false);
         setSaveTitle("");
         fetchSavedPrompts();
+        setToast({ kind: "success", text: "Script saved" });
+      } else {
+        setToast({ kind: "error", text: data.error || "Could not save the script" });
       }
-    } catch { /* silent */ }
-    finally { setSaving(false); }
+    } catch {
+      setToast({ kind: "error", text: "Network error — script not saved" });
+    } finally { setSaving(false); }
   };
 
   const handleDeletePrompt = async (id: string) => {
     try {
-      await fetch(`/api/prompts?id=${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/prompts?id=${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
       setSavedPrompts((prev) => prev.filter((p) => p.id !== id));
-    } catch { /* silent */ }
+      setToast({ kind: "success", text: "Script deleted" });
+    } catch {
+      setToast({ kind: "error", text: "Could not delete the script" });
+    }
   };
 
   const handleStarPrompt = async (id: string, starred: boolean) => {
@@ -143,20 +282,47 @@ export default function CallDispatcher() {
     } catch { /* silent */ }
   };
 
-  const handleDispatch = async () => {
-    if (!phone.trim()) return;
+  const handleGenerate = async () => {
+    if (!brief.trim()) return;
+    setGenerating(true);
+    setGenError("");
+    setGenerated(false);
+    try {
+      const res = await fetch("/api/generate-prompt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ brief: brief.trim() }),
+      });
+      const data = await res.json();
+      if (data.success && data.prompt) {
+        setPrompt(data.prompt);
+        setGenerated(true);
+      } else {
+        setGenError(data.error || "Failed to generate");
+      }
+    } catch { setGenError("Network error — could not reach the server"); }
+    finally { setGenerating(false); }
+  };
+
+  const handleDispatch = async (e?: FormEvent) => {
+    e?.preventDefault();
+    setPhoneTouched(true);
+    if (loading || analysis.state !== "valid" || !analysis.normalized) return;
     setLoading(true);
     setResult(null);
 
+    const dialed = analysis.normalized;
     const finalPrompt = selectedAgent ? substituteVariables(prompt, variableValues) : prompt;
     const finalFirstMessage = selectedAgent ? substituteVariables(firstMessage, variableValues) : firstMessage;
 
+    let data: DispatchResult;
+    let kind: ResultKind = "error";
     try {
       const res = await fetch("/api/dispatch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          phone_number: phone.trim(),
+          phone_number: dialed,
           prompt: finalPrompt.trim(),
           model_provider: modelProvider,
           voice_id: voice,
@@ -169,394 +335,399 @@ export default function CallDispatcher() {
         }),
       });
 
-      const data: DispatchResult = await res.json();
-      setResult(data);
-
-      setRecentCalls((prev) => [
-        {
-          phone: phone.trim(),
-          time: new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-          status: data.success ? "connected" : "failed",
-        },
-        ...prev.slice(0, 4),
-      ]);
+      data = await res.json();
+      if (data.success) kind = "success";
+      else if (res.status === 403) kind = "limit";
+      else if (res.status === 401) data = { success: false, error: "Your session has expired — please sign in again." };
     } catch {
-      setResult({ success: false, error: "Network error — check server" });
-    } finally {
-      setLoading(false);
+      data = { success: false, error: "Network error — could not reach the server" };
     }
+
+    setResult(data);
+    setResultKind(kind);
+    setResultPhone(dialed);
+    if (data.success && data.room_name) {
+      setActiveRoomName(data.room_name);
+    }
+    setRecentCalls((prev) => [
+      {
+        phone: dialed,
+        time: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+        ok: data.success,
+        room: data.room_name,
+      },
+      ...prev.slice(0, 4),
+    ]);
+    setLoading(false);
   };
 
+  const sortedSaved = useMemo(() => [...savedPrompts].sort((a, b) => (b.starred ? 1 : 0) - (a.starred ? 1 : 0)), [savedPrompts]);
+  const unresolvedVars = selectedAgent
+    ? (selectedAgent.variables ?? []).filter((v) => !(variableValues[v.name] ?? "").trim()).map((v) => v.name)
+    : [];
+
   return (
-    <div className="card space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold text-white">Single Call</h2>
-        <span className="text-[11px] px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-400 font-medium">
-          Quick
-        </span>
-      </div>
-
-      {/* Saved Agent */}
-      {agents.length > 0 && (
+    <section className="cl2 cl2-panel" aria-label="Single call">
+      <div className="cl2-panel-head">
         <div>
-          <label htmlFor="agent-select">Use a Saved Agent (optional)</label>
-          <select
-            id="agent-select"
-            value={selectedAgentId}
-            onChange={(e) => handleSelectAgent(e.target.value)}
-          >
-            <option value="">— Manual Script —</option>
-            {agents.map((a) => (
-              <option key={a.id} value={a.id}>{a.name}</option>
-            ))}
-          </select>
-          {selectedAgent && selectedAgent.variables.length > 0 && (
-            <div className="mt-2 space-y-2">
-              {selectedAgent.variables.map((v) => (
-                <div key={v.name} className="flex items-center gap-2">
-                  <span className="text-[11px] font-mono px-2 py-1.5 rounded-lg bg-white/[0.04] text-purple-300 whitespace-nowrap">
-                    {"{{" + v.name + "}}"}
-                  </span>
-                  <input
-                    type="text"
-                    placeholder="Value for this call"
-                    value={variableValues[v.name] ?? ""}
-                    onChange={(e) => setVariableValues((prev) => ({ ...prev, [v.name]: e.target.value }))}
-                    className="!py-1.5 !text-xs flex-1"
-                  />
+          <h2 className="cl2-title">Single call</h2>
+          <p className="cl2-muted">Place one AI-powered outbound call right now.</p>
+        </div>
+        <span className="cl2-pill cl2-pill-info"><span className="cl2-pill-dot" aria-hidden="true" />Quick dial</span>
+      </div>
+
+      <form className="cl2-form" onSubmit={handleDispatch} noValidate>
+        <fieldset className="cl2-fieldset" disabled={loading}>
+          <div className="cl2-split">
+            <div className="cl2-stack">
+              {agents.length > 0 && (
+                <div className="cl2-field">
+                  <label htmlFor="agent-select" className="cl2-label">Saved agent <span className="cl2-optional">optional</span></label>
+                  <select
+                    id="agent-select"
+                    className="cl2-input"
+                    value={selectedAgentId}
+                    onChange={(e) => handleSelectAgent(e.target.value)}
+                  >
+                    <option value="">— Manual script —</option>
+                    {agents.map((a) => (
+                      <option key={a.id} value={a.id}>{a.name}</option>
+                    ))}
+                  </select>
+                  <p className="cl2-hint">Selecting an agent fills in its script, voice, language and model.</p>
+                  {selectedAgent && selectedAgent.variables.length > 0 && (
+                    <div className="cl2-vars">
+                      {selectedAgent.variables.map((v) => (
+                        <div key={v.name} className="cl2-var-row">
+                          <label htmlFor={`var-${v.name}`} className="cl2-var-token">{"{{" + v.name + "}}"}</label>
+                          <input
+                            id={`var-${v.name}`}
+                            type="text"
+                            className="cl2-input cl2-input-sm"
+                            placeholder="Value for this call"
+                            value={variableValues[v.name] ?? ""}
+                            onChange={(e) => setVariableValues((prev) => ({ ...prev, [v.name]: e.target.value }))}
+                          />
+                        </div>
+                      ))}
+                      {unresolvedVars.length > 0 && (
+                        <p className="cl2-hint cl2-text-warn">
+                          Empty variables are left as-is in the script: {unresolvedVars.map((n) => `{{${n}}}`).join(", ")}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Phone Number */}
-      <div>
-        <label htmlFor="phone">Phone Number</label>
-        <input
-          id="phone"
-          type="tel"
-          placeholder="Enter 10-digit number"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-        />
-        <p className="text-[11px] text-[var(--color-text-muted)] mt-1.5">
-          +91 is added automatically for 10-digit numbers
-        </p>
-      </div>
-
-      {/* Prompt Brief + Generate */}
-      <div>
-        <label htmlFor="brief">Describe your call briefly</label>
-        <div className="flex gap-2">
-          <input
-            id="brief"
-            type="text"
-            placeholder="e.g. Remind about appointment on June 20 at 3 PM"
-            value={brief}
-            onChange={(e) => { setBrief(e.target.value); setGenerated(false); setGenError(""); }}
-            className="flex-1"
-          />
-          <button
-            onClick={async () => {
-              if (!brief.trim()) return;
-              setGenerating(true);
-              setGenError("");
-              setGenerated(false);
-              try {
-                const res = await fetch("/api/generate-prompt", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ brief: brief.trim() }),
-                });
-                const data = await res.json();
-                if (data.success && data.prompt) {
-                  setPrompt(data.prompt);
-                  setGenerated(true);
-                } else {
-                  setGenError(data.error || "Failed to generate");
-                }
-              } catch { setGenError("Network error"); }
-              finally { setGenerating(false); }
-            }}
-            disabled={generating || !brief.trim()}
-            className="px-4 py-2 rounded-lg text-xs font-semibold text-white
-                       bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500
-                       disabled:opacity-40 disabled:cursor-not-allowed
-                       transition-all duration-150 flex items-center gap-1.5 whitespace-nowrap"
-          >
-            {generating ? (
-              <><span className="spinner" style={{ width: 12, height: 12 }} /> Generating...</>
-            ) : generated ? (
-              <><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182" /></svg> Regenerate</>
-            ) : (
-              <><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 0 0-2.455 2.456Z" /></svg> Generate</>
-            )}
-          </button>
-        </div>
-        {generated && (
-          <p className="text-[11px] text-green-400 mt-1.5">✓ Script generated and pasted below. You can edit it before calling.</p>
-        )}
-        {genError && (
-          <p className="text-[11px] text-red-400 mt-1.5">{genError}</p>
-        )}
-        {!generated && !genError && (
-          <p className="text-[11px] text-[var(--color-text-muted)] mt-1.5">
-            Describe what the call is about and AI will generate a full script
-          </p>
-        )}
-      </div>
-
-      {/* Generated / Manual Prompt */}
-      <div>
-        <div className="flex items-center justify-between mb-1">
-          <label htmlFor="prompt" className="mb-0">Call Script</label>
-          <div className="flex items-center gap-2">
-            {prompt.trim() && (
-              <button
-                onClick={() => setShowSaveInput(!showSaveInput)}
-                className="text-[10px] text-purple-400 hover:text-purple-300 transition-colors"
-              >
-                {showSaveInput ? "Cancel" : "Save Script"}
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Saved Prompts Dropdown */}
-        {savedPrompts.length > 0 && (
-          <div className="mb-2">
-            <select
-              onChange={(e) => {
-                const selected = savedPrompts.find((p) => p.id === e.target.value);
-                if (selected) setPrompt(selected.prompt);
-                e.target.value = "";
-              }}
-              defaultValue=""
-              className="!py-1.5 !text-xs w-full"
-            >
-              <option value="" disabled>Select a saved script ({savedPrompts.length})...</option>
-              {savedPrompts.filter(p => p.starred).length > 0 && (
-                <optgroup label="⭐ Starred">
-                  {savedPrompts.filter(p => p.starred).map((sp) => (
-                    <option key={sp.id} value={sp.id}>⭐ {sp.title}</option>
-                  ))}
-                </optgroup>
               )}
-              <optgroup label="All Scripts">
-                {savedPrompts.filter(p => !p.starred).map((sp) => (
-                  <option key={sp.id} value={sp.id}>{sp.title}</option>
-                ))}
-              </optgroup>
-            </select>
-          </div>
-        )}
 
-        {/* Save input */}
-        {showSaveInput && (
-          <div className="flex gap-2 mb-2">
-            <input
-              type="text"
-              placeholder="Give this script a name..."
-              value={saveTitle}
-              onChange={(e) => setSaveTitle(e.target.value)}
-              className="flex-1 !py-1.5 !text-xs"
-            />
-            <button
-              onClick={handleSavePrompt}
-              disabled={saving || !saveTitle.trim()}
-              className="px-3 py-1.5 rounded-lg text-[10px] font-semibold text-white bg-purple-600 hover:bg-purple-500 disabled:opacity-40 transition-colors"
-            >
-              {saving ? "Saving..." : "Save"}
-            </button>
-          </div>
-        )}
-
-        {/* Manage saved prompts (star/delete) */}
-        {savedPrompts.length > 0 && (
-          <div className="mb-2">
-            <button
-              onClick={() => setShowSavedList(!showSavedList)}
-              className="text-[10px] text-[var(--color-text-muted)] hover:text-white transition-colors"
-            >
-              {showSavedList ? "Hide manage" : "Manage saved scripts"}
-            </button>
-          </div>
-        )}
-        {showSavedList && savedPrompts.length > 0 && (
-          <div className="mb-2 max-h-48 overflow-y-auto rounded-lg border border-[var(--color-border)] divide-y divide-[var(--color-border)]">
-            {savedPrompts.map((sp) => (
-              <div
-                key={sp.id}
-                className="flex items-center justify-between px-3 py-2 hover:bg-white/[0.03] transition-colors group"
-              >
-                <div className="flex-1 min-w-0">
-                  <span className="text-xs font-medium text-white block truncate">{sp.starred ? "⭐ " : ""}{sp.title}</span>
-                  <span className="text-[10px] text-[var(--color-text-muted)] block truncate">{sp.prompt.substring(0, 50)}...</span>
-                </div>
-                <div className="flex items-center gap-1 ml-2">
-                  <button
-                    onClick={() => handleStarPrompt(sp.id, !sp.starred)}
-                    className={`p-1 rounded transition-all ${sp.starred ? "text-yellow-400" : "text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100"}`}
-                    title={sp.starred ? "Unstar" : "Star"}
-                  >
-                    <svg className="w-3.5 h-3.5" fill={sp.starred ? "currentColor" : "none"} viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => handleDeletePrompt(sp.id)}
-                    className="p-1 rounded text-[var(--color-text-muted)] hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
-                    title="Delete"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-                    </svg>
-                  </button>
+              <div className="cl2-field">
+                <label htmlFor="phone" className="cl2-label">Phone number</label>
+                <input
+                  id="phone"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  className={`cl2-input cl2-mono ${showPhoneError ? "is-invalid" : analysis.state === "valid" ? "is-valid" : ""}`}
+                  placeholder="98765 43210 or +1 415 555 0100"
+                  value={phone}
+                  aria-invalid={showPhoneError}
+                  aria-describedby="phone-help"
+                  onChange={(e) => setPhone(e.target.value)}
+                  onBlur={() => setPhoneTouched(true)}
+                />
+                <div id="phone-help" className="cl2-field-help" aria-live="polite">
+                  {showPhoneError ? (
+                    <p className="cl2-hint cl2-text-danger">
+                      {analysis.state === "empty" ? "Enter the phone number to call." : analysis.message}
+                    </p>
+                  ) : analysis.state === "valid" ? (
+                    <>
+                      <p className="cl2-phone-preview">
+                        <CircleCheck size={13} aria-hidden="true" />
+                        <span>Will dial <strong className="cl2-mono">{analysis.display}</strong>{analysis.country ? ` · ${analysis.country}` : ""}</span>
+                      </p>
+                      {analysis.note && <p className="cl2-hint cl2-text-warn">{analysis.note}</p>}
+                    </>
+                  ) : (
+                    <p className="cl2-hint">Include the country code (e.g. +91). 10-digit numbers are treated as Indian (+91).</p>
+                  )}
                 </div>
               </div>
-            ))}
+
+              <div className="cl2-form-row">
+                <div className="cl2-field">
+                  <label htmlFor="language" className="cl2-label">Language</label>
+                  <select id="language" className="cl2-input" value={language} onChange={(e) => setLanguage(e.target.value)}>
+                    {LANGUAGES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  </select>
+                </div>
+                <div className="cl2-field">
+                  <label htmlFor="voice" className="cl2-label">Voice</label>
+                  <select id="voice" className="cl2-input" value={voice} onChange={(e) => setVoice(e.target.value)}>
+                    <optgroup label="Cartesia Indian (Hindi/English — recommended)">
+                      <option value="4877b818-c7fe-4c89-b1cf-eadf8e23da72">Rohan — Hindi male (default)</option>
+                      <option value="0f14d8cb-f039-41fe-a813-a9b4bee7eed8">Hindi female</option>
+                      <option value="1259b7e3-cb8a-43df-9446-30971a46b8b0">English voice</option>
+                    </optgroup>
+                    <optgroup label="OpenAI (multilingual)">
+                      <option value="shimmer">Shimmer — female</option>
+                      <option value="nova">Nova — female</option>
+                      <option value="alloy">Alloy — neutral</option>
+                      <option value="echo">Echo — male</option>
+                      <option value="onyx">Onyx — male</option>
+                    </optgroup>
+                    <optgroup label="Deepgram (English only)">
+                      <option value="aura-asteria-en">Asteria — female</option>
+                      <option value="aura-orion-en">Orion — male</option>
+                    </optgroup>
+                    <optgroup label="ElevenLabs">
+                      <option value="RABOvaPec1ymXz02oDQi">Indian voice 1</option>
+                      <option value="czQ9pLzjRaF61EAYjcPC">Indian voice 2</option>
+                    </optgroup>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="cl2-stack">
+              <div className="cl2-field">
+                <label htmlFor="brief" className="cl2-label">Describe the call <span className="cl2-optional">AI script generator</span></label>
+                <div className="cl2-inline">
+                  <input
+                    id="brief"
+                    type="text"
+                    className="cl2-input"
+                    placeholder="e.g. Remind about appointment on June 20 at 3 PM"
+                    value={brief}
+                    onChange={(e) => { setBrief(e.target.value); setGenerated(false); setGenError(""); }}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleGenerate(); } }}
+                  />
+                  <button type="button" className="cl2-btn cl2-btn-primary" onClick={handleGenerate} disabled={generating || !brief.trim()}>
+                    {generating ? (
+                      <><span className="cl2-spin" aria-hidden="true" /> Generating…</>
+                    ) : generated ? (
+                      <><RefreshCw size={14} aria-hidden="true" /> Regenerate</>
+                    ) : (
+                      <><Sparkles size={14} aria-hidden="true" /> Generate</>
+                    )}
+                  </button>
+                </div>
+                {generated && <p className="cl2-hint cl2-text-ok" role="status">Script generated and added below — edit it before calling if you like.</p>}
+                {genError && <p className="cl2-hint cl2-text-danger" role="alert">{genError}</p>}
+                {!generated && !genError && <p className="cl2-hint">Describe what the call is about and AI will write the full script.</p>}
+              </div>
+
+              <div className="cl2-field cl2-grow">
+                <div className="cl2-label-row">
+                  <label htmlFor="prompt" className="cl2-label">Call script</label>
+                  <div className="cl2-label-actions">
+                    {savedPrompts.length > 0 && (
+                      <button type="button" className="cl2-link" onClick={() => setShowSavedList(!showSavedList)}>
+                        {showSavedList ? "Hide saved scripts" : "Manage saved scripts"}
+                      </button>
+                    )}
+                    {prompt.trim() && (
+                      <button type="button" className="cl2-link" onClick={() => setShowSaveInput(!showSaveInput)}>
+                        {showSaveInput ? "Cancel" : "Save script"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {savedPrompts.length > 0 && (
+                  <select
+                    aria-label="Load a saved script"
+                    onChange={(e) => {
+                      const selected = savedPrompts.find((p) => p.id === e.target.value);
+                      if (selected) setPrompt(selected.prompt);
+                      e.target.value = "";
+                    }}
+                    defaultValue=""
+                    className="cl2-input cl2-input-sm"
+                  >
+                    <option value="" disabled>Load a saved script ({savedPrompts.length})…</option>
+                    {sortedSaved.some((p) => p.starred) && (
+                      <optgroup label="Starred">
+                        {sortedSaved.filter((p) => p.starred).map((sp) => (
+                          <option key={sp.id} value={sp.id}>★ {sp.title}</option>
+                        ))}
+                      </optgroup>
+                    )}
+                    <optgroup label="All scripts">
+                      {sortedSaved.filter((p) => !p.starred).map((sp) => (
+                        <option key={sp.id} value={sp.id}>{sp.title}</option>
+                      ))}
+                    </optgroup>
+                  </select>
+                )}
+
+                {showSaveInput && (
+                  <div className="cl2-inline">
+                    <input
+                      type="text"
+                      className="cl2-input cl2-input-sm"
+                      placeholder="Give this script a name…"
+                      aria-label="Script name"
+                      value={saveTitle}
+                      onChange={(e) => setSaveTitle(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSavePrompt(); } }}
+                    />
+                    <button type="button" className="cl2-btn cl2-btn-primary cl2-btn-sm" onClick={handleSavePrompt} disabled={saving || !saveTitle.trim()}>
+                      {saving ? "Saving…" : "Save"}
+                    </button>
+                  </div>
+                )}
+
+                {showSavedList && savedPrompts.length > 0 && (
+                  <ul className="cl2-list" aria-label="Saved scripts">
+                    {sortedSaved.map((sp) => (
+                      <li key={sp.id}>
+                        <button type="button" className="cl2-list-main" onClick={() => setPrompt(sp.prompt)} title="Use this script">
+                          <span className="cl2-strong">{sp.title}</span>
+                          <span className="cl2-muted cl2-truncate">{sp.prompt.slice(0, 80)}</span>
+                        </button>
+                        <button
+                          type="button"
+                          className={`cl2-icon-btn ${sp.starred ? "is-starred" : ""}`}
+                          onClick={() => handleStarPrompt(sp.id, !sp.starred)}
+                          aria-label={sp.starred ? `Unstar ${sp.title}` : `Star ${sp.title}`}
+                          aria-pressed={sp.starred}
+                        >
+                          <Star size={14} fill={sp.starred ? "currentColor" : "none"} aria-hidden="true" />
+                        </button>
+                        <button type="button" className="cl2-icon-btn cl2-icon-danger" onClick={() => setDeleteTarget(sp)} aria-label={`Delete ${sp.title}`}>
+                          <Trash2 size={14} aria-hidden="true" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                <textarea
+                  id="prompt"
+                  rows={9}
+                  className="cl2-input cl2-textarea"
+                  placeholder="Generated script will appear here, or type your own…"
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                />
+                <p className="cl2-hint cl2-hint-row">
+                  <span>{prompt.trim() ? `${prompt.trim().length.toLocaleString("en-IN")} characters` : "No script yet — the agent will use its defaults."}</span>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="cl2-actions">
+            <button type="submit" className="cl2-btn cl2-btn-primary cl2-btn-lg" disabled={loading || analysis.state !== "valid"}>
+              {loading ? (
+                <><span className="cl2-spin" aria-hidden="true" /> Connecting…</>
+              ) : (
+                <><PhoneCall size={16} aria-hidden="true" /> Place call</>
+              )}
+            </button>
+            {!loading && analysis.state !== "valid" && (
+              <span className="cl2-muted">Enter a valid phone number to enable calling.</span>
+            )}
+          </div>
+        </fieldset>
+      </form>
+
+      <div aria-live="polite">
+        {result && resultKind === "success" && (
+          <div className="cl2-result cl2-result-ok" role="status">
+            <CircleCheck size={18} aria-hidden="true" />
+            <div className="cl2-result-body">
+              <strong>Call dispatched to <span className="cl2-mono">{resultPhone}</span></strong>
+              <span className="cl2-muted">The agent is dialling now. Reference: <span className="cl2-mono cl2-break">{result.room_name}</span></span>
+            </div>
+            <button
+              type="button"
+              className="cl2-btn cl2-btn-sm"
+              onClick={() => { setActiveRoomName(result.room_name ?? null); setShowTranscript(true); }}
+            >
+              <MessageSquare size={13} aria-hidden="true" /> Live transcript
+            </button>
           </div>
         )}
-
-        <textarea
-          id="prompt"
-          rows={8}
-          placeholder="Generated script will appear here, or type your own..."
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-        />
-      </div>
-
-      {/* Language + Model + Voice */}
-      <div>
-        <label htmlFor="language">Language</label>
-        <select
-          id="language"
-          value={language}
-          onChange={(e) => setLanguage(e.target.value)}
-        >
-          <option value="multi">Auto-Detect (Multilingual)</option>
-          <option value="hi">Hindi</option>
-          <option value="en">English</option>
-          <option value="ta">Tamil</option>
-          <option value="te">Telugu</option>
-          <option value="bn">Bengali</option>
-          <option value="mr">Marathi</option>
-          <option value="gu">Gujarati</option>
-          <option value="kn">Kannada</option>
-          <option value="ml">Malayalam</option>
-          <option value="pa">Punjabi</option>
-        </select>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="voice">Voice</label>
-          <select
-            id="voice"
-            value={voice}
-            onChange={(e) => setVoice(e.target.value)}
-          >
-            <optgroup label="Cartesia Indian (Hindi/English — Recommended)">
-              <option value="4877b818-c7fe-4c89-b1cf-eadf8e23da72">Rohan — Hindi Male (Default)</option>
-              <option value="0f14d8cb-f039-41fe-a813-a9b4bee7eed8">Hindi Female</option>
-              <option value="1259b7e3-cb8a-43df-9446-30971a46b8b0">English Voice</option>
-            </optgroup>
-            <optgroup label="OpenAI (Multilingual)">
-              <option value="shimmer">Shimmer — Female</option>
-              <option value="nova">Nova — Female</option>
-              <option value="alloy">Alloy — Neutral</option>
-              <option value="echo">Echo — Male</option>
-              <option value="onyx">Onyx — Male</option>
-            </optgroup>
-            <optgroup label="Deepgram (English Only)">
-              <option value="aura-asteria-en">Asteria — Female</option>
-              <option value="aura-orion-en">Orion — Male</option>
-            </optgroup>
-            <optgroup label="ElevenLabs">
-              <option value="RABOvaPec1ymXz02oDQi">Indian Voice 1</option>
-              <option value="czQ9pLzjRaF61EAYjcPC">Indian Voice 2</option>
-            </optgroup>
-          </select>
-        </div>
-      </div>
-
-      {/* Submit */}
-      <button
-        onClick={handleDispatch}
-        disabled={loading || !phone.trim()}
-        className="w-full py-2.5 rounded-lg font-medium text-sm text-white
-                   bg-blue-600 hover:bg-blue-500
-                   disabled:opacity-40 disabled:cursor-not-allowed
-                   transition-colors duration-150 flex items-center justify-center gap-2"
-      >
-        {loading ? (
-          <>
-            <span className="spinner" />
-            Connecting…
-          </>
-        ) : (
-          "Place Call"
-        )}
-      </button>
-
-      {/* Result */}
-      {result && (
-        <div
-          className={`text-sm px-4 py-3 rounded-lg border ${
-            result.success
-              ? "bg-green-500/10 border-green-500/20 text-green-400"
-              : "bg-red-500/10 border-red-500/20 text-red-400"
-          }`}
-        >
-          {result.success ? (
-            <div className="flex items-center justify-between">
-              <span>
-                Call dispatched — <span className="font-mono text-xs opacity-70">{result.room_name}</span>
-              </span>
-              <button
-                onClick={() => { setActiveRoomName(result.room_name ?? null); setShowTranscript(true); }}
-                className="ml-2 px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 transition-colors whitespace-nowrap"
-              >
-                Live Transcript
-              </button>
+        {result && resultKind === "limit" && (
+          <div className="cl2-result cl2-result-warn" role="alert">
+            <TriangleAlert size={18} aria-hidden="true" />
+            <div className="cl2-result-body">
+              <strong>Plan limit reached</strong>
+              <span>{result.error}</span>
+              <span className="cl2-muted">Calls are paused until your plan is active or upgraded — contact your admin or upgrade your plan to continue.</span>
             </div>
-          ) : (
-            <span>{result.error}</span>
-          )}
+          </div>
+        )}
+        {result && resultKind === "error" && (
+          <div className="cl2-result cl2-result-danger" role="alert">
+            <CircleAlert size={18} aria-hidden="true" />
+            <div className="cl2-result-body">
+              <strong>Call could not be placed</strong>
+              <span>{result.error || "Something went wrong. Please try again."}</span>
+            </div>
+            <button type="button" className="cl2-btn cl2-btn-sm" onClick={() => handleDispatch()} disabled={loading}>
+              <RefreshCw size={13} aria-hidden="true" /> Retry
+            </button>
+          </div>
+        )}
+      </div>
+
+      {recentCalls.length > 0 && (
+        <div className="cl2-recent">
+          <span className="cl2-label">Placed this session</span>
+          <ul>
+            {recentCalls.map((call, i) => (
+              <li key={i}>
+                <span className="cl2-mono cl2-strong">{call.phone}</span>
+                <span className="cl2-muted">{call.time}</span>
+                <span className={`cl2-pill ${call.ok ? "cl2-pill-ok" : "cl2-pill-danger"}`}>
+                  <span className="cl2-pill-dot" aria-hidden="true" />{call.ok ? "Dispatched" : "Failed"}
+                </span>
+                {call.ok && call.room && (
+                  <button
+                    type="button"
+                    className="cl2-link"
+                    onClick={() => { setActiveRoomName(call.room ?? null); setShowTranscript(true); }}
+                  >
+                    Transcript
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
-      {/* Live Transcript Sidebar */}
       <LiveTranscript
         roomName={activeRoomName}
+        phoneNumber={recentCalls.find((c) => c.room === activeRoomName)?.phone}
         isOpen={showTranscript}
         onClose={() => setShowTranscript(false)}
       />
 
-      {/* Recent Calls */}
-      {recentCalls.length > 0 && (
-        <div className="pt-4 border-t border-[var(--color-border)]">
-          <p className="text-[11px] text-[var(--color-text-muted)] mb-2">Recent calls</p>
-          <div className="space-y-1.5">
-            {recentCalls.map((call, i) => (
-              <div key={i} className="flex items-center justify-between text-xs py-1.5">
-                <span className="font-mono text-[var(--color-text-secondary)]">{call.phone}</span>
-                <div className="flex items-center gap-3">
-                  <span className="text-[var(--color-text-muted)]">{call.time}</span>
-                  <span className={`w-1.5 h-1.5 rounded-full ${call.status === "connected" ? "bg-green-500" : "bg-red-500"}`} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+      {deleteTarget && (
+        <ConfirmDialog
+          title="Delete saved script?"
+          confirmLabel="Delete"
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={() => { handleDeletePrompt(deleteTarget.id); setDeleteTarget(null); }}
+        >
+          <p><strong>{deleteTarget.title}</strong> will be permanently removed from your saved scripts. This can&apos;t be undone.</p>
+        </ConfirmDialog>
       )}
-    </div>
+
+      {toast && createPortal(
+        <div className="cl2 cl2-portal">
+          <div className={`cl2-toast cl2-toast-${toast.kind}`} role="status">
+            {toast.kind === "success" ? <CircleCheck size={15} aria-hidden="true" /> : <Info size={15} aria-hidden="true" />}
+            <span>{toast.text}</span>
+            <button type="button" className="cl2-toast-close" onClick={() => setToast(null)} aria-label="Dismiss"><X size={13} aria-hidden="true" /></button>
+          </div>
+        </div>,
+        document.body
+      )}
+    </section>
   );
 }

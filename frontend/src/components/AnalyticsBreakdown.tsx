@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, Users, Megaphone, IndianRupee } from "lucide-react";
+import { ChartColumn, Users, Megaphone, IndianRupee } from "lucide-react";
 
 interface AgentBreakdownRow {
   agent_id: string;
@@ -34,16 +34,34 @@ interface AnalyticsBreakdownProps {
 }
 
 const DISPOSITION_COLORS: Record<string, string> = {
-  Interested: "bg-green-500",
-  Booked: "bg-emerald-500",
-  "Callback Requested": "bg-blue-500",
-  "Not Interested": "bg-red-400",
-  "Wrong Number": "bg-amber-500",
-  Voicemail: "bg-purple-400",
-  "No Answer": "bg-white/20",
-  "No Response": "bg-white/20",
-  Other: "bg-slate-400",
+  Interested: "#22c55e",
+  Booked: "#10b981",
+  "Callback Requested": "#3b82f6",
+  "Not Interested": "#f87171",
+  "Wrong Number": "#f59e0b",
+  Voicemail: "#a78bfa",
+  "No Answer": "#94a3b8",
+  "No Response": "#94a3b8",
+  Other: "#64748b",
 };
+
+const formatInr = (value: number) =>
+  new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
+    maximumFractionDigits: 2,
+  }).format(Number.isFinite(value) ? value : 0);
+
+const formatDuration = (seconds: number) => {
+  if (!Number.isFinite(seconds) || seconds <= 0) return "—";
+  const total = Math.round(seconds);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+};
+
+const share = (part: number, total: number) => (total > 0 ? (part / total) * 100 : 0);
 
 export default function AnalyticsBreakdown({
   conversionRate,
@@ -54,124 +72,161 @@ export default function AnalyticsBreakdown({
 }: AnalyticsBreakdownProps) {
   const dispositionEntries = Object.entries(dispositionBreakdown).sort((a, b) => b[1] - a[1]);
   const dispositionTotal = dispositionEntries.reduce((sum, [, count]) => sum + count, 0);
+  const agentCostTotal = costAnalytics.byAgent.reduce((sum, a) => sum + a.cost, 0);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-      {/* Disposition breakdown + conversion rate */}
-      <div className="dash-card space-y-3">
-        <div className="dash-card-header">
-          <h3 className="dash-card-title flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-purple-400" /> Disposition Breakdown
+    <div className="dh2-breakdown">
+      <section className="dh2-panel" aria-labelledby="dh2-disp-title">
+        <header className="dh2-panel-head">
+          <h3 id="dh2-disp-title" className="dh2-panel-title">
+            <ChartColumn size={16} aria-hidden="true" className="dh2-ico-violet" /> Disposition breakdown
           </h3>
-          <span className="text-xs text-[var(--color-text-muted)]">
-            Conversion rate: <span className="text-green-400 font-semibold">{conversionRate}%</span>
+          <span className="dh2-chip dh2-chip-good" title="Share of all calls in this period classified as a positive outcome">
+            Conversion {conversionRate}%
           </span>
-        </div>
+        </header>
         {dispositionEntries.length === 0 ? (
-          <p className="dash-empty-state">No classified calls yet in this period.</p>
-        ) : (
-          <div className="space-y-2">
-            {dispositionEntries.map(([label, count]) => (
-              <div key={label} className="flex items-center gap-2 text-xs">
-                <span className="w-32 shrink-0 text-[var(--color-text-secondary)] truncate">{label}</span>
-                <div className="flex-1 h-2 rounded-full bg-white/[0.06] overflow-hidden">
-                  <div
-                    className={`h-full rounded-full ${DISPOSITION_COLORS[label] ?? "bg-slate-400"}`}
-                    style={{ width: `${dispositionTotal > 0 ? Math.round((count / dispositionTotal) * 100) : 0}%` }}
-                  />
-                </div>
-                <span className="w-8 text-right text-[var(--color-text-muted)]">{count}</span>
-              </div>
-            ))}
+          <div className="dh2-empty dh2-empty-compact">
+            <p className="dh2-empty-title">No classified calls yet</p>
+            <p className="dh2-empty-text">Outcomes appear here once call transcripts are classified by AI.</p>
           </div>
+        ) : (
+          <ul className="dh2-disp-list">
+            {dispositionEntries.map(([label, count]) => {
+              const pct = share(count, dispositionTotal);
+              return (
+                <li key={label} className="dh2-disp-row">
+                  <span className="dh2-disp-label" title={label}>
+                    <i style={{ background: DISPOSITION_COLORS[label] ?? "#64748b" }} aria-hidden="true" />
+                    {label}
+                  </span>
+                  <div className="dh2-bar dh2-bar-thin" role="img" aria-label={`${label}: ${count} calls, ${Math.round(pct)}%`}>
+                    <div className="dh2-bar-fill" style={{ width: `${pct}%`, background: DISPOSITION_COLORS[label] ?? "#64748b" }} />
+                  </div>
+                  <span className="dh2-disp-count">{count.toLocaleString("en-IN")}</span>
+                  <span className="dh2-disp-pct">{Math.round(pct)}%</span>
+                </li>
+              );
+            })}
+          </ul>
         )}
-      </div>
+      </section>
 
-      {/* Cost analytics */}
-      <div className="dash-card space-y-3">
-        <div className="dash-card-header">
-          <h3 className="dash-card-title flex items-center gap-2">
-            <IndianRupee className="w-4 h-4 text-green-400" /> Cost Analytics
+      <section className="dh2-panel" aria-labelledby="dh2-cost-title">
+        <header className="dh2-panel-head">
+          <h3 id="dh2-cost-title" className="dh2-panel-title">
+            <IndianRupee size={16} aria-hidden="true" className="dh2-ico-green" /> Cost analytics
           </h3>
-          <span className="text-xs text-[var(--color-text-muted)]">₹{costAnalytics.ratePerMinute}/min</span>
-        </div>
-        <p className="text-2xl font-semibold text-white">₹{costAnalytics.totalCost.toLocaleString("en-IN")}</p>
-        <p className="text-[11px] text-[var(--color-text-muted)]">Estimated cost for this period, based on connected call minutes.</p>
+          <span className="dh2-chip">₹{costAnalytics.ratePerMinute}/min</span>
+        </header>
+        <p className="dh2-cost-total">{formatInr(costAnalytics.totalCost)}</p>
+        <p className="dh2-muted-note">Estimated cost for the selected period, based on call minutes.</p>
         {costAnalytics.byAgent.length > 0 && (
-          <div className="pt-2 space-y-1.5 border-t border-[var(--color-border)]">
+          <ul className="dh2-cost-list" aria-label="Cost by agent">
             {costAnalytics.byAgent.map((a) => (
-              <div key={a.agent_id} className="flex items-center justify-between text-xs">
-                <span className="text-[var(--color-text-secondary)] truncate">{a.agent_name}</span>
-                <span className="text-[var(--color-text-muted)]">₹{a.cost.toLocaleString("en-IN")}</span>
-              </div>
+              <li key={a.agent_id}>
+                <div className="dh2-cost-row">
+                  <span className="dh2-cost-name" title={a.agent_name}>{a.agent_name}</span>
+                  <span className="dh2-cost-value">{formatInr(a.cost)}</span>
+                </div>
+                <div className="dh2-bar dh2-bar-thin" aria-hidden="true">
+                  <div className="dh2-bar-fill dh2-bar-violet" style={{ width: `${share(a.cost, agentCostTotal)}%` }} />
+                </div>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
-      </div>
+      </section>
 
-      {/* Agent-wise breakdown */}
-      <div className="dash-card space-y-3">
-        <h3 className="dash-card-title flex items-center gap-2">
-          <Users className="w-4 h-4 text-blue-400" /> Agent Performance
-        </h3>
+      <section className="dh2-panel" aria-labelledby="dh2-agent-title">
+        <header className="dh2-panel-head">
+          <h3 id="dh2-agent-title" className="dh2-panel-title">
+            <Users size={16} aria-hidden="true" className="dh2-ico-blue" /> Agent performance
+          </h3>
+        </header>
         {agentBreakdown.length === 0 ? (
-          <p className="dash-empty-state">No calls dispatched with a saved Agent yet.</p>
+          <div className="dh2-empty dh2-empty-compact">
+            <p className="dh2-empty-title">No agent activity yet</p>
+            <p className="dh2-empty-text">Dispatch calls with a saved agent to compare performance.</p>
+          </div>
         ) : (
-          <div className="dash-table-wrap dash-table-wrap-scroll-5">
-            <table className="dash-table">
+          <div className="dh2-table-scroll">
+            <table className="dh2-table">
               <thead>
                 <tr>
-                  <th>Agent</th>
-                  <th>Calls</th>
-                  <th>Pickup Rate</th>
-                  <th>Avg Duration</th>
+                  <th scope="col">Agent</th>
+                  <th scope="col" className="num">Calls</th>
+                  <th scope="col" className="num">Completed</th>
+                  <th scope="col">Pickup rate</th>
+                  <th scope="col" className="num">Avg duration</th>
                 </tr>
               </thead>
               <tbody>
                 {agentBreakdown.map((a) => (
                   <tr key={a.agent_id}>
-                    <td className="dash-table-phone">{a.agent_name}</td>
-                    <td className="dash-table-muted">{a.total}</td>
-                    <td className="dash-table-muted">{a.pickupRate}%</td>
-                    <td className="dash-table-muted">{a.avgDuration}s</td>
+                    <td className="strong">{a.agent_name}</td>
+                    <td className="num">{a.total.toLocaleString("en-IN")}</td>
+                    <td className="num">{a.completed.toLocaleString("en-IN")}</td>
+                    <td><RateCell value={a.pickupRate} /></td>
+                    <td className="num">{formatDuration(a.avgDuration)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
-      </div>
+      </section>
 
-      {/* Campaign-wise breakdown */}
-      <div className="dash-card space-y-3">
-        <h3 className="dash-card-title flex items-center gap-2">
-          <Megaphone className="w-4 h-4 text-amber-400" /> Campaign Performance
-        </h3>
+      <section className="dh2-panel" aria-labelledby="dh2-camp-title">
+        <header className="dh2-panel-head">
+          <h3 id="dh2-camp-title" className="dh2-panel-title">
+            <Megaphone size={16} aria-hidden="true" className="dh2-ico-amber" /> Campaign performance
+          </h3>
+        </header>
         {campaignBreakdown.length === 0 ? (
-          <p className="dash-empty-state">No bulk campaigns launched yet in this period.</p>
+          <div className="dh2-empty dh2-empty-compact">
+            <p className="dh2-empty-title">No campaigns in this period</p>
+            <p className="dh2-empty-text">Bulk campaigns launched from the Calls tab show up here.</p>
+          </div>
         ) : (
-          <div className="dash-table-wrap dash-table-wrap-scroll-5">
-            <table className="dash-table">
+          <div className="dh2-table-scroll">
+            <table className="dh2-table">
               <thead>
                 <tr>
-                  <th>Launched</th>
-                  <th>Calls</th>
-                  <th>Pickup Rate</th>
+                  <th scope="col">Launched</th>
+                  <th scope="col" className="num">Calls</th>
+                  <th scope="col" className="num">Completed</th>
+                  <th scope="col">Pickup rate</th>
                 </tr>
               </thead>
               <tbody>
                 {campaignBreakdown.map((c) => (
                   <tr key={c.campaign_id}>
-                    <td className="dash-table-phone">{new Date(c.started_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</td>
-                    <td className="dash-table-muted">{c.total}</td>
-                    <td className="dash-table-muted">{c.pickupRate}%</td>
+                    <td className="strong">
+                      {new Date(c.started_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                    </td>
+                    <td className="num">{c.total.toLocaleString("en-IN")}</td>
+                    <td className="num">{c.completed.toLocaleString("en-IN")}</td>
+                    <td><RateCell value={c.pickupRate} /></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
+      </section>
+    </div>
+  );
+}
+
+function RateCell({ value }: { value: number }) {
+  const safe = Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : 0;
+  return (
+    <div className="dh2-rate">
+      <div className="dh2-bar dh2-bar-thin" aria-hidden="true">
+        <div className="dh2-bar-fill dh2-bar-ok" style={{ width: `${safe}%` }} />
       </div>
+      <span>{safe}%</span>
     </div>
   );
 }
