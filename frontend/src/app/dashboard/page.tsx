@@ -169,14 +169,25 @@ export default function DashboardPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const email = user.email || '';
-      setUserName(email.split('@')[0] || 'User');
+      const metadataName = typeof user.user_metadata?.full_name === 'string'
+        ? user.user_metadata.full_name.trim()
+        : '';
 
-      const { data } = await supabase
-        .from('user_subscriptions')
-        .select('plan, status, max_calls_per_month, calls_used, max_minutes_per_month, minutes_used')
-        .eq('user_id', user.id)
-        .single();
-      if (data) setSubscription(data);
+      const [{ data: profile }, { data: subscriptionData }] = await Promise.all([
+        supabase
+          .from('user_profiles')
+          .select('full_name')
+          .eq('id', user.id)
+          .single(),
+        supabase
+          .from('user_subscriptions')
+          .select('plan, status, max_calls_per_month, calls_used, max_minutes_per_month, minutes_used')
+          .eq('user_id', user.id)
+          .single(),
+      ]);
+
+      setUserName(profile?.full_name?.trim() || metadataName || email.split('@')[0] || 'User');
+      if (subscriptionData) setSubscription(subscriptionData);
     };
     fetchUser();
   }, []);
@@ -264,8 +275,15 @@ export default function DashboardPage() {
 
   const statusLabel = (s: string) => s.replace('-', ' ').replace(/\b\w/g, c => c.toUpperCase());
 
-  const userInitial = userName ? userName[0].toUpperCase() : 'U';
-  const displayName = userName.charAt(0).toUpperCase() + userName.slice(1);
+  const displayName = userName
+    .trim()
+    .split(/\s+/)
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ') || 'User';
+  const nameParts = displayName.split(/\s+/);
+  const userInitials = nameParts.length > 1
+    ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`.toUpperCase()
+    : displayName.slice(0, 2).toUpperCase();
 
   // Compute failed count from stats
   const failed = stats ? stats.total - stats.completed - stats.noAnswer - stats.ringing : 0;
@@ -455,11 +473,12 @@ export default function DashboardPage() {
                 onClear={() => { setChartLoading(true); setCustomRange(null); }}
               />
             )}
-            <button onClick={toggleTheme} className="dash-icon-btn" title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
-              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            </button>
             <div className="dash-notif-wrapper">
-              <button className="dash-icon-btn dash-notif-btn" onClick={() => { setNotifOpen(!notifOpen); setProfileOpen(false); }}>
+              <button
+                className="dash-icon-btn dash-notif-btn"
+                onClick={() => { setNotifOpen(!notifOpen); setProfileOpen(false); }}
+                aria-label="View active call notifications"
+              >
                 <Bell className="w-4 h-4" />
                 {activeCalls > 0 && (
                   <span className="dash-notif-dot">{activeCalls}</span>
@@ -493,11 +512,14 @@ export default function DashboardPage() {
               )}
             </div>
             <div className="dash-profile-wrapper">
-              <button onClick={() => { setProfileOpen(!profileOpen); setNotifOpen(false); }} className="dash-header-user">
+              <button
+                onClick={() => { setProfileOpen(!profileOpen); setNotifOpen(false); }}
+                className="dash-header-user"
+                aria-label={`Open profile menu for ${displayName}`}
+              >
                 <div className="dash-avatar-sm">
-                  {userInitial}
+                  {userInitials}
                 </div>
-                <span className="dash-header-username">{displayName}</span>
                 <ChevronDown className={`w-3 h-3 text-[#555] transition-transform ${profileOpen ? 'rotate-180' : ''}`} />
               </button>
 
@@ -505,7 +527,7 @@ export default function DashboardPage() {
                 <div className="dash-profile-dropdown">
                   <div className="dash-profile-info">
                     <div className="dash-avatar">
-                      {userInitial}
+                      {userInitials}
                     </div>
                     <div>
                       <p className="dash-user-name">{displayName}</p>
@@ -513,6 +535,10 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   <div className="dash-profile-divider" />
+                  <button onClick={toggleTheme} className="dash-profile-action-btn">
+                    {theme === 'dark' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+                    <span>{theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}</span>
+                  </button>
                   <button onClick={handleLogout} className="dash-logout-btn">
                     <LogOut className="w-3.5 h-3.5" />
                     <span>Logout</span>

@@ -102,7 +102,7 @@ export default function DashboardDateFilter({ from, to, onApply, onClear }: Dash
         title="Filter dashboard by date"
       >
         <Calendar className="w-4 h-4" />
-        <span className="text-xs font-medium">{label}</span>
+        <span className="dash-date-filter-label text-xs font-medium">{label}</span>
       </button>
 
       {open && (
