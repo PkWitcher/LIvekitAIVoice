@@ -454,7 +454,7 @@ export default function AdminDashboardPage() {
           {activeTab === "subscriptions" && (
             <div className="animate-in">
               <UserSubscriptions
-                users={(stats?.users || []).map((u) => ({ user_id: u.user_id, email: u.email }))}
+                users={(stats?.users || []).map((u) => ({ user_id: u.user_id, email: u.email, full_name: u.full_name }))}
               />
             </div>
           )}
